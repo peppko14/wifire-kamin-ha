@@ -1,0 +1,23 @@
+# Private Konfiguration
+config.py
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Mess- und Laufzeitdaten
+archive/
+archive-maps/
+measurements/
+scans/
+latest.json
+
+# Entwicklungs- und Sicherungsdateien
+mqtt_discovery_backup.py
+mqtt.py
+compare.py
+reader.py
+scanner.py
+archive_analyze.py
+archive_metadata_analyze.py

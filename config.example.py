@@ -1,0 +1,21 @@
+# WiFire-Kamin – Konfiguration
+WIFIRE_URL = "http://192.168.0.1/direct/00"
+MQTT_HOST = "192.168.XXX.XXX"
+MQTT_PORT = 1883
+MQTT_USERNAME = "MQTT_NAME"
+MQTT_PASSWORD = "MQTT_PASS"
+MQTT_DISCOVERY_PREFIX = "homeassistant"
+DEVICE_NAME = "WiFire-Kamin"
+DEVICE_ID = "wifire_kamin"
+MANUFACTURER = "FireControls"
+MODEL = "WiFire NET"
+# Abfrageintervalle in Sekunden
+NORMAL_UPDATE_INTERVAL = 60
+ACTIVE_FIRE_UPDATE_INTERVAL = 10
+ERROR_RETRY_INTERVAL = 300
+
+# Ab dieser Temperatur gilt ein Abbrand als aktiv.
+ACTIVE_FIRE_TEMPERATURE_C = 40
+REQUEST_TIMEOUT = 5
+OFFLINE_AFTER_FAILURES = 3
+ENABLE_FAN_ENTITY = False

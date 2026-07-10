@@ -1,0 +1,15 @@
+[Unit]
+Description=WiFire-Kamin MQTT Bridge
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=dennis-wifire
+WorkingDirectory=/home/dennis-wifire/wifire-reader
+ExecStart=/home/dennis-wifire/wifire-reader/venv/bin/python /home/dennis-wifire/wifire-reader/mqtt_discovery.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
