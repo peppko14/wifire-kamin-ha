@@ -18,7 +18,7 @@ from history.statistics import (
 )
 
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +57,34 @@ class HeatingSeasonStatistics:
                 timespec="seconds"
             ),
             **self.statistics.to_dict(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class CurrentPeriodStatistics:
+    """Momentaufnahme des aktuellen Monats und dreier Heizsaisons."""
+
+    month: MonthlyStatistics
+    seasons: tuple[
+        HeatingSeasonStatistics,
+        HeatingSeasonStatistics,
+        HeatingSeasonStatistics,
+    ]
+
+    def __post_init__(self) -> None:
+        if len(self.seasons) != 3:
+            raise ValueError("Es müssen genau drei Heizsaisons vorliegen.")
+
+    @property
+    def season(self) -> HeatingSeasonStatistics:
+        """Aktuelle Heizsaison als bequemer Kompatibilitätszugriff."""
+        return self.seasons[0]
+
+    def to_dict(self) -> dict[str, object]:
+        """Erzeugt die gemeinsame MQTT-Darstellung."""
+        return {
+            "current_month": self.month.to_dict(),
+            "heating_seasons": [item.to_dict() for item in self.seasons],
         }
 
 
@@ -117,4 +145,52 @@ def calculate_heating_season_statistics(
             statistics=calculate_history_statistics(groups[season]),
         )
         for season in sorted(groups)
+    )
+
+
+def calculate_current_period_statistics(
+    records: Iterable[Mapping[str, object]],
+    *,
+    at: datetime,
+    since: datetime | None = None,
+) -> CurrentPeriodStatistics:
+    """Berechnet feste Momentaufnahmen für die Perioden eines Zeitpunkts."""
+    materialized = list(records)
+    current_month = CalendarMonth.from_datetime(at)
+    current_season = HeatingSeason.from_datetime(at)
+    target_seasons = tuple(
+        HeatingSeason(current_season.start_year - offset)
+        for offset in range(3)
+    )
+
+    monthly = {
+        item.month: item
+        for item in calculate_monthly_statistics(materialized, since=since)
+    }
+    seasons = {
+        item.season: item
+        for item in calculate_heating_season_statistics(
+            materialized,
+            since=since,
+        )
+    }
+
+    return CurrentPeriodStatistics(
+        month=monthly.get(
+            current_month,
+            MonthlyStatistics(
+                month=current_month,
+                statistics=calculate_history_statistics([]),
+            ),
+        ),
+        seasons=tuple(
+            seasons.get(
+                season,
+                HeatingSeasonStatistics(
+                    season=season,
+                    statistics=calculate_history_statistics([]),
+                ),
+            )
+            for season in target_seasons
+        ),
     )

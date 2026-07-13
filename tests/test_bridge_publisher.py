@@ -12,6 +12,7 @@ from typing import Any
 
 from bridge.publisher import MqttPublisher
 from bridge.topics import MqttTopics
+from history.period_statistics import calculate_current_period_statistics
 from history.statistics import HistoryStatistics
 
 
@@ -165,6 +166,29 @@ class MqttPublisherTests(unittest.TestCase):
         self.assertEqual(payload["burn_count"], 16)
         self.assertEqual(payload["total_duration_minutes"], 3298)
         self.assertEqual(payload["highest_temperature_c"], 665)
+
+    def test_publish_period_statistics_uses_retained_json_payload(self) -> None:
+        periods = calculate_current_period_statistics(
+            [],
+            at=datetime(2026, 7, 13),
+        )
+
+        self.publisher.publish_period_statistics(periods)
+
+        message = self.client.messages[0]
+        self.assertEqual(
+            message["topic"],
+            "wifire_kamin/wifire_kamin/period_statistics",
+        )
+        self.assertEqual(message["qos"], 1)
+        self.assertTrue(message["retain"])
+        payload = json.loads(message["payload"])
+        self.assertEqual(payload["current_month"]["period"], "2026-07")
+        self.assertEqual(
+            [item["label"] for item in payload["heating_seasons"]],
+            ["2026/2027", "2025/2026", "2024/2025"],
+        )
+        self.assertEqual(payload["current_month"]["burn_count"], 0)
 
 
 if __name__ == "__main__":

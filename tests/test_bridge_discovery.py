@@ -136,6 +136,77 @@ class DiscoveryTests(unittest.TestCase):
             "temperature",
         )
 
+    def test_payload_contains_month_and_three_season_components(self) -> None:
+        components = build_discovery_payload(
+            FakeConfig,
+            self.topics,
+            app_name="Bridge",
+            app_version="0.8.0",
+        )["components"]
+        expected_month = {
+            "wifire_kamin_period_month_period",
+            "wifire_kamin_period_month_burn_count",
+            "wifire_kamin_period_month_total_duration",
+            "wifire_kamin_period_month_average_max_temperature",
+        }
+        season_metrics = {
+            "period",
+            "burn_count",
+            "total_duration",
+            "average_duration",
+            "average_max_temperature",
+            "highest_temperature",
+        }
+        expected_seasons = {
+            f"wifire_kamin_period_season_{number}_{metric}"
+            for number in (1, 2, 3)
+            for metric in season_metrics
+        }
+        expected = expected_month | expected_seasons
+
+        self.assertTrue(expected.issubset(components))
+        self.assertEqual(len(expected), 22)
+        for component_id in expected:
+            self.assertEqual(
+                components[component_id]["state_topic"],
+                "wifire_kamin/wifire_kamin/period_statistics",
+            )
+
+    def test_period_duration_and_temperature_classes_are_defined(self) -> None:
+        components = build_discovery_payload(
+            FakeConfig,
+            self.topics,
+            app_name="Bridge",
+            app_version="0.8.0",
+        )["components"]
+
+        self.assertEqual(
+            components["wifire_kamin_period_month_total_duration"][
+                "device_class"
+            ],
+            "duration",
+        )
+        self.assertEqual(
+            components[
+                "wifire_kamin_period_season_1_average_max_temperature"
+            ]["device_class"],
+            "temperature",
+        )
+
+    def test_three_seasons_use_fixed_payload_indexes(self) -> None:
+        components = build_discovery_payload(
+            FakeConfig,
+            self.topics,
+            app_name="Bridge",
+            app_version="0.8.0",
+        )["components"]
+
+        for number, index in ((1, 0), (2, 1), (3, 2)):
+            template = components[
+                f"wifire_kamin_period_season_{number}_burn_count"
+            ]["value_template"]
+            self.assertIn(f"heating_seasons[{index}]", template)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,10 +9,11 @@ import json
 from typing import Any, Protocol
 
 from bridge.topics import MqttTopics
+from history.period_statistics import CurrentPeriodStatistics
 from history.statistics import HistoryStatistics
 
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 
 class MqttPublisherClient(Protocol):
@@ -96,6 +97,21 @@ class MqttPublisher:
         """Veröffentlicht die lokale Historienstatistik retained."""
         self.client.publish(
             self.topics.statistics,
+            payload=json.dumps(
+                statistics.to_dict(),
+                ensure_ascii=False,
+            ),
+            qos=1,
+            retain=True,
+        )
+
+    def publish_period_statistics(
+        self,
+        statistics: CurrentPeriodStatistics,
+    ) -> None:
+        """Veröffentlicht aktuelle Monats- und Saisonwerte retained."""
+        self.client.publish(
+            self.topics.period_statistics,
             payload=json.dumps(
                 statistics.to_dict(),
                 ensure_ascii=False,

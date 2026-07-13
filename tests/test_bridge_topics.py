@@ -26,6 +26,10 @@ class MqttTopicsTests(unittest.TestCase):
             self.topics.statistics,
             "wifire_kamin/wifire_kamin/statistics",
         )
+        self.assertEqual(
+            self.topics.period_statistics,
+            "wifire_kamin/wifire_kamin/period_statistics",
+        )
 
     def test_discovery_topics(self) -> None:
         self.assertEqual(
