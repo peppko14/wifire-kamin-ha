@@ -6,8 +6,8 @@ Alle Werkzeuge arbeiten ausschließlich lesend.
 
 ```bash
 sudo systemctl stop wifire-kamin.service
-cd ~/wifire-reader/wifire-kamin-ha
-source ~/wifire-reader/venv/bin/activate
+cd /pfad/zum/wifire-kamin-ha
+source venv/bin/activate
 ```
 
 ## Vollständiger Scan
@@ -48,7 +48,7 @@ sudo systemctl start wifire-kamin.service
 Die Werkzeuge speichern Berichte unter:
 
 ```text
-/home/dennis-wifire/wifire-reader/reverse-engineering/
-/home/dennis-wifire/wifire-reader/archive-maps/
-/home/dennis-wifire/wifire-reader/endpoint-scans/
+data/reverse-engineering/
+data/archive-maps/
+data/endpoint-scans/
 ```
