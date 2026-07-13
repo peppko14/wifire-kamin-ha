@@ -2,7 +2,7 @@
 
 Dokumentversion: 1.3.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.7.0 (Entwicklung)
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.7.0
 
 ## Ziele
 
@@ -259,8 +259,8 @@ Die Historien-Schema-Version ist unabhängig von der Projektversion.
 
 ## Tests
 
-Der Entwicklungsstand von Version 0.7.0 umfasst 141 Unit-Tests. Netzwerk,
-MQTT-Broker und Kamin sind für diese Tests nicht erforderlich.
+Version 0.7.0 umfasst 141 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
+für diese Tests nicht erforderlich.
 
 ```bash
 python3 -m unittest discover -s tests -p "test_*.py" -v

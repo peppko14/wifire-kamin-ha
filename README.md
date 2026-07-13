@@ -223,7 +223,7 @@ wifire-kamin-ha/
 python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Der Entwicklungsstand von Version 0.7.0 umfasst 141 automatisierte Tests.
+Version 0.7.0 umfasst 141 automatisierte Tests.
 
 ## Werkzeuge
 
