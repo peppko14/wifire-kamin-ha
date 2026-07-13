@@ -17,8 +17,8 @@ import paho.mqtt.client as mqtt
 import config
 from bridge.archive import (
     ArchiveReader,
-    build_archive_attributes,
 )
+from bridge.archive_sync import ArchiveSynchronizer
 from bridge.discovery import build_discovery_payload
 from bridge.polling import (
     LivePoller,
@@ -28,8 +28,7 @@ from bridge.polling import (
 from bridge.publisher import MqttPublisher
 from bridge.topics import MqttTopics
 from decoder import decode_live_data, read_live_data
-from history.manager import HistoryManager, create_default_history_manager
-from protocol.adapters import archive_record_to_burn_record
+from history.manager import create_default_history_manager
 from version import APP_VERSION
 
 
@@ -131,76 +130,6 @@ def interruptible_sleep(seconds: int | float) -> None:
         if not running:
             break
         time.sleep(0.1)
-
-
-def update_archives(
-    mqtt_publisher: MqttPublisher,
-    history_manager: HistoryManager,
-    archive_reader: ArchiveReader,
-) -> None:
-    """Aktualisiert MQTT-Archive und die lokale Historie."""
-    print("Archivaktualisierung wird gestartet.")
-
-    for index, (name, command) in enumerate(
-        ARCHIVE_COMMANDS.items(),
-        start=1,
-    ):
-        if not running:
-            return
-
-        try:
-            record = archive_reader.read_record(command)
-
-            if record.timestamp is None:
-                print(
-                    f"{name}: kein gültiger Zeitstempel – "
-                    f"übersprungen."
-                )
-                continue
-
-            state = record.timestamp.isoformat(
-                timespec="seconds"
-            )
-
-            mqtt_publisher.publish_archive(
-                index,
-                state=state,
-                attributes=build_archive_attributes(record),
-            )
-
-            print(
-                f"{name}: {state}, Maximum "
-                f"{record.max_temperature_c} °C, "
-                f"{record.measurement_count} Messpunkte."
-            )
-
-            burn_record = archive_record_to_burn_record(record)
-            history_result = history_manager.synchronize(
-                [burn_record]
-            )
-
-            if history_result.imported_count:
-                print(
-                    f"{name}: neuer Abbrand lokal unter "
-                    f"data/history gespeichert."
-                )
-            elif history_result.existing_count:
-                print(
-                    f"{name}: Abbrand bereits in lokaler Historie."
-                )
-            elif history_result.skipped_incomplete:
-                print(
-                    f"{name}: unvollständiger Abbrand "
-                    f"nicht gespeichert."
-                )
-
-        except (RuntimeError, ValueError) as error:
-            print(f"{name}: Archivfehler: {error}")
-
-        if index < len(ARCHIVE_COMMANDS):
-            interruptible_sleep(ARCHIVE_REQUEST_DELAY)
-
-    print("Archivaktualisierung beendet.")
 
 
 def on_connect(
@@ -346,6 +275,15 @@ def main() -> None:
         retry_delay=ARCHIVE_RETRY_DELAY,
         sleeper=interruptible_sleep,
     )
+    archive_synchronizer = ArchiveSynchronizer(
+        commands=tuple(ARCHIVE_COMMANDS.items()),
+        reader=archive_reader,
+        publisher=publisher,
+        history_manager=history_manager,
+        request_delay=ARCHIVE_REQUEST_DELAY,
+        sleeper=interruptible_sleep,
+        is_running=lambda: running,
+    )
 
     try:
         while running:
@@ -397,11 +335,7 @@ def main() -> None:
                 now - last_archive_update
                 >= ARCHIVE_UPDATE_INTERVAL
             ):
-                update_archives(
-                    publisher,
-                    history_manager,
-                    archive_reader,
-                )
+                archive_synchronizer.synchronize()
                 last_archive_update = time.monotonic()
 
             next_interval, interval_reason = (
