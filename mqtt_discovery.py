@@ -3,27 +3,34 @@
 import json
 import signal
 import time
+from pathlib import Path
 from typing import Any
 from urllib.request import Request, urlopen
 
 import paho.mqtt.client as mqtt
 
 import config
+from bridge.discovery import build_discovery_payload
+from bridge.topics import MqttTopics
 from decoder import decode_live_data, read_live_data
+from history.manager import HistoryManager, create_default_history_manager
+from protocol.adapters import archive_record_to_burn_record
 from version import APP_VERSION
 from wifire_protocol import decode_archive_record
 
 
 APP_NAME = "WiFire-Kamin MQTT Bridge"
 
-BASE_TOPIC = f"wifire_kamin/{config.DEVICE_ID}"
-STATE_TOPIC = f"{BASE_TOPIC}/state"
-AVAILABILITY_TOPIC = f"{BASE_TOPIC}/availability"
-
-HA_STATUS_TOPIC = f"{config.MQTT_DISCOVERY_PREFIX}/status"
-DEVICE_DISCOVERY_TOPIC = (
-    f"{config.MQTT_DISCOVERY_PREFIX}/device/{config.DEVICE_ID}/config"
+TOPICS = MqttTopics(
+    device_id=config.DEVICE_ID,
+    discovery_prefix=config.MQTT_DISCOVERY_PREFIX,
 )
+
+BASE_TOPIC = TOPICS.base
+STATE_TOPIC = TOPICS.state
+AVAILABILITY_TOPIC = TOPICS.availability
+HA_STATUS_TOPIC = TOPICS.home_assistant_status
+DEVICE_DISCOVERY_TOPIC = TOPICS.device_discovery
 
 NORMAL_UPDATE_INTERVAL = getattr(config, "NORMAL_UPDATE_INTERVAL", 60)
 ACTIVE_FIRE_UPDATE_INTERVAL = getattr(
@@ -65,123 +72,27 @@ def archive_attributes_topic(number: int) -> str:
     return f"{BASE_TOPIC}/archive/{number}/attributes"
 
 
-def discovery_payload() -> dict:
-    components: dict[str, dict] = {
-        f"{config.DEVICE_ID}_temperature": {
-            "platform": "sensor",
-            "name": "Temperatur",
-            "unique_id": f"{config.DEVICE_ID}_temperature",
-            "device_class": "temperature",
-            "unit_of_measurement": "°C",
-            "state_class": "measurement",
-            "suggested_display_precision": 0,
-            "value_template": "{{ value_json.temperature_c }}",
-            "icon": "mdi:fire",
-        },
-        f"{config.DEVICE_ID}_flap": {
-            "platform": "sensor",
-            "name": "Luftklappe",
-            "unique_id": f"{config.DEVICE_ID}_flap",
-            "unit_of_measurement": "%",
-            "state_class": "measurement",
-            "suggested_display_precision": 0,
-            "value_template": "{{ value_json.flap_percent }}",
-            "icon": "mdi:valve",
-        },
-        f"{config.DEVICE_ID}_burn_time": {
-            "platform": "sensor",
-            "name": "Abbrenndauer",
-            "unique_id": f"{config.DEVICE_ID}_burn_time",
-            "value_template": "{{ value_json.burn_time }}",
-            "icon": "mdi:timer-outline",
-        },
-        f"{config.DEVICE_ID}_burn_minutes": {
-            "platform": "sensor",
-            "name": "Abbrenndauer Minuten",
-            "unique_id": f"{config.DEVICE_ID}_burn_minutes",
-            "device_class": "duration",
-            "unit_of_measurement": "min",
-            "state_class": "measurement",
-            "value_template": "{{ value_json.burn_total_minutes }}",
-            "entity_category": "diagnostic",
-            "icon": "mdi:timer-sand",
-        },
-        f"{config.DEVICE_ID}_door": {
-            "platform": "binary_sensor",
-            "name": "Tür",
-            "unique_id": f"{config.DEVICE_ID}_door",
-            "device_class": "door",
-            "value_template": "{{ 'ON' if value_json.door_open else 'OFF' }}",
-            "payload_on": "ON",
-            "payload_off": "OFF",
-        },
-        f"{config.DEVICE_ID}_flap_moving": {
-            "platform": "binary_sensor",
-            "name": "Luftklappe bewegt sich",
-            "unique_id": f"{config.DEVICE_ID}_flap_moving",
-            "value_template": "{{ 'ON' if value_json.flap_moving else 'OFF' }}",
-            "payload_on": "ON",
-            "payload_off": "OFF",
-            "entity_category": "diagnostic",
-            "icon": "mdi:valve",
-        },
-    }
-
-    if config.ENABLE_FAN_ENTITY:
-        components[f"{config.DEVICE_ID}_fan_raw"] = {
-            "platform": "sensor",
-            "name": "Lüfter Rohwert",
-            "unique_id": f"{config.DEVICE_ID}_fan_raw",
-            "value_template": "{{ value_json.fan_raw }}",
-            "entity_category": "diagnostic",
-            "icon": "mdi:fan",
-        }
-
-    for number in (1, 2, 3):
-        components[f"{config.DEVICE_ID}_archive_{number}"] = {
-            "platform": "sensor",
-            "name": f"Archivierter Abbrand {number}",
-            "unique_id": f"{config.DEVICE_ID}_archive_{number}",
-            "state_topic": archive_state_topic(number),
-            "json_attributes_topic": archive_attributes_topic(number),
-            "device_class": "timestamp",
-            "icon": "mdi:chart-line",
-            "entity_category": "diagnostic",
-        }
-
-    return {
-        "device": {
-            "identifiers": [config.DEVICE_ID],
-            "name": config.DEVICE_NAME,
-            "manufacturer": config.MANUFACTURER,
-            "model": config.MODEL,
-            "sw_version": APP_VERSION,
-        },
-        "origin": {
-            "name": APP_NAME,
-            "sw_version": APP_VERSION,
-        },
-        "components": components,
-        "state_topic": STATE_TOPIC,
-        "availability_topic": AVAILABILITY_TOPIC,
-        "payload_available": "online",
-        "payload_not_available": "offline",
-        "qos": 1,
-    }
 
 
 def publish_discovery(client: mqtt.Client) -> None:
+    payload = build_discovery_payload(
+        config,
+        TOPICS,
+        app_name=APP_NAME,
+        app_version=APP_VERSION,
+    )
+
     client.publish(
         DEVICE_DISCOVERY_TOPIC,
-        payload=json.dumps(discovery_payload(), ensure_ascii=False),
+        payload=json.dumps(payload, ensure_ascii=False),
         qos=1,
         retain=True,
     )
+
     print(
         f'Home-Assistant-Geräte-Discovery für '
         f'"{config.DEVICE_NAME}" veröffentlicht.'
     )
-
 
 def publish_availability(client: mqtt.Client, online: bool) -> None:
     client.publish(
@@ -292,7 +203,10 @@ def archive_attributes(record: Any) -> dict:
     }
 
 
-def update_archives(client: mqtt.Client) -> None:
+def update_archives(
+    client: mqtt.Client,
+    history_manager: HistoryManager,
+) -> None:
     print("Archivaktualisierung wird gestartet.")
 
     for index, (name, command) in enumerate(ARCHIVE_COMMANDS.items(), start=1):
@@ -330,6 +244,23 @@ def update_archives(client: mqtt.Client) -> None:
                 f"{record.max_temperature_c} °C, "
                 f"{record.measurement_count} Messpunkte."
             )
+
+            burn_record = archive_record_to_burn_record(record)
+            history_result = history_manager.synchronize([burn_record])
+
+            if history_result.imported_count:
+                print(
+                    f"{name}: neuer Abbrand lokal unter "
+                    f"data/history gespeichert."
+                )
+            elif history_result.existing_count:
+                print(
+                    f"{name}: Abbrand bereits in lokaler Historie."
+                )
+            elif history_result.skipped_incomplete:
+                print(
+                    f"{name}: unvollständiger Abbrand nicht gespeichert."
+                )
 
         except (RuntimeError, ValueError) as error:
             # RuntimeError kommt von read_archive_block, wenn alle
@@ -475,6 +406,9 @@ def main() -> None:
     availability_online = True
     last_archive_update = 0.0
 
+    project_dir = Path(__file__).resolve().parent
+    history_manager = create_default_history_manager(project_dir)
+
     try:
         while running:
             read_failed = False
@@ -524,7 +458,7 @@ def main() -> None:
 
             now = time.monotonic()
             if now - last_archive_update >= ARCHIVE_UPDATE_INTERVAL:
-                update_archives(client)
+                update_archives(client, history_manager)
                 last_archive_update = time.monotonic()
 
             next_interval, interval_reason = get_next_poll_interval(
