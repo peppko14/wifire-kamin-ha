@@ -7,6 +7,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-13
+
 ### Hinzugefügt
 
 - Stabile Kalendermonats- und Heizsaisonmodelle in `history/periods.py`
