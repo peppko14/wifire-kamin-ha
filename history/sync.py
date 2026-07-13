@@ -1,27 +1,37 @@
 # SPDX-FileCopyrightText: 2026 peppko14
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Automatische Synchronisation des WiFire-Ringpuffers mit der lokalen Historie."""
+"""MQTT-unabhängige Synchronisation des WiFire-Ringpuffers."""
 
 from __future__ import annotations
 
 import json
 import time
 from dataclasses import dataclass
+from typing import Callable
 from urllib.parse import urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 from history.manager import HistoryManager, HistorySyncResult
+from history.ring_buffer import ArchiveOutcome, RingBufferStrategy
 from protocol.adapters import archive_record_to_burn_record
+from protocol.models import BurnRecord
 from wifire_protocol import decode_archive_record
 
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
+
+
+RawReader = Callable[[str, int], str]
+Decoder = Callable[[str], object]
+RecordAdapter = Callable[[object], BurnRecord]
+Sleeper = Callable[[float], None]
+Logger = Callable[[str], None]
 
 
 @dataclass(frozen=True, slots=True)
 class ArchiveSyncSettings:
-    """Konfiguration einer Archiv-Synchronisation."""
+    """Konfiguration einer lokalen Archiv-Synchronisation."""
 
     live_url: str
     first_archive: int = 1
@@ -31,55 +41,53 @@ class ArchiveSyncSettings:
     retry_delay_seconds: float = 10.0
     archive_delay_seconds: float = 10.0
 
+    def strategy(self) -> RingBufferStrategy:
+        """Erzeugt und validiert die gemeinsame Ringpuffer-Strategie."""
+        strategy = RingBufferStrategy(
+            first_archive=self.first_archive,
+            last_archive=self.last_archive,
+            request_delay_seconds=self.archive_delay_seconds,
+        )
+        strategy.validate()
+        return strategy
+
     def validate(self) -> None:
-        if not 1 <= self.first_archive <= self.last_archive <= 255:
-            raise ValueError(
-                "Archivbereich muss 1 <= first <= last <= 255 erfüllen."
-            )
+        self.strategy()
         if self.request_timeout < 1:
             raise ValueError("request_timeout muss mindestens 1 sein.")
         if self.retry_count < 1:
             raise ValueError("retry_count muss mindestens 1 sein.")
         if self.retry_delay_seconds < 0:
             raise ValueError("retry_delay_seconds darf nicht negativ sein.")
-        if self.archive_delay_seconds < 0:
-            raise ValueError("archive_delay_seconds darf nicht negativ sein.")
 
 
 @dataclass(frozen=True, slots=True)
 class ArchiveReadResult:
-    """Ergebnis des Einlesens des WiFire-Archivbereichs."""
+    """Ergebnis eines lokalen Ringpuffer-Abgleichs."""
 
     records_read: int
     read_failures: int
     sync_result: HistorySyncResult
+    archives_examined: int
+    stopped_on_existing: bool
 
 
 def build_archive_url(live_url: str) -> str:
-    """Leitet `/direct/35` portabel aus der konfigurierten Live-URL ab."""
+    """Leitet ``/direct/35`` aus der konfigurierten Live-URL ab."""
     parsed = urlsplit(live_url)
 
     if not parsed.scheme or not parsed.netloc:
         raise ValueError("WIFIRE_URL ist keine gültige absolute URL.")
 
     path_parts = [part for part in parsed.path.split("/") if part]
-
     if len(path_parts) < 2 or path_parts[-2] != "direct":
         raise ValueError(
             "WIFIRE_URL muss auf einen Endpunkt unter /direct/ zeigen."
         )
 
     path_parts[-1] = "35"
-    archive_path = "/" + "/".join(path_parts)
-
     return urlunsplit(
-        (
-            parsed.scheme,
-            parsed.netloc,
-            archive_path,
-            "",
-            "",
-        )
+        (parsed.scheme, parsed.netloc, "/" + "/".join(path_parts), "", "")
     )
 
 
@@ -87,7 +95,6 @@ def build_archive_command(number: int) -> str:
     """Erzeugt den bekannten lesenden Archivbefehl."""
     if not 1 <= number <= 255:
         raise ValueError("Archivnummer muss zwischen 1 und 255 liegen.")
-
     return f"aacc33550235{number:02x}ffff"
 
 
@@ -107,7 +114,6 @@ def read_archive_raw(
             body = json.dumps(
                 {"raw": build_archive_command(number)}
             ).encode("utf-8")
-
             request = Request(
                 archive_url,
                 data=body,
@@ -120,9 +126,7 @@ def read_archive_raw(
             )
 
             with urlopen(request, timeout=timeout) as response:
-                result = json.loads(
-                    response.read().decode("utf-8")
-                )
+                result = json.loads(response.read().decode("utf-8"))
 
             raw = result.get("raw")
             if not isinstance(raw, str):
@@ -132,10 +136,8 @@ def read_archive_raw(
 
             bytes.fromhex(raw)
             return raw
-
         except (OSError, ValueError) as error:
             last_error = error
-
             if attempt < retry_count:
                 time.sleep(retry_delay_seconds)
 
@@ -145,44 +147,103 @@ def read_archive_raw(
     )
 
 
+def _merge_results(results: list[HistorySyncResult]) -> HistorySyncResult:
+    """Fasst die einzeln und sofort gespeicherten Ergebnisse zusammen."""
+    return HistorySyncResult(
+        imported_ids=tuple(
+            burn_id for result in results for burn_id in result.imported_ids
+        ),
+        existing_ids=tuple(
+            burn_id for result in results for burn_id in result.existing_ids
+        ),
+        skipped_incomplete=sum(
+            result.skipped_incomplete for result in results
+        ),
+        failed_records=sum(result.failed_records for result in results),
+    )
+
+
 def synchronize_archives(
     manager: HistoryManager,
     settings: ArchiveSyncSettings,
+    *,
+    raw_reader: RawReader | None = None,
+    decoder: Decoder = decode_archive_record,
+    record_adapter: RecordAdapter = archive_record_to_burn_record,
+    sleeper: Sleeper = time.sleep,
+    logger: Logger = print,
 ) -> ArchiveReadResult:
-    """Liest den Ringpuffer und speichert ausschließlich neue Abbrände."""
+    """Speichert neue Abbrände sofort und unabhängig von MQTT lokal.
+
+    Der Scan läuft vom neuesten zum älteren Ringpufferplatz. Beim ersten
+    bereits vorhandenen vollständigen Abbrand endet er. Fehler und
+    unvollständige Datensätze werden protokolliert, stoppen den Scan aber
+    nicht.
+    """
     settings.validate()
+    strategy = settings.strategy()
     archive_url = build_archive_url(settings.live_url)
 
-    records = []
-    read_failures = 0
-
-    for number in range(
-        settings.first_archive,
-        settings.last_archive + 1,
-    ):
-        try:
-            raw = read_archive_raw(
-                archive_url,
+    if raw_reader is None:
+        def configured_reader(url: str, number: int) -> str:
+            return read_archive_raw(
+                url,
                 number,
                 timeout=settings.request_timeout,
                 retry_count=settings.retry_count,
                 retry_delay_seconds=settings.retry_delay_seconds,
             )
-            archive_record = decode_archive_record(raw)
-            records.append(
-                archive_record_to_burn_record(archive_record)
-            )
 
-        except (RuntimeError, ValueError):
+        raw_reader = configured_reader
+
+    records_read = 0
+    read_failures = 0
+    archives_examined = 0
+    stopped_on_existing = False
+    sync_results: list[HistorySyncResult] = []
+    archive_numbers = strategy.archive_numbers()
+
+    for number in archive_numbers:
+        archives_examined += 1
+
+        try:
+            raw = raw_reader(archive_url, number)
+            archive_record = decoder(raw)
+            burn_record = record_adapter(archive_record)
+            records_read += 1
+
+            # Wichtig: sofort lokal speichern, nicht erst am Ende des Scans.
+            sync_result = manager.synchronize([burn_record])
+            sync_results.append(sync_result)
+
+            if sync_result.imported_count:
+                outcome = ArchiveOutcome.NEW
+                logger(f"Archiv {number}: neuer Abbrand lokal gespeichert.")
+            elif sync_result.existing_count:
+                outcome = ArchiveOutcome.EXISTING
+                stopped_on_existing = True
+                logger(f"Archiv {number}: bereits lokal vorhanden.")
+            elif sync_result.skipped_incomplete:
+                outcome = ArchiveOutcome.INCOMPLETE
+                logger(f"Archiv {number}: unvollständig, übersprungen.")
+            else:
+                outcome = ArchiveOutcome.READ_ERROR
+                logger(f"Archiv {number}: lokale Speicherung fehlgeschlagen.")
+
+        except (OSError, RuntimeError, ValueError) as error:
             read_failures += 1
+            outcome = ArchiveOutcome.READ_ERROR
+            logger(f"Archiv {number}: Lesefehler: {error}")
 
-        if number < settings.last_archive:
-            time.sleep(settings.archive_delay_seconds)
-
-    sync_result = manager.synchronize(records)
+        if not strategy.should_continue_after(outcome):
+            break
+        if strategy.needs_delay_after(number, outcome):
+            sleeper(strategy.request_delay_seconds)
 
     return ArchiveReadResult(
-        records_read=len(records),
+        records_read=records_read,
         read_failures=read_failures,
-        sync_result=sync_result,
+        sync_result=_merge_results(sync_results),
+        archives_examined=archives_examined,
+        stopped_on_existing=stopped_on_existing,
     )
