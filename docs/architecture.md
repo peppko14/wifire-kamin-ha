@@ -1,8 +1,8 @@
 # Architektur
 
-Dokumentversion: 1.1.0
+Dokumentversion: 1.2.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.6.0
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.6.1
 
 ## Ziele
 
@@ -26,11 +26,13 @@ wifire-kamin-ha/
 │   ├── topics.py
 │   ├── discovery.py
 │   ├── publisher.py
+│   ├── mqtt_client.py
 │   ├── polling.py
 │   ├── archive.py
 │   ├── archive_sync.py
 │   ├── scheduler.py
-│   └── runtime.py
+│   ├── runtime.py
+│   └── application.py
 ├── history/
 │   ├── identifiers.py
 │   ├── storage.py
@@ -68,6 +70,12 @@ Diagnosewerte und die drei veröffentlichten Archivplätze.
 Kapselt MQTT-Veröffentlichungen für Verfügbarkeit, Live-Zustand und
 Archivattribute.
 
+### `bridge/mqtt_client.py`
+
+Kapselt den vollständigen MQTT-Lebenszyklus: Client-Erzeugung, Anmeldung,
+Last Will, Reconnect-Einstellungen, Callbacks, Discovery bei einer
+Neuverbindung sowie kontrollierten Start und Stopp.
+
 ### `bridge/polling.py`
 
 Liest und dekodiert einen Live-Datensatz und bestimmt das adaptive
@@ -97,11 +105,16 @@ damit SIGINT und SIGTERM zeitnah wirken.
 Steuert die zyklische Live-Abfrage, Offline-Erkennung, Archivplanung und
 Wartezeit. Die Klasse ist unabhängig vom konkreten MQTT-Client testbar.
 
+### `bridge/application.py`
+
+Erzeugt und verbindet alle Bridge-Komponenten. Der Application Runner
+registriert SIGINT und SIGTERM, startet MQTT und Laufzeitsteuerung und
+garantiert den kontrollierten MQTT-Stopp auch bei einem Laufzeitfehler.
+
 ### `mqtt_discovery.py`
 
-Ist der Programmeinstieg. Die Datei erstellt und verbindet den MQTT-Client,
-registriert Callbacks und Signale, setzt die Module zusammen und sorgt für
-ein kontrolliertes Herunterfahren.
+Ist nur noch der Programmeinstieg. Die Datei lädt Konfiguration und Version,
+erzeugt über `create_application()` den Application Runner und startet ihn.
 
 ## Protokoll und Datenmodelle
 
@@ -212,7 +225,7 @@ Die Historien-Schema-Version ist unabhängig von der Projektversion.
 
 ## Tests
 
-Version 0.6.0 umfasst 79 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
+Version 0.6.1 umfasst 93 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
 für diese Tests nicht erforderlich.
 
 ```bash

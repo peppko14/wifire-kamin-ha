@@ -169,7 +169,7 @@ wifire-kamin-ha/
 python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Version 0.6.0 umfasst 79 automatisierte Tests.
+Version 0.6.1 umfasst 93 automatisierte Tests.
 
 ## Werkzeuge
 
