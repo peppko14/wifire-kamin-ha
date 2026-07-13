@@ -8,7 +8,10 @@ from __future__ import annotations
 from datetime import datetime
 import unittest
 
-from history.period_statistics import calculate_monthly_statistics
+from history.period_statistics import (
+    calculate_heating_season_statistics,
+    calculate_monthly_statistics,
+)
 from history.statistics import HistoryStatisticsError
 
 
@@ -78,6 +81,75 @@ class MonthlyStatisticsTests(unittest.TestCase):
 
         with self.assertRaises(HistoryStatisticsError):
             calculate_monthly_statistics([invalid])
+
+
+class HeatingSeasonStatisticsTests(unittest.TestCase):
+    def test_records_from_same_winter_share_one_season(self) -> None:
+        result = calculate_heating_season_statistics([
+            record("2025-11-10T20:00:00", 500),
+            record("2026-02-12T19:00:00", 600),
+        ])
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].season.label, "2025/2026")
+        self.assertEqual(result[0].statistics.burn_count, 2)
+        self.assertEqual(result[0].statistics.highest_temperature_c, 600)
+
+    def test_june_and_july_are_split_into_different_seasons(self) -> None:
+        result = calculate_heating_season_statistics([
+            record("2026-06-30T23:59:59", 400),
+            record("2026-07-01T00:00:00", 500),
+        ])
+
+        self.assertEqual(
+            [item.season.label for item in result],
+            ["2025/2026", "2026/2027"],
+        )
+
+    def test_seasons_are_returned_chronologically(self) -> None:
+        result = calculate_heating_season_statistics([
+            record("2026-08-01T20:00:00", 500),
+            record("2024-12-01T20:00:00", 400),
+            record("2025-10-01T20:00:00", 450),
+        ])
+
+        self.assertEqual(
+            [item.season.key for item in result],
+            ["2024-2025", "2025-2026", "2026-2027"],
+        )
+
+    def test_since_filter_can_create_partial_season(self) -> None:
+        result = calculate_heating_season_statistics(
+            [
+                record("2025-11-01T20:00:00", 400),
+                record("2026-01-01T00:00:00", 500),
+            ],
+            since=datetime(2026, 1, 1),
+        )
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].season.label, "2025/2026")
+        self.assertEqual(result[0].statistics.burn_count, 1)
+
+    def test_serialized_season_contains_boundaries_and_statistics(self) -> None:
+        result = calculate_heating_season_statistics([
+            record("2026-02-12T19:00:00", 600)
+        ])[0].to_dict()
+
+        self.assertEqual(result["period"], "2025-2026")
+        self.assertEqual(result["label"], "2025/2026")
+        self.assertEqual(result["period_start"], "2025-07-01T00:00:00")
+        self.assertEqual(result["period_end_exclusive"], "2026-07-01T00:00:00")
+        self.assertEqual(result["burn_count"], 1)
+
+    def test_season_duration_uses_existing_duration_logic(self) -> None:
+        result = calculate_heating_season_statistics([
+            record("2025-11-10T20:00:00", 500, duration=120),
+            record("2026-02-12T19:00:00", 600, duration=180),
+        ])
+
+        self.assertEqual(result[0].statistics.total_duration_minutes, 300)
+        self.assertEqual(result[0].statistics.average_duration_minutes, 150.0)
 
 
 if __name__ == "__main__":
