@@ -15,9 +15,12 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
   - 5 Minuten nach Kommunikationsfehlern
 - lesender Zugriff auf archivierte Abbrände
 - automatische lokale Historisierung unter `data/history/`
+- schonende Synchronisation des vollständigen Ringpuffers mit 23 Plätzen
 - stabile SHA-256-ID und Duplikaterkennung
 - atomisches Speichern der JSON-Dateien
 - Import bereits vorhandener Archive
+- lokale Abbrandstatistik mit optionalem Datumsfilter
+- sechs automatisch erkannte Statistikentitäten in Home Assistant
 - begrenzte Wiederholungsversuche für die instabile Geräteschnittstelle
 - portabler systemd-Installer
 
@@ -72,8 +75,15 @@ cp config.example.py config.py
 nano config.py
 ```
 
-Mindestens MQTT-Adresse, Benutzername und Passwort anpassen. `config.py`
-ist von Git ausgeschlossen.
+Mindestens MQTT-Adresse, Benutzername und Passwort anpassen. Der optionale
+inklusive Statistikfilter kann beispielsweise so gesetzt werden:
+
+```python
+STATISTICS_SINCE = "2026-01-01"
+```
+
+Mit `None` wird die gesamte lokale Historie berücksichtigt. `config.py` ist
+von Git ausgeschlossen.
 
 ## Manueller Start
 
@@ -109,9 +119,19 @@ Entitäten für:
 - Abbrenndauer
 - Verfügbarkeit
 - drei aktuelle Archivplätze als Diagnoseentitäten
+- Anzahl berücksichtigter historischer Abbrände
+- Zeitpunkt des neuesten historischen Abbrands
+- gesamte und mittlere historische Abbrenndauer
+- mittlere historische Maximaltemperatur
+- höchste historische Temperatur
 - optionaler Lüfter-Rohwert
 
 Ein Eintrag in `configuration.yaml` ist nicht erforderlich.
+
+Alle Entitäten verwenden die gemeinsame MQTT-Verfügbarkeit der Bridge. Wird
+die Bridge beendet oder der Dienst gestoppt, zeigt Home Assistant die
+Entitäten deshalb als **nicht verfügbar** an. Beim nächsten Start werden sie
+wieder verfügbar; die Statistikwerte selbst werden retained veröffentlicht.
 
 ## Lokale Abbrandhistorie
 
@@ -143,6 +163,40 @@ python3 -u tools/history_importer_v1_0_1.py \
 Während eines manuellen Vollimports sollte der laufende Bridge-Dienst
 gestoppt sein, damit nicht mehrere Prozesse gleichzeitig zugreifen.
 
+### Automatische Synchronisation
+
+Die Bridge prüft den Ringpuffer nur im konfigurierten, langen
+Archivintervall. Die Plätze werden nacheinander mit mindestens zehn Sekunden
+Abstand gelesen. Bereits bekannte Abbrände beenden den Scan frühzeitig;
+unvollständige oder vorübergehend nicht lesbare Plätze werden protokolliert.
+
+Neue vollständige Abbrände werden zuerst atomisch lokal gespeichert. Erst
+danach folgt die optionale MQTT-Veröffentlichung. Ein MQTT-Ausfall kann daher
+keinen bereits gelesenen Abbrand aus der lokalen Historie entfernen.
+
+## Historienstatistik
+
+Die Statistik wird aus den lokalen JSON-Dateien berechnet. Sie benötigt
+keine zusätzlichen HTTP-Anfragen an den WiFire-Kamin und wird nach einer
+Archiv-Synchronisation über MQTT aktualisiert.
+
+Manuelle Textausgabe:
+
+```bash
+python3 tools/history_statistics_v1_1_0.py --since 2026-01-01
+```
+
+Maschinenlesbare Ausgabe:
+
+```bash
+python3 tools/history_statistics_v1_1_0.py \
+  --since 2026-01-01 \
+  --json
+```
+
+Die Abbrenndauer wird aus den Phasenzeitpunkten rekonstruiert. Dabei werden
+Überläufe der als Byte gespeicherten Minutenwerte berücksichtigt.
+
 ## Projektstruktur
 
 ```text
@@ -169,11 +223,12 @@ wifire-kamin-ha/
 python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Version 0.6.1 umfasst 93 automatisierte Tests.
+Der Entwicklungsstand von Version 0.7.0 umfasst 141 automatisierte Tests.
 
 ## Werkzeuge
 
 - `tools/history_importer_v1_0_1.py`: lokale Historie importieren
+- `tools/history_statistics_v1_1_0.py`: Historienstatistik ausgeben
 - `tools/archive_importer_v1.0.0.py`: Archivdaten untersuchen
 - `tools/archive_mapper_v1.0.0.py`: Archivfelder zuordnen
 - `tools/endpoint_scanner_v1.0.0.py`: bekannte Endpunkte prüfen
@@ -183,7 +238,6 @@ Version 0.6.1 umfasst 93 automatisierte Tests.
 
 Für eine spätere Version vorgesehen:
 
-- Statistiken aus der lokalen Historie
 - Monats- und Saisonvergleiche
 - Home-Assistant-Dashboard
 - weiter vereinheitlichte Protokollschnittstelle

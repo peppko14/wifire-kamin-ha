@@ -1,8 +1,8 @@
 # Architektur
 
-Dokumentversion: 1.2.0
+Dokumentversion: 1.3.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.6.1
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.7.0 (Entwicklung)
 
 ## Ziele
 
@@ -32,12 +32,15 @@ wifire-kamin-ha/
 │   ├── archive_sync.py
 │   ├── scheduler.py
 │   ├── runtime.py
+│   ├── statistics.py
 │   └── application.py
 ├── history/
 │   ├── identifiers.py
 │   ├── storage.py
 │   ├── manager.py
-│   └── sync.py
+│   ├── sync.py
+│   ├── ring_buffer.py
+│   └── statistics.py
 ├── protocol/
 │   ├── models.py
 │   └── adapters.py
@@ -67,8 +70,8 @@ Diagnosewerte und die drei veröffentlichten Archivplätze.
 
 ### `bridge/publisher.py`
 
-Kapselt MQTT-Veröffentlichungen für Verfügbarkeit, Live-Zustand und
-Archivattribute.
+Kapselt MQTT-Veröffentlichungen für Verfügbarkeit, Live-Zustand,
+Archivattribute und retained Historienstatistiken.
 
 ### `bridge/mqtt_client.py`
 
@@ -92,8 +95,10 @@ und führt begrenzte Wiederholungsversuche aus.
 
 ### `bridge/archive_sync.py`
 
-Koordiniert die bekannten Archivbefehle. Ein gültiger Datensatz wird
-gleichzeitig per MQTT veröffentlicht und an den History Manager übergeben.
+Koordiniert die bekannten Archivbefehle. Ein gültiger Datensatz wird zuerst
+über den History Manager lokal gespeichert und erst danach optional per MQTT
+veröffentlicht. Nach Abschluss kann eine Statistikaktualisierung ausgeführt
+werden.
 
 ### `bridge/scheduler.py`
 
@@ -104,6 +109,13 @@ damit SIGINT und SIGTERM zeitnah wirken.
 
 Steuert die zyklische Live-Abfrage, Offline-Erkennung, Archivplanung und
 Wartezeit. Die Klasse ist unabhängig vom konkreten MQTT-Client testbar.
+
+### `bridge/statistics.py`
+
+Liest die lokale Historie, wendet den optionalen inklusiven
+`STATISTICS_SINCE`-Filter an und veröffentlicht die berechnete Momentaufnahme
+über den MQTT-Publisher. Ein Fehler in diesem nachgelagerten Schritt verändert
+das Ergebnis der lokalen Archiv-Synchronisation nicht.
 
 ### `bridge/application.py`
 
@@ -172,6 +184,19 @@ vollständige Abbrände.
 Stellt die vollständige Ringpuffer-Synchronisation für Importwerkzeuge
 bereit. Die Archiv-URL wird aus der konfigurierten Live-URL abgeleitet.
 
+### `history/ring_buffer.py`
+
+Definiert die Strategie für die bekannten Archivplätze 1 bis 23. Der Scan
+läuft sequenziell, hält mindestens zehn Sekunden Abstand und kann bei einem
+bereits bekannten vollständigen Abbrand frühzeitig enden.
+
+### `history/statistics.py`
+
+Berechnet reproduzierbare Kennzahlen ausschließlich aus den lokal
+gespeicherten JSON-Datensätzen. Phasenminuten werden inklusive möglicher
+Byte-Überläufe rekonstruiert. Ein optionaler Startzeitpunkt filtert Datensätze
+inklusiv, ohne die Quelldateien zu verändern.
+
 ## Datenfluss
 
 ```text
@@ -187,6 +212,10 @@ FireControls WiFire
                                             └──> History Manager
                                                      │
                                                      └──> data/history/
+                                                              │
+                                                              └──> Statistik
+                                                                       │
+                                                                       └──> MQTT
 ```
 
 Alle Zugriffe erfolgen nacheinander innerhalb derselben Laufzeitsteuerung.
@@ -222,11 +251,16 @@ Die Historien-Schema-Version ist unabhängig von der Projektversion.
 - Zwischen Archivanforderungen werden kontrollierte Pausen eingehalten.
 - Fehlerhafte Archive verhindern nicht die Verarbeitung weiterer Plätze.
 - Vorhandene Historieneinträge werden weder überschrieben noch gelöscht.
+- Neue Abbrände werden vor nachgelagerten MQTT-Aktionen lokal gespeichert.
+- MQTT- oder Statistikfehler machen eine erfolgreiche lokale Speicherung
+  nicht rückgängig.
+- Ein gestoppter Dienst setzt die gemeinsame MQTT-Verfügbarkeit auf offline;
+  Home Assistant zeigt dann auch retained Statistikwerte als nicht verfügbar.
 
 ## Tests
 
-Version 0.6.1 umfasst 93 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
-für diese Tests nicht erforderlich.
+Der Entwicklungsstand von Version 0.7.0 umfasst 141 Unit-Tests. Netzwerk,
+MQTT-Broker und Kamin sind für diese Tests nicht erforderlich.
 
 ```bash
 python3 -m unittest discover -s tests -p "test_*.py" -v
@@ -234,9 +268,8 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 
 ## Bewusst verschoben
 
-Nicht Bestandteil von v0.6.0 sind:
+Noch nicht Bestandteil von v0.7.0 sind:
 
-- Statistikberechnungen,
 - Monats- und Saisonübersichten,
 - ein Home-Assistant-Dashboard,
 - die vollständige Ablösung der bestehenden Decoder-Einstiegspunkte.
