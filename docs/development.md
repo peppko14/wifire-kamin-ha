@@ -1,6 +1,6 @@
 # Entwicklungsrichtlinien
 
-Dokumentversion: 1.1.0
+Dokumentversion: 1.2.0
 
 Diese Regeln gelten für die WiFire-Kamin Home Assistant Bridge.
 
@@ -63,11 +63,15 @@ lesende Archivabfrage transportiert.
 - MQTT-Topics werden ausschließlich in `bridge/topics.py` erzeugt.
 - Discovery-Payloads gehören nach `bridge/discovery.py`.
 - MQTT-Veröffentlichungen gehören nach `bridge/publisher.py`.
+- MQTT-Client, Callbacks und Verbindungslebenszyklus gehören nach
+  `bridge/mqtt_client.py`.
 - Live-Polling und Intervallwahl gehören nach `bridge/polling.py`.
 - Archivzugriff und -koordination gehören nach `bridge/archive.py` und
   `bridge/archive_sync.py`.
 - Zeitplanung gehört nach `bridge/scheduler.py`.
 - Die zyklische Ablaufsteuerung gehört nach `bridge/runtime.py`.
+- Komponentenaufbau, Signale sowie Start und Stopp gehören nach
+  `bridge/application.py`.
 - `mqtt_discovery.py` bleibt ein schlanker Programmeinstieg.
 
 ## Historie
