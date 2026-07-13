@@ -7,16 +7,33 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 
 NORMAL_UPDATE_INTERVAL = 60
 ACTIVE_FIRE_UPDATE_INTERVAL = 10
 ERROR_RETRY_INTERVAL = 300
 ACTIVE_FIRE_TEMPERATURE_C = 40
+
+
+LiveState = dict[str, Any]
+LiveReader = Callable[[], str]
+LiveDecoder = Callable[[str], LiveState]
+
+
+@dataclass(frozen=True, slots=True)
+class LivePoller:
+    """Liest und dekodiert genau einen Live-Datensatz."""
+
+    reader: LiveReader
+    decoder: LiveDecoder
+
+    def poll(self) -> LiveState:
+        """Gibt den dekodierten Live-Zustand zurück."""
+        return self.decoder(self.reader())
 
 
 @dataclass(frozen=True, slots=True)

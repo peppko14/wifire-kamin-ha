@@ -10,9 +10,73 @@ import unittest
 from types import SimpleNamespace
 
 from bridge.polling import (
+    LivePoller,
     PollingSettings,
     get_next_poll_interval,
 )
+
+
+class LivePollerTests(unittest.TestCase):
+    def test_poll_reads_and_decodes_live_data(self) -> None:
+        calls: list[object] = []
+
+        def reader() -> str:
+            calls.append("read")
+            return "raw-live-data"
+
+        def decoder(raw: str) -> dict[str, object]:
+            calls.append(("decode", raw))
+            return {"temperature_c": 24}
+
+        poller = LivePoller(reader, decoder)
+
+        self.assertEqual(
+            poller.poll(),
+            {"temperature_c": 24},
+        )
+        self.assertEqual(
+            calls,
+            ["read", ("decode", "raw-live-data")],
+        )
+
+    def test_reader_oserror_is_not_changed(self) -> None:
+        expected = OSError("nicht erreichbar")
+
+        def reader() -> str:
+            raise expected
+
+        poller = LivePoller(reader, lambda raw: {})
+
+        with self.assertRaises(OSError) as context:
+            poller.poll()
+
+        self.assertIs(context.exception, expected)
+
+    def test_reader_value_error_is_not_changed(self) -> None:
+        expected = ValueError("ungültige Antwort")
+
+        def reader() -> str:
+            raise expected
+
+        poller = LivePoller(reader, lambda raw: {})
+
+        with self.assertRaises(ValueError) as context:
+            poller.poll()
+
+        self.assertIs(context.exception, expected)
+
+    def test_decoder_value_error_is_not_changed(self) -> None:
+        expected = ValueError("ungültige Nutzdaten")
+
+        def decoder(raw: str) -> dict[str, object]:
+            raise expected
+
+        poller = LivePoller(lambda: "raw", decoder)
+
+        with self.assertRaises(ValueError) as context:
+            poller.poll()
+
+        self.assertIs(context.exception, expected)
 
 
 class PollingSettingsTests(unittest.TestCase):
