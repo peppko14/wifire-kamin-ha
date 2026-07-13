@@ -6,25 +6,20 @@
 
 from __future__ import annotations
 
-import json
 import signal
-import time
 from pathlib import Path
 from typing import Any
-
-import paho.mqtt.client as mqtt
 
 import config
 from bridge.archive import (
     ArchiveReader,
 )
 from bridge.archive_sync import ArchiveSynchronizer
-from bridge.discovery import build_discovery_payload
+from bridge.mqtt_client import MqttConnection
 from bridge.polling import (
     LivePoller,
     PollingSettings,
 )
-from bridge.publisher import MqttPublisher
 from bridge.runtime import BridgeRuntime
 from bridge.scheduler import (
     InterruptibleSleeper,
@@ -86,8 +81,6 @@ ARCHIVE_COMMANDS = {
 }
 
 running = True
-latest_state: dict[str, Any] | None = None
-publisher: MqttPublisher | None = None
 
 
 def stop_program(*_: Any) -> None:
@@ -96,169 +89,19 @@ def stop_program(*_: Any) -> None:
     running = False
 
 
-def require_publisher() -> MqttPublisher:
-    """Liefert den initialisierten MQTT-Publisher."""
-    if publisher is None:
-        raise RuntimeError(
-            "MQTT-Publisher wurde noch nicht initialisiert."
-        )
-    return publisher
+def main() -> None:
+    """Startet die MQTT-Bridge und die adaptive Polling-Schleife."""
+    signal.signal(signal.SIGINT, stop_program)
+    signal.signal(signal.SIGTERM, stop_program)
 
-
-def remember_latest_state(data: dict[str, Any]) -> None:
-    """Speichert den letzten Zustand für MQTT-Neuverbindungen."""
-    global latest_state
-    latest_state = data
-
-
-def publish_discovery(client: mqtt.Client) -> None:
-    """Veröffentlicht die Home-Assistant-Device-Discovery."""
-    payload = build_discovery_payload(
+    connection = MqttConnection(
         config,
         TOPICS,
         app_name=APP_NAME,
         app_version=APP_VERSION,
+        is_running=lambda: running,
     )
-
-    client.publish(
-        TOPICS.device_discovery,
-        payload=json.dumps(payload, ensure_ascii=False),
-        qos=1,
-        retain=True,
-    )
-
-    print(
-        f'Home-Assistant-Geräte-Discovery für '
-        f'"{config.DEVICE_NAME}" veröffentlicht.'
-    )
-
-
-def on_connect(
-    client: mqtt.Client,
-    userdata: Any,
-    flags: mqtt.ConnectFlags,
-    reason_code: mqtt.ReasonCode,
-    properties: mqtt.Properties | None,
-) -> None:
-    """Paho-Callback nach erfolgreicher MQTT-Verbindung."""
-    if reason_code.is_failure:
-        print(
-            f"MQTT-Verbindung fehlgeschlagen: {reason_code}"
-        )
-        return
-
-    print("Mit MQTT verbunden.")
-    client.subscribe(TOPICS.home_assistant_status, qos=1)
-
-    publish_discovery(client)
-
-    mqtt_publisher = require_publisher()
-    mqtt_publisher.publish_availability(True)
-
-    if latest_state is not None:
-        mqtt_publisher.publish_state(latest_state)
-
-
-def on_message(
-    client: mqtt.Client,
-    userdata: Any,
-    message: mqtt.MQTTMessage,
-) -> None:
-    """Veröffentlicht Discovery erneut, wenn Home Assistant startet."""
-    if message.topic != TOPICS.home_assistant_status:
-        return
-
-    payload = (
-        message.payload.decode(
-            "utf-8",
-            errors="replace",
-        )
-        .strip()
-        .lower()
-    )
-
-    if payload == "online":
-        print(
-            "Home Assistant ist online – "
-            "Discovery wird erneut gesendet."
-        )
-
-        publish_discovery(client)
-
-        mqtt_publisher = require_publisher()
-        mqtt_publisher.publish_availability(True)
-
-        if latest_state is not None:
-            mqtt_publisher.publish_state(latest_state)
-
-
-def on_disconnect(
-    client: mqtt.Client,
-    userdata: Any,
-    disconnect_flags: mqtt.DisconnectFlags,
-    reason_code: mqtt.ReasonCode,
-    properties: mqtt.Properties | None,
-) -> None:
-    """Paho-Callback nach einer MQTT-Unterbrechung."""
-    if running and reason_code.is_failure:
-        print(
-            f"MQTT-Verbindung unterbrochen: {reason_code}"
-        )
-
-
-def main() -> None:
-    """Startet die MQTT-Bridge und die adaptive Polling-Schleife."""
-    global publisher
-
-    signal.signal(signal.SIGINT, stop_program)
-    signal.signal(signal.SIGTERM, stop_program)
-
-    client = mqtt.Client(
-        mqtt.CallbackAPIVersion.VERSION2,
-        client_id=f"{config.DEVICE_ID}_bridge",
-        reconnect_on_failure=True,
-    )
-
-    publisher = MqttPublisher(client, TOPICS)
-
-    client.on_connect = on_connect
-    client.on_message = on_message
-    client.on_disconnect = on_disconnect
-
-    if config.MQTT_USERNAME:
-        client.username_pw_set(
-            config.MQTT_USERNAME,
-            config.MQTT_PASSWORD,
-        )
-
-    client.will_set(
-        TOPICS.availability,
-        payload="offline",
-        qos=1,
-        retain=True,
-    )
-
-    client.reconnect_delay_set(
-        min_delay=2,
-        max_delay=60,
-    )
-
-    print(
-        f"Verbinde mit MQTT-Broker "
-        f"{config.MQTT_HOST}:{config.MQTT_PORT} ..."
-    )
-
-    try:
-        client.connect_async(
-            config.MQTT_HOST,
-            config.MQTT_PORT,
-            keepalive=60,
-        )
-    except (OSError, ValueError) as error:
-        print(f"MQTT-Konfiguration ungültig: {error}")
-        raise
-
-    client.loop_start()
+    publisher = connection.publisher
 
     archive_schedule = IntervalSchedule(
         ARCHIVE_UPDATE_INTERVAL
@@ -294,18 +137,16 @@ def main() -> None:
         sleeper=sleeper,
         is_running=lambda: running,
         offline_after_failures=OFFLINE_AFTER_FAILURES,
-        on_state=remember_latest_state,
+        on_state=connection.remember_state,
     )
+
+    connection.start()
 
     try:
         runtime.run()
 
     finally:
-        publisher.publish_availability(False)
-        time.sleep(0.2)
-
-        client.loop_stop()
-        client.disconnect()
+        connection.stop()
 
         print("WiFire-Kamin MQTT Bridge beendet.")
 
