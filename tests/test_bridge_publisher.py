@@ -7,10 +7,12 @@ from __future__ import annotations
 
 import json
 import unittest
+from datetime import datetime
 from typing import Any
 
 from bridge.publisher import MqttPublisher
 from bridge.topics import MqttTopics
+from history.statistics import HistoryStatistics
 
 
 class FakeClient:
@@ -130,6 +132,39 @@ class MqttPublisherTests(unittest.TestCase):
         self.assertEqual(attributes["max_temperature_c"], 620)
         self.assertEqual(attributes["measurement_count"], 121)
         self.assertTrue(attributes_message["retain"])
+
+    def test_publish_statistics_uses_retained_json_payload(self) -> None:
+        self.publisher.publish_statistics(
+            HistoryStatistics(
+                source_record_count=22,
+                burn_count=16,
+                excluded_record_count=6,
+                duration_record_count=16,
+                first_burn_start=datetime(2026, 2, 16, 15, 2),
+                latest_burn_start=datetime(2026, 4, 22, 21, 23),
+                total_duration_minutes=3298,
+                average_duration_minutes=206.1,
+                average_max_temperature_c=515.1,
+                highest_temperature_c=665,
+                highest_temperature_start=datetime(2026, 3, 26, 22, 23),
+                average_start_temperature_c=38.8,
+                average_end_temperature_c=281.5,
+            )
+        )
+
+        self.assertEqual(len(self.client.messages), 1)
+        message = self.client.messages[0]
+        self.assertEqual(
+            message["topic"],
+            "wifire_kamin/wifire_kamin/statistics",
+        )
+        self.assertEqual(message["qos"], 1)
+        self.assertTrue(message["retain"])
+
+        payload = json.loads(message["payload"])
+        self.assertEqual(payload["burn_count"], 16)
+        self.assertEqual(payload["total_duration_minutes"], 3298)
+        self.assertEqual(payload["highest_temperature_c"], 665)
 
 
 if __name__ == "__main__":

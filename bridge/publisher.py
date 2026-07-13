@@ -9,9 +9,10 @@ import json
 from typing import Any, Protocol
 
 from bridge.topics import MqttTopics
+from history.statistics import HistoryStatistics
 
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 
 class MqttPublisherClient(Protocol):
@@ -85,6 +86,18 @@ class MqttPublisher:
             self.topics.archive_attributes(number),
             payload=json.dumps(
                 attributes,
+                ensure_ascii=False,
+            ),
+            qos=1,
+            retain=True,
+        )
+
+    def publish_statistics(self, statistics: HistoryStatistics) -> None:
+        """Veröffentlicht die lokale Historienstatistik retained."""
+        self.client.publish(
+            self.topics.statistics,
+            payload=json.dumps(
+                statistics.to_dict(),
                 ensure_ascii=False,
             ),
             qos=1,

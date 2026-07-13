@@ -10,6 +10,9 @@ from typing import Protocol
 from bridge.topics import MqttTopics
 
 
+__version__ = "1.1.0"
+
+
 class DiscoveryConfig(Protocol):
     """Benötigte öffentliche Konfigurationswerte."""
 
@@ -118,6 +121,62 @@ def build_discovery_payload(
             "device_class": "timestamp",
             "icon": "mdi:chart-line",
             "entity_category": "diagnostic",
+        }
+
+    statistics_components = {
+        "burn_count": {
+            "name": "Historische Abbrände",
+            "icon": "mdi:counter",
+            "value_template": "{{ value_json.burn_count }}",
+        },
+        "latest_burn": {
+            "name": "Neuester historischer Abbrand",
+            "device_class": "timestamp",
+            "icon": "mdi:calendar-clock",
+            "value_template": "{{ value_json.latest_burn_start }}",
+        },
+        "total_duration": {
+            "name": "Gesamte historische Abbrenndauer",
+            "device_class": "duration",
+            "unit_of_measurement": "min",
+            "icon": "mdi:timer-sand-complete",
+            "value_template": "{{ value_json.total_duration_minutes }}",
+        },
+        "average_duration": {
+            "name": "Mittlere historische Abbrenndauer",
+            "device_class": "duration",
+            "unit_of_measurement": "min",
+            "state_class": "measurement",
+            "suggested_display_precision": 1,
+            "icon": "mdi:timer-outline",
+            "value_template": "{{ value_json.average_duration_minutes }}",
+        },
+        "average_max_temperature": {
+            "name": "Mittlere historische Maximaltemperatur",
+            "device_class": "temperature",
+            "unit_of_measurement": "°C",
+            "state_class": "measurement",
+            "suggested_display_precision": 1,
+            "icon": "mdi:thermometer-lines",
+            "value_template": "{{ value_json.average_max_temperature_c }}",
+        },
+        "highest_temperature": {
+            "name": "Höchste historische Temperatur",
+            "device_class": "temperature",
+            "unit_of_measurement": "°C",
+            "state_class": "measurement",
+            "suggested_display_precision": 0,
+            "icon": "mdi:thermometer-high",
+            "value_template": "{{ value_json.highest_temperature_c }}",
+        },
+    }
+
+    for key, component in statistics_components.items():
+        components[f"{config.DEVICE_ID}_statistics_{key}"] = {
+            "platform": "sensor",
+            "unique_id": f"{config.DEVICE_ID}_statistics_{key}",
+            "state_topic": topics.statistics,
+            **component,
         }
 
     return {
