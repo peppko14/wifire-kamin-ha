@@ -10,7 +10,7 @@ from typing import Protocol
 from bridge.topics import MqttTopics
 
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 
 class DiscoveryConfig(Protocol):
@@ -178,6 +178,136 @@ def build_discovery_payload(
             "state_topic": topics.statistics,
             **component,
         }
+
+    period_components = {
+        "month_period": {
+            "name": "Aktueller Statistikmonat",
+            "icon": "mdi:calendar-month",
+            "value_template": "{{ value_json.current_month.period }}",
+            "entity_category": "diagnostic",
+        },
+        "month_burn_count": {
+            "name": "Abbrände aktueller Monat",
+            "icon": "mdi:counter",
+            "value_template": "{{ value_json.current_month.burn_count }}",
+        },
+        "month_total_duration": {
+            "name": "Abbrenndauer aktueller Monat",
+            "device_class": "duration",
+            "unit_of_measurement": "min",
+            "icon": "mdi:timer-sand",
+            "value_template": (
+                "{{ value_json.current_month.total_duration_minutes }}"
+            ),
+        },
+        "month_average_max_temperature": {
+            "name": "Mittlere Maximaltemperatur aktueller Monat",
+            "device_class": "temperature",
+            "unit_of_measurement": "°C",
+            "state_class": "measurement",
+            "suggested_display_precision": 1,
+            "icon": "mdi:thermometer-lines",
+            "value_template": (
+                "{{ value_json.current_month.average_max_temperature_c }}"
+            ),
+        },
+    }
+
+    for key, component in period_components.items():
+        components[f"{config.DEVICE_ID}_period_{key}"] = {
+            "platform": "sensor",
+            "unique_id": f"{config.DEVICE_ID}_period_{key}",
+            "state_topic": topics.period_statistics,
+            **component,
+        }
+
+    season_names = (
+        "aktuelle Heizsaison",
+        "vorherige Heizsaison",
+        "vorvorherige Heizsaison",
+    )
+    for index, season_name in enumerate(season_names):
+        number = index + 1
+        season_components = {
+            "period": {
+                "name": season_name.capitalize(),
+                "icon": "mdi:calendar-range",
+                "value_template": (
+                    "{{ value_json.heating_seasons["
+                    f"{index}"
+                    "].label }}"
+                ),
+                "entity_category": "diagnostic",
+            },
+            "burn_count": {
+                "name": f"Abbrände {season_name}",
+                "icon": "mdi:counter",
+                "value_template": (
+                    "{{ value_json.heating_seasons["
+                    f"{index}"
+                    "].burn_count }}"
+                ),
+            },
+            "total_duration": {
+                "name": f"Abbrenndauer {season_name}",
+                "device_class": "duration",
+                "unit_of_measurement": "min",
+                "icon": "mdi:timer-sand-complete",
+                "value_template": (
+                    "{{ value_json.heating_seasons["
+                    f"{index}"
+                    "].total_duration_minutes }}"
+                ),
+            },
+            "average_duration": {
+                "name": f"Mittlere Abbrenndauer {season_name}",
+                "device_class": "duration",
+                "unit_of_measurement": "min",
+                "state_class": "measurement",
+                "suggested_display_precision": 1,
+                "icon": "mdi:timer-outline",
+                "value_template": (
+                    "{{ value_json.heating_seasons["
+                    f"{index}"
+                    "].average_duration_minutes }}"
+                ),
+            },
+            "average_max_temperature": {
+                "name": f"Mittlere Maximaltemperatur {season_name}",
+                "device_class": "temperature",
+                "unit_of_measurement": "°C",
+                "state_class": "measurement",
+                "suggested_display_precision": 1,
+                "icon": "mdi:thermometer-lines",
+                "value_template": (
+                    "{{ value_json.heating_seasons["
+                    f"{index}"
+                    "].average_max_temperature_c }}"
+                ),
+            },
+            "highest_temperature": {
+                "name": f"Höchste Temperatur {season_name}",
+                "device_class": "temperature",
+                "unit_of_measurement": "°C",
+                "state_class": "measurement",
+                "suggested_display_precision": 0,
+                "icon": "mdi:thermometer-high",
+                "value_template": (
+                    "{{ value_json.heating_seasons["
+                    f"{index}"
+                    "].highest_temperature_c }}"
+                ),
+            },
+        }
+
+        for key, component in season_components.items():
+            component_id = f"{config.DEVICE_ID}_period_season_{number}_{key}"
+            components[component_id] = {
+                "platform": "sensor",
+                "unique_id": component_id,
+                "state_topic": topics.period_statistics,
+                **component,
+            }
 
     return {
         "device": {

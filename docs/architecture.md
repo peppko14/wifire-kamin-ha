@@ -1,8 +1,8 @@
 # Architektur
 
-Dokumentversion: 1.3.0
+Dokumentversion: 1.4.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.7.0
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.8.0
 
 ## Ziele
 
@@ -40,7 +40,9 @@ wifire-kamin-ha/
 │   ├── manager.py
 │   ├── sync.py
 │   ├── ring_buffer.py
-│   └── statistics.py
+│   ├── statistics.py
+│   ├── periods.py
+│   └── period_statistics.py
 ├── protocol/
 │   ├── models.py
 │   └── adapters.py
@@ -66,12 +68,13 @@ Erzeugt alle MQTT-Topics zentral aus Geräte-ID und Discovery-Präfix.
 ### `bridge/discovery.py`
 
 Erzeugt die Home-Assistant-Device-Discovery für Live-Sensoren,
-Diagnosewerte und die drei veröffentlichten Archivplätze.
+Diagnosewerte, drei veröffentlichte Archivplätze, Gesamtstatistik, aktuellen
+Monat und drei rollierende Heizsaisons.
 
 ### `bridge/publisher.py`
 
 Kapselt MQTT-Veröffentlichungen für Verfügbarkeit, Live-Zustand,
-Archivattribute und retained Historienstatistiken.
+Archivattribute sowie retained Gesamt- und Periodenstatistiken.
 
 ### `bridge/mqtt_client.py`
 
@@ -113,9 +116,10 @@ Wartezeit. Die Klasse ist unabhängig vom konkreten MQTT-Client testbar.
 ### `bridge/statistics.py`
 
 Liest die lokale Historie, wendet den optionalen inklusiven
-`STATISTICS_SINCE`-Filter an und veröffentlicht die berechnete Momentaufnahme
-über den MQTT-Publisher. Ein Fehler in diesem nachgelagerten Schritt verändert
-das Ergebnis der lokalen Archiv-Synchronisation nicht.
+`STATISTICS_SINCE`-Filter an und veröffentlicht Gesamtstatistik, aktuellen
+Monat sowie aktuelle, vorherige und vorvorherige Heizsaison. Ein Fehler in
+diesem nachgelagerten Schritt verändert das Ergebnis der lokalen
+Archiv-Synchronisation nicht.
 
 ### `bridge/application.py`
 
@@ -197,6 +201,19 @@ gespeicherten JSON-Datensätzen. Phasenminuten werden inklusive möglicher
 Byte-Überläufe rekonstruiert. Ein optionaler Startzeitpunkt filtert Datensätze
 inklusiv, ohne die Quelldateien zu verändern.
 
+### `history/periods.py`
+
+Definiert sortierbare, unveränderliche Zeiträume für Kalendermonate und
+Heizsaisons. Eine Heizsaison beginnt inklusiv am 1. Juli und endet exklusiv
+am 1. Juli des Folgejahres.
+
+### `history/period_statistics.py`
+
+Gruppiert Datensätze nach Kalendermonat oder Heizsaison und verwendet für
+jede Gruppe die bestehende, getestete Statistikberechnung. Für MQTT wird eine
+feste Momentaufnahme aus aktuellem Monat und drei aufeinanderfolgenden
+Heizsaisons erzeugt. Fehlende Perioden erhalten neutrale Statistiken.
+
 ## Datenfluss
 
 ```text
@@ -213,8 +230,11 @@ FireControls WiFire
                                                      │
                                                      └──> data/history/
                                                               │
-                                                              └──> Statistik
+                                                             └──> Statistik
                                                                        │
+                                                                       ├──> Gesamt
+                                                                       ├──> Monat
+                                                                       ├──> 3 Saisons
                                                                        └──> MQTT
 ```
 
@@ -259,7 +279,7 @@ Die Historien-Schema-Version ist unabhängig von der Projektversion.
 
 ## Tests
 
-Version 0.7.0 umfasst 141 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
+Version 0.8.0 umfasst 173 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
 für diese Tests nicht erforderlich.
 
 ```bash
@@ -268,9 +288,8 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 
 ## Bewusst verschoben
 
-Noch nicht Bestandteil von v0.7.0 sind:
+Noch nicht Bestandteil von v0.8.0 sind:
 
-- Monats- und Saisonübersichten,
 - ein Home-Assistant-Dashboard,
 - die vollständige Ablösung der bestehenden Decoder-Einstiegspunkte.
 

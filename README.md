@@ -21,6 +21,8 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
 - Import bereits vorhandener Archive
 - lokale Abbrandstatistik mit optionalem Datumsfilter
 - sechs automatisch erkannte Statistikentitäten in Home Assistant
+- Monatsstatistiken und Heizsaisonberichte von Juli bis Juni
+- drei rollierende Heizsaisons zum direkten Vergleich in Home Assistant
 - begrenzte Wiederholungsversuche für die instabile Geräteschnittstelle
 - portabler systemd-Installer
 
@@ -124,6 +126,12 @@ Entitäten für:
 - gesamte und mittlere historische Abbrenndauer
 - mittlere historische Maximaltemperatur
 - höchste historische Temperatur
+- aktueller Statistikmonat mit Anzahl, Dauer und mittlerer Maximaltemperatur
+- aktuelle, vorherige und vorvorherige Heizsaison mit jeweils:
+  - Saisonbezeichnung
+  - Anzahl der Abbrände
+  - gesamter und mittlerer Abbrenndauer
+  - mittlerer Maximaltemperatur und Höchsttemperatur
 - optionaler Lüfter-Rohwert
 
 Ein Eintrag in `configuration.yaml` ist nicht erforderlich.
@@ -183,16 +191,38 @@ Archiv-Synchronisation über MQTT aktualisiert.
 Manuelle Textausgabe:
 
 ```bash
-python3 tools/history_statistics_v1_1_0.py --since 2026-01-01
+python3 tools/history_statistics_v1_2_0.py --since 2026-01-01
 ```
 
 Maschinenlesbare Ausgabe:
 
 ```bash
-python3 tools/history_statistics_v1_1_0.py \
+python3 tools/history_statistics_v1_2_0.py \
   --since 2026-01-01 \
   --json
 ```
+
+Monatsbericht:
+
+```bash
+python3 tools/history_statistics_v1_2_0.py \
+  --since 2026-01-01 \
+  --monthly
+```
+
+Heizsaisonbericht:
+
+```bash
+python3 tools/history_statistics_v1_2_0.py \
+  --since 2026-01-01 \
+  --seasons
+```
+
+Eine Heizsaison beginnt am 1. Juli und endet am 30. Juni des Folgejahres.
+Home Assistant veröffentlicht immer die aktuelle sowie die beiden
+vorherigen Saisons als feste, automatisch rollierende Entitäten. Zeiträume
+ohne Abbrand besitzen Anzahl und Dauer `0`; nicht berechenbare Mittel- oder
+Höchsttemperaturen bleiben unbekannt.
 
 Die Abbrenndauer wird aus den Phasenzeitpunkten rekonstruiert. Dabei werden
 Überläufe der als Byte gespeicherten Minutenwerte berücksichtigt.
@@ -223,12 +253,12 @@ wifire-kamin-ha/
 python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Version 0.7.0 umfasst 141 automatisierte Tests.
+Version 0.8.0 umfasst 173 automatisierte Tests.
 
 ## Werkzeuge
 
 - `tools/history_importer_v1_0_1.py`: lokale Historie importieren
-- `tools/history_statistics_v1_1_0.py`: Historienstatistik ausgeben
+- `tools/history_statistics_v1_2_0.py`: Gesamt-, Monats- und Saisonstatistik
 - `tools/archive_importer_v1.0.0.py`: Archivdaten untersuchen
 - `tools/archive_mapper_v1.0.0.py`: Archivfelder zuordnen
 - `tools/endpoint_scanner_v1.0.0.py`: bekannte Endpunkte prüfen
@@ -238,7 +268,6 @@ Version 0.7.0 umfasst 141 automatisierte Tests.
 
 Für eine spätere Version vorgesehen:
 
-- Monats- und Saisonvergleiche
 - Home-Assistant-Dashboard
 - weiter vereinheitlichte Protokollschnittstelle
 
