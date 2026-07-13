@@ -5,9 +5,9 @@ After=network-online.target
 
 [Service]
 Type=simple
-User=dennis-wifire
-WorkingDirectory=/home/dennis-wifire/wifire-reader
-ExecStart=/home/dennis-wifire/wifire-reader/venv/bin/python /home/dennis-wifire/wifire-reader/mqtt_discovery.py
+User=@USER@
+WorkingDirectory=@PROJECT_DIR@
+ExecStart=@PYTHON@ -u @PROJECT_DIR@/mqtt_discovery.py
 Restart=always
 RestartSec=10
 
