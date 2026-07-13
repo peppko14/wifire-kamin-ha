@@ -162,6 +162,14 @@ def _merge_results(results: list[HistorySyncResult]) -> HistorySyncResult:
             result.skipped_incomplete for result in results
         ),
         failed_records=sum(result.failed_records for result in results),
+        diagnostic_ids=tuple(
+            diagnostic_id
+            for result in results
+            for diagnostic_id in result.diagnostic_ids
+        ),
+        diagnostic_failures=sum(
+            result.diagnostic_failures for result in results
+        ),
     )
 
 
