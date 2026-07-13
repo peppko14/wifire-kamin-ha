@@ -7,6 +7,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-13
+
 ### Hinzugefügt
 
 - Schonende Synchronisation des vollständigen WiFire-Ringpuffers mit den
