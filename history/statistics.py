@@ -11,7 +11,15 @@ from statistics import fmean
 from typing import Iterable, Mapping
 
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
+
+PHASE_FIELDS = (
+    "stage_90_minute",
+    "stage_75_minute",
+    "stage_50_minute",
+    "stage_25_minute",
+    "stage_0_minute",
+)
 
 
 class HistoryStatisticsError(ValueError):
@@ -20,9 +28,12 @@ class HistoryStatisticsError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class HistoryStatistics:
-    """Zusammenfassung aller lokal gespeicherten Abbrände."""
+    """Zusammenfassung ausgewählter lokal gespeicherter Abbrände."""
 
+    source_record_count: int
     burn_count: int
+    excluded_record_count: int
+    duration_record_count: int
     first_burn_start: datetime | None
     latest_burn_start: datetime | None
     total_duration_minutes: int
@@ -36,25 +47,18 @@ class HistoryStatistics:
     def to_dict(self) -> dict[str, object]:
         """Erzeugt eine serialisierbare Darstellung der Statistik."""
         return {
+            "source_record_count": self.source_record_count,
             "burn_count": self.burn_count,
-            "first_burn_start": (
-                self.first_burn_start.isoformat(timespec="seconds")
-                if self.first_burn_start is not None
-                else None
-            ),
-            "latest_burn_start": (
-                self.latest_burn_start.isoformat(timespec="seconds")
-                if self.latest_burn_start is not None
-                else None
-            ),
+            "excluded_record_count": self.excluded_record_count,
+            "duration_record_count": self.duration_record_count,
+            "first_burn_start": _datetime_text(self.first_burn_start),
+            "latest_burn_start": _datetime_text(self.latest_burn_start),
             "total_duration_minutes": self.total_duration_minutes,
             "average_duration_minutes": self.average_duration_minutes,
             "average_max_temperature_c": self.average_max_temperature_c,
             "highest_temperature_c": self.highest_temperature_c,
-            "highest_temperature_start": (
-                self.highest_temperature_start.isoformat(timespec="seconds")
-                if self.highest_temperature_start is not None
-                else None
+            "highest_temperature_start": _datetime_text(
+                self.highest_temperature_start
             ),
             "average_start_temperature_c": (
                 self.average_start_temperature_c
@@ -66,10 +70,16 @@ class HistoryStatistics:
 @dataclass(frozen=True, slots=True)
 class _RecordMetrics:
     start: datetime
-    duration_minutes: int
+    duration_minutes: int | None
     max_temperature_c: int
     start_temperature_c: int
     end_temperature_c: int
+
+
+def _datetime_text(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    return value.isoformat(timespec="seconds")
 
 
 def _integer(record: Mapping[str, object], field: str) -> int:
@@ -79,6 +89,61 @@ def _integer(record: Mapping[str, object], field: str) -> int:
             f"Historienfeld '{field}' muss eine Ganzzahl sein."
         )
     return value
+
+
+def _optional_phase(record: Mapping[str, object], field: str) -> int | None:
+    value = record.get(field)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise HistoryStatisticsError(
+            f"Historienfeld '{field}' muss eine Ganzzahl oder null sein."
+        )
+    if not 0 <= value <= 255:
+        raise HistoryStatisticsError(
+            f"Historienfeld '{field}' muss zwischen 0 und 255 liegen."
+        )
+    return value
+
+
+def unwrap_phase_minutes(
+    stages: Iterable[int | None],
+) -> tuple[int | None, ...]:
+    """Entrollt kumulierte 8-Bit-Minutenwerte über den 255er-Überlauf."""
+    unwrapped: list[int | None] = []
+    previous: int | None = None
+
+    for raw_value in stages:
+        if raw_value is None:
+            unwrapped.append(None)
+            continue
+        if isinstance(raw_value, bool) or not isinstance(raw_value, int):
+            raise HistoryStatisticsError(
+                "Phasenwerte müssen Ganzzahlen oder null sein."
+            )
+        if not 0 <= raw_value <= 255:
+            raise HistoryStatisticsError(
+                "Phasenwerte müssen zwischen 0 und 255 liegen."
+            )
+
+        value = raw_value
+        if previous is not None:
+            while value < previous:
+                value += 256
+
+        unwrapped.append(value)
+        previous = value
+
+    return tuple(unwrapped)
+
+
+def calculate_burn_duration_minutes(
+    record: Mapping[str, object],
+) -> int | None:
+    """Bestimmt die vollständige Dauer aus dem entrollten stage_0-Wert."""
+    stages = tuple(_optional_phase(record, field) for field in PHASE_FIELDS)
+    unwrapped = unwrap_phase_minutes(stages)
+    return unwrapped[-1]
 
 
 def _parse_record(record: Mapping[str, object]) -> _RecordMetrics:
@@ -95,22 +160,12 @@ def _parse_record(record: Mapping[str, object]) -> _RecordMetrics:
             "Historienfeld 'start' enthält keinen ISO-Zeitstempel."
         ) from error
 
-    duration = _integer(record, "duration_minutes")
-    maximum = _integer(record, "max_temperature_c")
-    start_temperature = _integer(record, "start_temperature_c")
-    end_temperature = _integer(record, "end_temperature_c")
-
-    if duration < 0:
-        raise HistoryStatisticsError(
-            "Historienfeld 'duration_minutes' darf nicht negativ sein."
-        )
-
     return _RecordMetrics(
         start=start,
-        duration_minutes=duration,
-        max_temperature_c=maximum,
-        start_temperature_c=start_temperature,
-        end_temperature_c=end_temperature,
+        duration_minutes=calculate_burn_duration_minutes(record),
+        max_temperature_c=_integer(record, "max_temperature_c"),
+        start_temperature_c=_integer(record, "start_temperature_c"),
+        end_temperature_c=_integer(record, "end_temperature_c"),
     )
 
 
@@ -120,13 +175,25 @@ def _mean(values: list[int]) -> float:
 
 def calculate_history_statistics(
     records: Iterable[Mapping[str, object]],
+    *,
+    since: datetime | None = None,
 ) -> HistoryStatistics:
-    """Berechnet eine reihenfolgeunabhängige Historienstatistik."""
-    metrics = [_parse_record(record) for record in records]
+    """Berechnet Statistiken, optional ab einem inklusiven Zeitpunkt."""
+    all_metrics = [_parse_record(record) for record in records]
+    metrics = [
+        item
+        for item in all_metrics
+        if since is None or item.start >= since
+    ]
+    source_count = len(all_metrics)
+    excluded_count = source_count - len(metrics)
 
     if not metrics:
         return HistoryStatistics(
+            source_record_count=source_count,
             burn_count=0,
+            excluded_record_count=excluded_count,
+            duration_record_count=0,
             first_burn_start=None,
             latest_burn_start=None,
             total_duration_minutes=0,
@@ -138,29 +205,35 @@ def calculate_history_statistics(
             average_end_temperature_c=None,
         )
 
-    first_start = min(item.start for item in metrics)
-    latest_start = max(item.start for item in metrics)
     highest_temperature = max(
         item.max_temperature_c for item in metrics
     )
-    highest_start = min(
-        item.start
+    durations = [
+        item.duration_minutes
         for item in metrics
-        if item.max_temperature_c == highest_temperature
-    )
-    durations = [item.duration_minutes for item in metrics]
+        if item.duration_minutes is not None
+    ]
 
     return HistoryStatistics(
+        source_record_count=source_count,
         burn_count=len(metrics),
-        first_burn_start=first_start,
-        latest_burn_start=latest_start,
+        excluded_record_count=excluded_count,
+        duration_record_count=len(durations),
+        first_burn_start=min(item.start for item in metrics),
+        latest_burn_start=max(item.start for item in metrics),
         total_duration_minutes=sum(durations),
-        average_duration_minutes=_mean(durations),
+        average_duration_minutes=(
+            _mean(durations) if durations else None
+        ),
         average_max_temperature_c=_mean(
             [item.max_temperature_c for item in metrics]
         ),
         highest_temperature_c=highest_temperature,
-        highest_temperature_start=highest_start,
+        highest_temperature_start=min(
+            item.start
+            for item in metrics
+            if item.max_temperature_c == highest_temperature
+        ),
         average_start_temperature_c=_mean(
             [item.start_temperature_c for item in metrics]
         ),
