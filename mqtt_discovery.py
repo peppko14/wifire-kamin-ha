@@ -26,6 +26,10 @@ from bridge.polling import (
     get_next_poll_interval,
 )
 from bridge.publisher import MqttPublisher
+from bridge.scheduler import (
+    InterruptibleSleeper,
+    IntervalSchedule,
+)
 from bridge.topics import MqttTopics
 from decoder import decode_live_data, read_live_data
 from history.manager import create_default_history_manager
@@ -120,16 +124,6 @@ def publish_discovery(client: mqtt.Client) -> None:
         f'Home-Assistant-Geräte-Discovery für '
         f'"{config.DEVICE_NAME}" veröffentlicht.'
     )
-
-
-def interruptible_sleep(seconds: int | float) -> None:
-    """Schläft in kurzen Abschnitten und reagiert auf Stoppsignale."""
-    steps = max(1, int(seconds * 10))
-
-    for _ in range(steps):
-        if not running:
-            break
-        time.sleep(0.1)
 
 
 def on_connect(
@@ -262,7 +256,10 @@ def main() -> None:
 
     consecutive_failures = 0
     availability_online = True
-    last_archive_update = 0.0
+    archive_schedule = IntervalSchedule(
+        ARCHIVE_UPDATE_INTERVAL
+    )
+    sleeper = InterruptibleSleeper(lambda: running)
 
     project_dir = Path(__file__).resolve().parent
     history_manager = create_default_history_manager(
@@ -273,7 +270,7 @@ def main() -> None:
         request_timeout=ARCHIVE_REQUEST_TIMEOUT,
         retry_count=ARCHIVE_RETRY_COUNT,
         retry_delay=ARCHIVE_RETRY_DELAY,
-        sleeper=interruptible_sleep,
+        sleeper=sleeper,
     )
     archive_synchronizer = ArchiveSynchronizer(
         commands=tuple(ARCHIVE_COMMANDS.items()),
@@ -281,7 +278,7 @@ def main() -> None:
         publisher=publisher,
         history_manager=history_manager,
         request_delay=ARCHIVE_REQUEST_DELAY,
-        sleeper=interruptible_sleep,
+        sleeper=sleeper,
         is_running=lambda: running,
     )
 
@@ -331,12 +328,11 @@ def main() -> None:
 
             now = time.monotonic()
 
-            if (
-                now - last_archive_update
-                >= ARCHIVE_UPDATE_INTERVAL
-            ):
+            if archive_schedule.is_due(now):
                 archive_synchronizer.synchronize()
-                last_archive_update = time.monotonic()
+                archive_schedule.mark_updated(
+                    time.monotonic()
+                )
 
             next_interval, interval_reason = (
                 get_next_poll_interval(
@@ -351,7 +347,7 @@ def main() -> None:
                 f"({interval_reason})."
             )
 
-            interruptible_sleep(next_interval)
+            sleeper(next_interval)
 
     finally:
         publisher.publish_availability(False)
