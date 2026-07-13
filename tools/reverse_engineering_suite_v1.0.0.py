@@ -78,7 +78,10 @@ def request_json_get(endpoint: int, retries: int, delay: float) -> dict:
                 "headers": dict(error.headers.items()),
                 "body": error.read().decode("utf-8", errors="replace"),
             }
-        except Exception as error:
+        except OSError as error:
+            # Echte Verbindungsfehler (Timeout, DNS, Verbindung
+            # abgelehnt, ...). HTTPError-Antworten wie 404/500 werden
+            # oben bereits als gültiges Ergebnis behandelt.
             last_error = error
             if attempt < retries:
                 time.sleep(delay)
@@ -113,7 +116,9 @@ def request_archive(number: int, retries: int, delay: float) -> str:
             bytes.fromhex(raw)
             return raw
 
-        except Exception as error:
+        except (OSError, ValueError) as error:
+            # OSError: Verbindungsfehler. ValueError: kaputtes JSON,
+            # fehlendes raw-Feld oder ungültiges Hex.
             last_error = error
             if attempt < retries:
                 time.sleep(delay)
@@ -170,7 +175,7 @@ def classify_archive(raw: str) -> tuple[str, dict]:
 
     try:
         record = decode_archive_record(raw)
-    except Exception as error:
+    except ValueError as error:
         info["decode_error"] = str(error)
         return "invalid_archive", info
 
@@ -199,7 +204,7 @@ def classify_archive(raw: str) -> tuple[str, dict]:
 def write_archive_csv(number: int, raw: str, output_dir: Path) -> str | None:
     try:
         record = decode_archive_record(raw)
-    except Exception:
+    except ValueError:
         return None
 
     if not record.temperatures:
@@ -306,7 +311,9 @@ def main() -> None:
             else:
                 print(classification)
 
-        except Exception as error:
+        except RuntimeError as error:
+            # request_json_get() wirft RuntimeError, nachdem alle
+            # Versuche für diesen Endpunkt ausgeschöpft sind.
             endpoint_counts["request_error"] = (
                 endpoint_counts.get("request_error", 0) + 1
             )
@@ -367,7 +374,9 @@ def main() -> None:
             else:
                 print(classification)
 
-        except Exception as error:
+        except RuntimeError as error:
+            # request_archive() wirft RuntimeError, nachdem alle
+            # Versuche für dieses Archiv ausgeschöpft sind.
             archive_counts["request_error"] = (
                 archive_counts.get("request_error", 0) + 1
             )
