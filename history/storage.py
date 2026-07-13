@@ -13,9 +13,10 @@ from typing import Any
 
 from history.identifiers import build_burn_id
 from protocol.models import BurnRecord
+from protocol.quality import QualityReport, validate_burn_record
 
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 HISTORY_SCHEMA_VERSION = 2
 
 
@@ -52,14 +53,26 @@ class HistoryStorage:
         """Prüft, ob der Abbrand bereits lokal gespeichert ist."""
         return self.path_for(record).exists()
 
+    def validate_record(self, record: BurnRecord) -> QualityReport:
+        """Prüft, ob ein Abbrand regulär gespeichert werden darf."""
+        report = validate_burn_record(record)
+        if not report.is_valid:
+            codes = ", ".join(issue.code for issue in report.errors)
+            raise ValueError(
+                f"Abbrand erfüllt die Qualitätsregeln nicht: {codes}"
+            )
+        return report
+
     def serialize_record(self, record: BurnRecord) -> dict[str, Any]:
         """Erzeugt die persistente JSON-Struktur."""
         burn_id = build_burn_id(record)
+        quality = self.validate_record(record)
 
         return {
             "schema_version": HISTORY_SCHEMA_VERSION,
             "burn_id": burn_id,
             **record.to_history_dict(),
+            "quality": quality.to_dict(),
             "imported_at": datetime.now(UTC).isoformat(timespec="seconds"),
         }
 
@@ -70,10 +83,7 @@ class HistoryStorage:
         Rückgabe:
             (Pfad, wurde_neu_gespeichert)
         """
-        if not record.is_complete:
-            raise ValueError(
-                "Nur abgeschlossene Abbrände dürfen gespeichert werden."
-            )
+        self.validate_record(record)
 
         self.ensure_directory()
         target = self.path_for(record)
@@ -136,7 +146,40 @@ class HistoryStorage:
                 f"Ungültige burn_id in {path}"
             )
 
+        self._validate_quality_payload(data.get("quality"), path)
+
         return data
+
+    def _validate_quality_payload(self, value: object, path: Path) -> None:
+        """Prüft den verpflichtenden Qualitätsblock von Schema 2."""
+        if not isinstance(value, dict):
+            raise HistoryStorageError(
+                f"Qualitätsblock fehlt oder ist ungültig in {path}"
+            )
+
+        status = value.get("status")
+        issues = value.get("issues")
+        if status not in {"valid", "warning"} or not isinstance(issues, list):
+            raise HistoryStorageError(
+                f"Qualitätsblock ist ungültig in {path}"
+            )
+
+        for issue in issues:
+            if (
+                not isinstance(issue, dict)
+                or not isinstance(issue.get("code"), str)
+                or issue.get("severity") != "warning"
+                or not isinstance(issue.get("message"), str)
+            ):
+                raise HistoryStorageError(
+                    f"Qualitätsmerkmal ist ungültig in {path}"
+                )
+
+        expected_status = "warning" if issues else "valid"
+        if status != expected_status:
+            raise HistoryStorageError(
+                f"Qualitätsstatus passt nicht zu den Merkmalen in {path}"
+            )
 
     def list_records(self) -> list[dict[str, Any]]:
         """Lädt alle gültigen Historien-Datensätze sortiert nach Startzeit."""
