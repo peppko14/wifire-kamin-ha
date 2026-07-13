@@ -1,506 +1,232 @@
 # Architektur
 
-Dokumentversion: 1.0.0  
-Projektziel: WiFire-Kamin Home Assistant Bridge v0.6.0
+Dokumentversion: 1.1.0
 
-## Zweck
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.6.0
 
-Dieses Dokument beschreibt die geplante technische Architektur für die nächste Entwicklungsstufe des Projekts.
+## Ziele
 
-Ziele:
+Die Architektur trennt Gerätekommunikation, Datenmodelle, lokale Historie
+und Home-Assistant-Anbindung. Das Projekt bleibt ausschließlich lesend.
 
-- klare Trennung der Verantwortlichkeiten,
-- dauerhaft speicherbare Abbrandhistorie,
-- stabile eindeutige IDs für Abbrände,
-- robuste MQTT-Anbindung,
-- einfache Erweiterbarkeit,
-- weiterhin ausschließlich lesender Zugriff auf die FireControls-WiFire-Steuerung.
+Grundsätze:
 
-## Grundprinzipien
+- keine Steuer- oder Konfigurationsbefehle an den Kamin,
+- keine benutzerspezifischen absoluten Pfade,
+- Laufzeitdaten ausschließlich unter `data/`,
+- stabile Identität historischer Abbrände,
+- keine parallelen HTTP-Zugriffe auf das empfindliche WiFire-Gerät,
+- kleine, testbare Module mit klarer Verantwortung.
 
-- Das Projekt arbeitet nur lesend.
-- Keine benutzerspezifischen absoluten Pfade.
-- Laufzeitdaten werden unter `data/` gespeichert.
-- Protokolldekodierung bleibt unabhängig von MQTT.
-- Historienlogik bleibt unabhängig von Home Assistant.
-- MQTT veröffentlicht nur bereits dekodierte und validierte Daten.
-- Jede Funktion soll genau eine Verantwortung haben.
-
-## Geplante Projektstruktur
+## Umgesetzte Struktur
 
 ```text
 wifire-kamin-ha/
 ├── bridge/
-│   ├── __init__.py
-│   ├── mqtt_client.py
+│   ├── topics.py
 │   ├── discovery.py
+│   ├── publisher.py
 │   ├── polling.py
-│   └── application.py
-├── protocol/
-│   ├── __init__.py
-│   ├── client.py
-│   ├── live.py
 │   ├── archive.py
-│   └── models.py
+│   ├── archive_sync.py
+│   ├── scheduler.py
+│   └── runtime.py
 ├── history/
-│   ├── __init__.py
 │   ├── identifiers.py
 │   ├── storage.py
 │   ├── manager.py
-│   └── statistics.py
+│   └── sync.py
+├── protocol/
+│   ├── models.py
+│   └── adapters.py
+├── tests/
 ├── tools/
 ├── docs/
 ├── systemd/
 ├── data/
+├── mqtt_discovery.py
+├── decoder.py
+├── wifire_protocol.py
 ├── config.example.py
-├── version.py
 ├── VERSION
-├── CHANGELOG.md
-├── LICENSE
-└── README.md
+└── CHANGELOG.md
 ```
 
-## Modulübersicht
+## Bridge
 
-### `protocol/`
+### `bridge/topics.py`
 
-Verantwortlich für die Kommunikation mit der WiFire-Steuerung und die Dekodierung der Rohdaten.
+Erzeugt alle MQTT-Topics zentral aus Geräte-ID und Discovery-Präfix.
 
-#### `protocol/client.py`
+### `bridge/discovery.py`
 
-Aufgaben:
+Erzeugt die Home-Assistant-Device-Discovery für Live-Sensoren,
+Diagnosewerte und die drei veröffentlichten Archivplätze.
 
-- HTTP-Kommunikation mit der Steuerung,
-- Zeitüberschreitungen,
-- Wiederholungsversuche,
-- kontrollierte Pausen zwischen Abfragen,
-- zentrale URL- und Verbindungsverwaltung.
+### `bridge/publisher.py`
 
-Das Modul liefert Rohantworten, wertet sie aber nicht fachlich aus.
+Kapselt MQTT-Veröffentlichungen für Verfügbarkeit, Live-Zustand und
+Archivattribute.
 
-#### `protocol/live.py`
+### `bridge/polling.py`
 
-Aufgaben:
+Liest und dekodiert einen Live-Datensatz und bestimmt das adaptive
+Abfrageintervall:
 
-- Dekodierung von `/direct/00`,
-- Temperatur,
-- Luftklappenstellung,
-- Türstatus,
-- Abbrenndauer,
-- optionale Diagnosewerte.
-
-#### `protocol/archive.py`
-
-Aufgaben:
-
-- Dekodierung der Archivantworten von `/direct/35`,
-- Zeitstempel,
-- Luftklappenstufen,
-- Temperaturkurve,
-- Status abgeschlossen oder unvollständig.
-
-#### `protocol/models.py`
-
-Enthält zentrale Datenmodelle, vorzugsweise als `dataclass`.
-
-Beispiele:
-
-```python
-@dataclass
-class LiveStatus:
-    temperature_c: int
-    flap_percent: int
-    door_open: bool
-    burn_total_minutes: int
-```
-
-```python
-@dataclass
-class BurnRecord:
-    burn_id: str
-    start: datetime
-    temperatures_c: list[int]
-    max_temperature_c: int
-    max_temperature_minute: int
-    source_archive_number: int | None
-```
-
-### `history/`
-
-Verantwortlich für lokale Sicherung, Duplikaterkennung und spätere Statistiken.
-
-#### `history/identifiers.py`
-
-Erzeugt die stabile eindeutige ID eines Abbrands.
-
-Die Archivnummer darf nicht Bestandteil der dauerhaften Identität sein, da sie sich im Ringpuffer verschieben kann.
-
-Die ID wird als SHA-256-Hash aus einer kanonischen Darstellung erzeugt.
-
-Vorgesehene Eingaben:
-
-- Startzeit,
-- Anzahl Messpunkte,
-- vollständige Temperaturkurve.
-
-Beispiel:
-
-```text
-2026-04-22T21:23|121|22,24,30,37,...
-```
-
-Daraus:
-
-```text
-SHA-256 -> stabile burn_id
-```
-
-#### `history/storage.py`
-
-Aufgaben:
-
-- Speichern eines Abbrands als JSON,
-- Laden bestehender Abbrände,
-- Prüfen, ob eine `burn_id` bereits vorhanden ist,
-- atomisches Schreiben,
-- keine Duplikate.
-
-Geplanter Speicherort:
-
-```text
-data/history/
-```
-
-Dateiname:
-
-```text
-<startzeit>_<kurze-burn-id>.json
-```
-
-Beispiel:
-
-```text
-2026-04-22_21-23_a1b2c3d4.json
-```
-
-#### `history/manager.py`
-
-Steuert den Historienablauf.
-
-Aufgaben:
-
-1. Archive vom Gerät lesen.
-2. Nur gültige und abgeschlossene Abbrände berücksichtigen.
-3. Stabile `burn_id` berechnen.
-4. Bereits gespeicherte Datensätze überspringen.
-5. Neue Abbrände lokal speichern.
-6. Ergebnis für MQTT und Statistik bereitstellen.
-
-#### `history/statistics.py`
-
-Später verantwortlich für:
-
-- Anzahl Abbrände,
-- durchschnittliche Maximaltemperatur,
-- durchschnittliche Dauer,
-- heißester Abbrand,
-- längster Abbrand,
-- Monats- und Saisonstatistiken.
-
-### `bridge/`
-
-Verantwortlich für MQTT, Home Assistant Discovery und den laufenden Dienst.
-
-#### `bridge/mqtt_client.py`
-
-Aufgaben:
-
-- MQTT-Verbindung,
-- Wiederverbindung,
-- Availability,
-- retained Nachrichten,
-- Fehlerbehandlung.
-
-#### `bridge/discovery.py`
-
-Aufgaben:
-
-- Home Assistant MQTT Discovery,
-- Gerätemetadaten,
-- Sensoren,
-- Diagnoseentitäten,
-- spätere Historien- und Statistikentitäten.
-
-#### `bridge/polling.py`
-
-Aufgaben:
-
-- 60 Sekunden im Normalbetrieb,
 - 10 Sekunden bei aktivem Abbrand,
-- 5 Minuten nach Lesefehlern,
-- seltene Archivabfragen,
-- kontrollierte Koordination aller HTTP-Zugriffe.
+- 60 Sekunden im Normalbetrieb,
+- 300 Sekunden nach Lesefehlern.
 
-#### `bridge/application.py`
+### `bridge/archive.py`
 
-Zentraler Programmablauf.
+Liest einen Archivblock über `/direct/35`, prüft die JSON-/Hex-Antwort
+und führt begrenzte Wiederholungsversuche aus.
 
-Aufgaben:
+### `bridge/archive_sync.py`
 
-- Module starten,
-- Signale behandeln,
-- Live-Daten lesen,
-- Historie synchronisieren,
-- MQTT aktualisieren,
-- sauber herunterfahren.
+Koordiniert die bekannten Archivbefehle. Ein gültiger Datensatz wird
+gleichzeitig per MQTT veröffentlicht und an den History Manager übergeben.
+
+### `bridge/scheduler.py`
+
+Enthält wiederkehrende Zeitpläne und eine unterbrechbare Wartefunktion,
+damit SIGINT und SIGTERM zeitnah wirken.
+
+### `bridge/runtime.py`
+
+Steuert die zyklische Live-Abfrage, Offline-Erkennung, Archivplanung und
+Wartezeit. Die Klasse ist unabhängig vom konkreten MQTT-Client testbar.
+
+### `mqtt_discovery.py`
+
+Ist der Programmeinstieg. Die Datei erstellt und verbindet den MQTT-Client,
+registriert Callbacks und Signale, setzt die Module zusammen und sorgt für
+ein kontrolliertes Herunterfahren.
+
+## Protokoll und Datenmodelle
+
+### `decoder.py`
+
+Liest `/direct/00` und dekodiert Temperatur, Luftklappe, Türstatus,
+Abbrenndauer sowie Diagnosewerte.
+
+### `wifire_protocol.py`
+
+Dekodiert die Rohdaten der Archivantworten.
+
+### `protocol/models.py`
+
+Definiert unveränderliche Datenmodelle:
+
+- `LiveStatus` für dekodierte Live-Daten,
+- `BurnRecord` für vollständige oder unvollständige Abbrände.
+
+### `protocol/adapters.py`
+
+Überführt die bestehende Archivstruktur in das zentrale `BurnRecord`-Modell.
+
+## Historie
+
+### `history/identifiers.py`
+
+Erzeugt eine reproduzierbare SHA-256-ID aus:
+
+1. normalisierter Startzeit,
+2. Anzahl der Messpunkte,
+3. vollständiger Temperaturkurve.
+
+Die Archivnummer wird nicht berücksichtigt, weil sie im Ringpuffer rotiert.
+
+### `history/storage.py`
+
+Speichert ausschließlich abgeschlossene Abbrände als JSON. Neue Dateien
+werden zunächst als temporäre Datei geschrieben und anschließend atomisch
+umbenannt. Das Schema besitzt eine eigene Version.
+
+Speicherort:
+
+```text
+data/history/<startzeit>_<erste-12-Zeichen-der-burn-id>.json
+```
+
+### `history/manager.py`
+
+Validiert Datensätze, erkennt vorhandene IDs und speichert nur neue,
+vollständige Abbrände.
+
+### `history/sync.py`
+
+Stellt die vollständige Ringpuffer-Synchronisation für Importwerkzeuge
+bereit. Die Archiv-URL wird aus der konfigurierten Live-URL abgeleitet.
 
 ## Datenfluss
 
 ```text
 FireControls WiFire
-        │
-        │ HTTP, nur lesend
-        ▼
-protocol/client.py
-        │
-        ├── Live-Rohdaten
-        │       ▼
-        │   protocol/live.py
-        │       ▼
-        │   LiveStatus
-        │
-        └── Archiv-Rohdaten
-                ▼
-            protocol/archive.py
-                ▼
-            BurnRecord
-                ▼
-            history/manager.py
-                ▼
-            history/storage.py
-                │
-                ├── JSON unter data/history/
-                └── neue Datensätze
-                        ▼
-                  bridge/discovery.py
-                  bridge/mqtt_client.py
-                        ▼
-                  Home Assistant
+   │ HTTP, ausschließlich lesend
+   ├── /direct/00 ──> decoder.py ──> Live-Zustand
+   │                                      │
+   │                                      └──> MQTT ──> Home Assistant
+   │
+   └── /direct/35 ──> Archivdecoder ──> BurnRecord
+                                            │
+                                            ├──> MQTT-Archivdiagnose
+                                            └──> History Manager
+                                                     │
+                                                     └──> data/history/
 ```
+
+Alle Zugriffe erfolgen nacheinander innerhalb derselben Laufzeitsteuerung.
+Das schützt den eingebetteten Webserver vor parallelen Anfragen.
 
 ## Historienformat
 
-Jeder Abbrand wird als eigenständige JSON-Datei gespeichert.
-
-Beispiel:
+Jede JSON-Datei enthält unter anderem:
 
 ```json
 {
   "schema_version": 1,
-  "burn_id": "vollständiger-sha256-hash",
+  "burn_id": "vollständiger SHA-256-Hash",
   "start": "2026-04-22T21:23:00",
   "source_archive_number": 1,
   "measurement_count": 121,
   "duration_minutes": 121,
-  "start_temperature_c": 22,
-  "end_temperature_c": 205,
   "max_temperature_c": 453,
   "max_temperature_minute": 26,
-  "stage_90_minute": 7,
-  "stage_75_minute": 36,
-  "stage_50_minute": 57,
-  "stage_25_minute": 109,
-  "stage_0_minute": 169,
   "temperatures_c": [22, 24, 30],
-  "imported_at": "2026-07-13T12:00:00"
+  "active_or_incomplete": false,
+  "imported_at": "2026-07-13T12:00:00+00:00"
 }
 ```
 
-## Schema-Version
-
-Historien-Dateien erhalten ein Feld:
-
-```json
-"schema_version": 1
-```
-
-Ändert sich das lokale Dateiformat später inkompatibel, wird die Schema-Version erhöht.
-
-Die Projektversion und die Historien-Schema-Version sind voneinander unabhängig.
-
-## Stabile Abbrand-ID
-
-Die ID muss reproduzierbar sein.
-
-Vorgesehene Berechnung:
-
-1. Startzeit in ISO-8601 normalisieren.
-2. Temperaturwerte als Ganzzahlen übernehmen.
-3. Kanonischen Text erzeugen.
-4. SHA-256 berechnen.
-
-Beispiel in Python:
-
-```python
-import hashlib
-
-canonical = (
-    f"{start.isoformat(timespec='minutes')}|"
-    f"{len(temperatures)}|"
-    + ",".join(str(value) for value in temperatures)
-)
-
-burn_id = hashlib.sha256(
-    canonical.encode("utf-8")
-).hexdigest()
-```
-
-## Atomisches Speichern
-
-Neue JSON-Dateien werden zuerst als temporäre Datei geschrieben.
-
-Ablauf:
-
-1. in `<datei>.tmp` schreiben,
-2. Daten vollständig flushen,
-3. temporäre Datei atomisch in Zieldatei umbenennen.
-
-Dadurch entstehen bei Stromausfall möglichst keine beschädigten Historieneinträge.
-
-## Umgang mit unvollständigen Datensätzen
-
-Unvollständige Archive werden standardmäßig nicht in die dauerhafte Historie übernommen.
-
-Optional können sie später getrennt gespeichert werden unter:
-
-```text
-data/history-incomplete/
-```
-
-Für Version 0.6.0 gilt zunächst:
-
-- abgeschlossene Abbrände speichern,
-- unvollständige Abbrände überspringen,
-- Überspringen protokollieren.
-
-## MQTT-Modell
-
-Langfristiges Ziel:
-
-- ein Sensor `Letzter Abbrand`,
-- Statistik-Sensoren,
-- keine dauerhaft wachsende Zahl einzelner Archivsensoren,
-- vollständige Kurven primär lokal speichern.
-
-Vorgesehene MQTT-Entitäten:
-
-```text
-sensor.wifire_kamin_letzter_abbrand
-sensor.wifire_kamin_anzahl_abbrande
-sensor.wifire_kamin_durchschnittliche_maximaltemperatur
-sensor.wifire_kamin_heissester_abbrand
-sensor.wifire_kamin_durchschnittliche_dauer
-```
-
-## Nebenläufigkeit
-
-Es darf nur eine kontrollierte Stelle auf die WiFire-HTTP-Schnittstelle zugreifen.
-
-Das verhindert:
-
-- parallele HTTP-Anfragen,
-- Überlastung des Geräts,
-- zusätzliche Timeouts,
-- Konflikte zwischen Live- und Archivabfragen.
-
-Alle WiFire-Zugriffe werden durch `protocol/client.py` koordiniert.
+Die Historien-Schema-Version ist unabhängig von der Projektversion.
 
 ## Fehlerbehandlung
 
-- HTTP-Fehler begrenzt wiederholen.
-- Nach Fehlern längere Pause einhalten.
-- Einzelne fehlerhafte Archive überspringen.
-- Bereits gespeicherte Daten niemals löschen.
-- MQTT-Ausfall darf die lokale Historisierung nicht verhindern.
-- Lokale Historisierung darf den Live-Betrieb nicht dauerhaft blockieren.
-
-## Konfiguration
-
-Geplante neue Konfigurationswerte:
-
-```python
-HISTORY_ENABLED = True
-HISTORY_SYNC_INTERVAL = 21600
-HISTORY_ARCHIVE_FIRST = 1
-HISTORY_ARCHIVE_LAST = 23
-HISTORY_DIRECTORY = "data/history"
-```
-
-`HISTORY_DIRECTORY` soll relativ zum Projekt ausgewertet werden.
-
-## Migrationsstrategie
-
-Version 0.6.0 wird schrittweise eingeführt.
-
-### Phase 1
-
-- Datenmodelle,
-- stabile ID,
-- lokale Speicherung,
-- Import bestehender Archive.
-
-### Phase 2
-
-- automatische Synchronisation,
-- Duplikaterkennung im laufenden Dienst.
-
-### Phase 3
-
-- neues MQTT-Historienmodell,
-- Statistikwerte.
-
-### Phase 4
-
-- alte 22 Archiv-Discovery-Entitäten bereinigen.
+- Live-Fehler führen zu einem längeren Abfrageintervall.
+- Nach mehreren Live-Fehlern wird das MQTT-Gerät als offline gemeldet.
+- Archivzugriffe besitzen begrenzte Wiederholungsversuche.
+- Zwischen Archivanforderungen werden kontrollierte Pausen eingehalten.
+- Fehlerhafte Archive verhindern nicht die Verarbeitung weiterer Plätze.
+- Vorhandene Historieneinträge werden weder überschrieben noch gelöscht.
 
 ## Tests
 
-Mindestens folgende Tests sind vorgesehen:
+Version 0.6.0 umfasst 79 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
+für diese Tests nicht erforderlich.
 
-- identische Rohdaten erzeugen identische `burn_id`,
-- unterschiedliche Temperaturkurven erzeugen unterschiedliche IDs,
-- Archivnummer beeinflusst die ID nicht,
-- Duplikate werden nicht doppelt gespeichert,
-- beschädigte JSON-Dateien werden erkannt,
-- unvollständige Datensätze werden übersprungen,
-- atomisches Schreiben erzeugt gültige Dateien.
+```bash
+python3 -m unittest discover -s tests -p "test_*.py" -v
+```
 
-## Nicht im Scope
+## Bewusst verschoben
 
-Weiterhin ausgeschlossen:
+Nicht Bestandteil von v0.6.0 sind:
 
-- Schreibzugriffe auf die Steuerung,
-- Änderung von Abbrandparametern,
-- Änderung von Schließzeitverzögerungen,
-- Steuerung von Luftklappe oder Lüfter,
-- Ersatz der FireControls-App.
+- Statistikberechnungen,
+- Monats- und Saisonübersichten,
+- ein Home-Assistant-Dashboard,
+- die vollständige Ablösung der bestehenden Decoder-Einstiegspunkte.
 
-## Offene Entscheidungen
-
-Vor der Implementierung festzulegen:
-
-1. Soll die Dauer als Anzahl Messpunkte oder anhand der letzten Klappenstufe definiert werden?
-2. Soll der vollständige SHA-256-Hash oder nur eine verkürzte ID im Dateinamen stehen?
-3. In welchem Intervall sollen Archive im laufenden Betrieb geprüft werden?
-4. Sollen alte Einzel-Archivsensoren automatisch entfernt oder nur dokumentiert werden?
-
-## Nächster Implementierungsschritt
-
-Als Erstes werden umgesetzt:
-
-1. `protocol/models.py`
-2. `history/identifiers.py`
-3. `history/storage.py`
-4. Tests für stabile ID und Duplikaterkennung
-
-Erst danach wird die laufende MQTT-Bridge angepasst.
+Diese Punkte können auf der stabilen Historien- und Bridge-Architektur in
+einer späteren Version aufgebaut werden.
