@@ -17,6 +17,10 @@ import paho.mqtt.client as mqtt
 
 import config
 from bridge.discovery import build_discovery_payload
+from bridge.polling import (
+    PollingSettings,
+    get_next_poll_interval,
+)
 from bridge.publisher import MqttPublisher
 from bridge.topics import MqttTopics
 from decoder import decode_live_data, read_live_data
@@ -33,26 +37,7 @@ TOPICS = MqttTopics(
     discovery_prefix=config.MQTT_DISCOVERY_PREFIX,
 )
 
-NORMAL_UPDATE_INTERVAL = getattr(
-    config,
-    "NORMAL_UPDATE_INTERVAL",
-    60,
-)
-ACTIVE_FIRE_UPDATE_INTERVAL = getattr(
-    config,
-    "ACTIVE_FIRE_UPDATE_INTERVAL",
-    10,
-)
-ERROR_RETRY_INTERVAL = getattr(
-    config,
-    "ERROR_RETRY_INTERVAL",
-    300,
-)
-ACTIVE_FIRE_TEMPERATURE_C = getattr(
-    config,
-    "ACTIVE_FIRE_TEMPERATURE_C",
-    40,
-)
+POLLING_SETTINGS = PollingSettings.from_config(config)
 OFFLINE_AFTER_FAILURES = getattr(
     config,
     "OFFLINE_AFTER_FAILURES",
@@ -295,23 +280,6 @@ def update_archives(
     print("Archivaktualisierung beendet.")
 
 
-def get_next_poll_interval(
-    current_state: dict[str, Any] | None,
-    read_failed: bool,
-) -> tuple[int, str]:
-    """Bestimmt das nächste Live-Abfrageintervall."""
-    if read_failed or current_state is None:
-        return ERROR_RETRY_INTERVAL, "Lesefehler"
-
-    if (
-        current_state["temperature_c"]
-        >= ACTIVE_FIRE_TEMPERATURE_C
-    ):
-        return ACTIVE_FIRE_UPDATE_INTERVAL, "aktiver Abbrand"
-
-    return NORMAL_UPDATE_INTERVAL, "Normalbetrieb"
-
-
 def on_connect(
     client: mqtt.Client,
     userdata: Any,
@@ -510,6 +478,7 @@ def main() -> None:
                 get_next_poll_interval(
                     latest_state,
                     read_failed,
+                    POLLING_SETTINGS,
                 )
             )
 
