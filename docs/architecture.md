@@ -254,6 +254,10 @@ Jede JSON-Datei enthält unter anderem:
   "measurement_count": 121,
   "duration_minutes": 169,
   "duration_source": "stage_0_unwrapped",
+  "quality": {
+    "status": "valid",
+    "issues": []
+  },
   "max_temperature_c": 453,
   "max_temperature_minute": 26,
   "temperatures_c": [22, 24, 30],
@@ -266,6 +270,11 @@ Die Historien-Schema-Version ist unabhängig von der Projektversion. Ab
 Version 0.9.0 wird ausschließlich Schema 2 unterstützt. Frühere lokale
 Schema-1-Dateien werden einmalig durch einen vollständigen, lesenden Neuimport
 aus dem WiFire-Ringpuffer ersetzt.
+
+Der Qualitätsblock ist in Schema 2 verpflichtend. `valid` kennzeichnet einen
+unauffälligen Datensatz, `warning` einen weiterhin nutzbaren Datensatz mit
+Hinweisen wie einem unsicheren Zeitstempel. Datensätze mit Qualitätsfehlern
+werden nicht in der regulären Historie gespeichert.
 
 ## Fehlerbehandlung
 
