@@ -21,3 +21,19 @@ reader.py
 scanner.py
 archive_analyze.py
 archive_metadata_analyze.py
+
+# Zentrale Laufzeit- und Historienablage
+data/
+
+# Weitere Analyseausgaben
+endpoint-scans/
+reverse-engineering/
+
+# Protokolle
+*.log
+
+# Editor- und Betriebssystemdateien
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
