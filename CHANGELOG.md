@@ -5,6 +5,29 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.1] - 2026-07-13
+
+### Hinzugefügt
+
+- Zentrale MQTT-Verbindungsverwaltung in `bridge/mqtt_client.py`
+- Vollständiger Application Runner in `bridge/application.py`
+- Unit-Tests für MQTT-Client, Callbacks, Last Will und Reconnect
+- Unit-Tests für Anwendungslebenszyklus und Signalbehandlung
+
+### Geändert
+
+- Client-Erzeugung, Login, Last Will, Reconnect und MQTT-Callbacks aus
+  `mqtt_discovery.py` ausgelagert
+- Komponentenaufbau, Start, Stopp und Signalbehandlung in den Application
+  Runner verschoben
+- `mqtt_discovery.py` auf einen minimalen Programmeinstieg reduziert
+
+### Getestet
+
+- 93 automatisierte Tests
+- MQTT-Verbindung und Home-Assistant-Discovery im Vordergrundbetrieb
+- kontrolliertes Beenden mit SIGINT
+
 ## [0.6.0] - 2026-07-13
 
 ### Hinzugefügt
