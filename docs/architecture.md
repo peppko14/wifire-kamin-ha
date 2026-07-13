@@ -178,6 +178,20 @@ Speicherort:
 data/history/<startzeit>_<erste-12-Zeichen-der-burn-id>.json
 ```
 
+### `history/diagnostics.py`
+
+Speichert unvollständige oder fachlich ungültige, aber bereits dekodierbare
+Datensätze getrennt und atomisch unter `data/history-incomplete/`. Diese
+Diagnose-Dateien besitzen eine eigene stabile ID, werden nicht von der
+Statistik gelesen und verändern die reguläre Historie nicht.
+
+### `history/audit.py`
+
+Prüft reguläre Historie und Diagnoseablage vollständig und ausschließlich
+lesend. Das Audit zählt Schema-Versionen, Qualitätsstatus, Warnungs- und
+Diagnosegründe sowie strukturell nicht lesbare Dateien. Das zugehörige Werkzeug
+`tools/history_audit_v1_0_0.py` unterstützt Text- und JSON-Ausgabe.
+
 ### `history/manager.py`
 
 Validiert Datensätze, erkennt vorhandene IDs und speichert nur neue,
@@ -247,12 +261,17 @@ Jede JSON-Datei enthält unter anderem:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "burn_id": "vollständiger SHA-256-Hash",
   "start": "2026-04-22T21:23:00",
   "source_archive_number": 1,
   "measurement_count": 121,
-  "duration_minutes": 121,
+  "duration_minutes": 169,
+  "duration_source": "stage_0_unwrapped",
+  "quality": {
+    "status": "valid",
+    "issues": []
+  },
   "max_temperature_c": 453,
   "max_temperature_minute": 26,
   "temperatures_c": [22, 24, 30],
@@ -261,7 +280,15 @@ Jede JSON-Datei enthält unter anderem:
 }
 ```
 
-Die Historien-Schema-Version ist unabhängig von der Projektversion.
+Die Historien-Schema-Version ist unabhängig von der Projektversion. Ab
+Version 0.9.0 wird ausschließlich Schema 2 unterstützt. Frühere lokale
+Schema-1-Dateien werden einmalig durch einen vollständigen, lesenden Neuimport
+aus dem WiFire-Ringpuffer ersetzt.
+
+Der Qualitätsblock ist in Schema 2 verpflichtend. `valid` kennzeichnet einen
+unauffälligen Datensatz, `warning` einen weiterhin nutzbaren Datensatz mit
+Hinweisen wie einem unsicheren Zeitstempel. Datensätze mit Qualitätsfehlern
+werden nicht in der regulären Historie gespeichert.
 
 ## Fehlerbehandlung
 

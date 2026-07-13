@@ -9,12 +9,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+from history.diagnostics import HistoryDiagnosticStorage
 from history.identifiers import build_burn_id
 from history.storage import HistoryStorage
 from protocol.models import BurnRecord
+from protocol.quality import validate_burn_record
 
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +27,8 @@ class HistorySyncResult:
     existing_ids: tuple[str, ...]
     skipped_incomplete: int
     failed_records: int
+    diagnostic_ids: tuple[str, ...] = ()
+    diagnostic_failures: int = 0
 
     @property
     def imported_count(self) -> int:
@@ -47,8 +51,20 @@ class HistorySyncResult:
 class HistoryManager:
     """Importiert neue abgeschlossene Abbrände in die lokale Historie."""
 
-    def __init__(self, storage: HistoryStorage) -> None:
+    def __init__(
+        self,
+        storage: HistoryStorage,
+        diagnostic_storage: HistoryDiagnosticStorage | None = None,
+    ) -> None:
         self.storage = storage
+        self.diagnostic_storage = diagnostic_storage
+
+    def _store_diagnostic(self, record: BurnRecord) -> str | None:
+        if self.diagnostic_storage is None:
+            return None
+        report = validate_burn_record(record)
+        _, _, diagnostic_id = self.diagnostic_storage.save(record, report)
+        return diagnostic_id
 
     def synchronize(
         self,
@@ -64,13 +80,32 @@ class HistoryManager:
         existing_ids: list[str] = []
         skipped_incomplete = 0
         failed_records = 0
+        diagnostic_ids: list[str] = []
+        diagnostic_failures = 0
 
         for record in records:
             if not record.is_complete:
                 skipped_incomplete += 1
+                try:
+                    diagnostic_id = self._store_diagnostic(record)
+                    if diagnostic_id is not None:
+                        diagnostic_ids.append(diagnostic_id)
+                except (OSError, RuntimeError, ValueError):
+                    diagnostic_failures += 1
                 continue
 
             try:
+                report = validate_burn_record(record)
+                if not report.is_valid:
+                    failed_records += 1
+                    try:
+                        diagnostic_id = self._store_diagnostic(record)
+                        if diagnostic_id is not None:
+                            diagnostic_ids.append(diagnostic_id)
+                    except (OSError, RuntimeError, ValueError):
+                        diagnostic_failures += 1
+                    continue
+
                 burn_id = build_burn_id(record)
                 _, created = self.storage.save(record)
 
@@ -87,6 +122,8 @@ class HistoryManager:
             existing_ids=tuple(existing_ids),
             skipped_incomplete=skipped_incomplete,
             failed_records=failed_records,
+            diagnostic_ids=tuple(diagnostic_ids),
+            diagnostic_failures=diagnostic_failures,
         )
 
     def list_history(self) -> list[dict[str, object]]:
@@ -104,4 +141,8 @@ class HistoryManager:
 def create_default_history_manager(project_dir: Path) -> HistoryManager:
     """Erzeugt einen Manager mit portablem Standardpfad."""
     history_dir = project_dir.resolve() / "data" / "history"
-    return HistoryManager(HistoryStorage(history_dir))
+    diagnostic_dir = project_dir.resolve() / "data" / "history-incomplete"
+    return HistoryManager(
+        HistoryStorage(history_dir),
+        HistoryDiagnosticStorage(diagnostic_dir),
+    )

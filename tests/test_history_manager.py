@@ -12,6 +12,7 @@ from history.manager import (
     HistoryManager,
     create_default_history_manager,
 )
+from history.diagnostics import HistoryDiagnosticStorage
 from history.storage import HistoryStorage
 from protocol.models import BurnRecord
 
@@ -86,6 +87,47 @@ class HistoryManagerTests(unittest.TestCase):
             self.assertEqual(result.imported_count, 0)
             self.assertEqual(result.skipped_incomplete, 1)
 
+    def test_incomplete_record_is_written_to_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manager = HistoryManager(
+                HistoryStorage(root / "history"),
+                HistoryDiagnosticStorage(root / "history-incomplete"),
+            )
+
+            result = manager.synchronize(
+                [self.build_record(incomplete=True)]
+            )
+
+            self.assertEqual(result.skipped_incomplete, 1)
+            self.assertEqual(len(result.diagnostic_ids), 1)
+            self.assertEqual(
+                len(list((root / "history-incomplete").glob("*.json"))),
+                1,
+            )
+            self.assertEqual(
+                len(list((root / "history").glob("*.json"))),
+                0,
+            )
+
+    def test_invalid_complete_record_is_diagnostic_failure_result(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manager = HistoryManager(
+                HistoryStorage(root / "history"),
+                HistoryDiagnosticStorage(root / "history-incomplete"),
+            )
+            record = self.build_record(temperatures=(20, 1300))
+
+            result = manager.synchronize([record])
+
+            self.assertEqual(result.failed_records, 1)
+            self.assertEqual(len(result.diagnostic_ids), 1)
+            self.assertEqual(
+                len(list((root / "history-incomplete").glob("*.json"))),
+                1,
+            )
+
     def test_multiple_records_are_imported(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             manager = HistoryManager(
@@ -143,6 +185,11 @@ class HistoryManagerTests(unittest.TestCase):
             self.assertEqual(
                 manager.storage.directory,
                 (project_dir / "data" / "history").resolve(),
+            )
+            self.assertIsNotNone(manager.diagnostic_storage)
+            self.assertEqual(
+                manager.diagnostic_storage.directory,
+                (project_dir / "data" / "history-incomplete").resolve(),
             )
 
 
