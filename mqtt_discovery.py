@@ -248,7 +248,12 @@ def read_archive_block(command: str) -> str:
 
             return raw
 
-        except Exception as error:
+        except (OSError, ValueError) as error:
+            # OSError deckt u. a. URLError/HTTPError/Timeouts ab,
+            # ValueError deckt ungültiges JSON sowie unser eigenes
+            # "raw fehlt"/"kein gültiges Hex" ab. Andere Exceptions
+            # (z. B. echte Programmfehler) sollen hier nicht als
+            # simple "Lesefehler" verschluckt werden.
             last_error = error
             print(
                 f"Archivversuch {attempt}/{ARCHIVE_RETRY_COUNT} "
@@ -326,7 +331,14 @@ def update_archives(client: mqtt.Client) -> None:
                 f"{record.measurement_count} Messpunkte."
             )
 
-        except Exception as error:
+        except (RuntimeError, ValueError) as error:
+            # RuntimeError kommt von read_archive_block, wenn alle
+            # Versuche fehlgeschlagen sind. ValueError kommt von
+            # decode_archive_record bei einem unerwarteten/kaputten
+            # Datensatz. Beides sind erwartbare Betriebsfälle für ein
+            # einzelnes Archiv – die anderen zwei laufen unabhängig
+            # weiter. Ein echter Programmfehler soll dagegen sichtbar
+            # werden statt hier als "Archivfehler" zu verschwinden.
             print(f"{name}: Archivfehler: {error}")
 
         if index < len(ARCHIVE_COMMANDS):
@@ -467,7 +479,14 @@ def main() -> None:
                     f"Tür {data['door_state']}"
                 )
 
-            except Exception as error:
+            except (OSError, ValueError) as error:
+                # OSError: Netzwerkfehler beim Abruf (Timeout, Verbindung
+                # abgelehnt, DNS, ...). ValueError: kaputtes JSON oder ein
+                # von decode_live_data erkannter ungültiger Datensatz.
+                # Ein unerwarteter Fehlertyp weist auf einen echten Bug
+                # hin und soll den Prozess sichtbar beenden (systemd
+                # startet ihn neu und der Fehler landet im Journal),
+                # statt endlos als "Lesefehler" maskiert zu werden.
                 read_failed = True
                 consecutive_failures += 1
 
