@@ -10,10 +10,20 @@ from dataclasses import dataclass
 from typing import Any, Callable, Protocol
 
 from bridge.archive import build_archive_attributes
+from history.manager import HistoryManager, HistorySyncResult
+from history.sync import (
+    ArchiveReadResult,
+    ArchiveSyncSettings,
+    Decoder,
+    RawReader,
+    RecordAdapter as HistoryRecordAdapter,
+    synchronize_archives,
+)
 from protocol.adapters import archive_record_to_burn_record
+from wifire_protocol import decode_archive_record
 
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 
 Sleeper = Callable[[int | float], None]
@@ -42,6 +52,71 @@ class ArchivePublisherLike(Protocol):
 class HistoryManagerLike(Protocol):
     def synchronize(self, records: list[Any]) -> Any:
         ...
+
+
+@dataclass(frozen=True, slots=True)
+class RingBufferArchiveSynchronizer:
+    """Bindet den lokalen Ringpuffer-Abgleich in die Bridge ein.
+
+    Die ersten drei Archivplätze werden weiterhin in MQTT veröffentlicht.
+    Die lokale Speicherung aller relevanten Plätze geschieht vorher und ist
+    daher nicht vom MQTT-Ergebnis abhängig.
+    """
+
+    settings: ArchiveSyncSettings
+    history_manager: HistoryManager
+    publisher: ArchivePublisherLike
+    sleeper: Sleeper
+    is_running: RunningCheck = lambda: True
+    logger: Logger = print
+    mqtt_archive_count: int = 3
+    raw_reader: RawReader | None = None
+    decoder: Decoder = decode_archive_record
+    record_adapter: HistoryRecordAdapter = archive_record_to_burn_record
+    attributes_builder: AttributesBuilder = build_archive_attributes
+
+    def _publish_after_local_storage(
+        self,
+        number: int,
+        archive_record: Any,
+        sync_result: HistorySyncResult,
+    ) -> None:
+        """Aktualisiert optionale MQTT-Archive nach lokalem Speichern."""
+        if number > self.mqtt_archive_count:
+            return
+
+        timestamp = archive_record.timestamp
+        if timestamp is None:
+            return
+
+        self.publisher.publish_archive(
+            number,
+            state=timestamp.isoformat(timespec="seconds"),
+            attributes=self.attributes_builder(archive_record),
+        )
+
+    def synchronize(self) -> ArchiveReadResult:
+        """Führt genau einen lokalen Ringpuffer-Abgleich aus."""
+        self.logger("Ringpuffer-Synchronisation wird gestartet.")
+        result = synchronize_archives(
+            self.history_manager,
+            self.settings,
+            raw_reader=self.raw_reader,
+            decoder=self.decoder,
+            record_adapter=self.record_adapter,
+            sleeper=self.sleeper,
+            logger=self.logger,
+            on_record_synchronized=self._publish_after_local_storage,
+            is_running=self.is_running,
+        )
+        self.logger(
+            "Ringpuffer-Synchronisation beendet: "
+            f"{result.sync_result.imported_count} neu, "
+            f"{result.sync_result.existing_count} vorhanden, "
+            f"{result.sync_result.skipped_incomplete} unvollständig, "
+            f"{result.read_failures} Lesefehler."
+        )
+        return result
 
 
 @dataclass(frozen=True, slots=True)

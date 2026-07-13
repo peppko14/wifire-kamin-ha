@@ -19,7 +19,7 @@ from protocol.models import BurnRecord
 from wifire_protocol import decode_archive_record
 
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 
 RawReader = Callable[[str, int], str]
@@ -27,6 +27,8 @@ Decoder = Callable[[str], object]
 RecordAdapter = Callable[[object], BurnRecord]
 Sleeper = Callable[[float], None]
 Logger = Callable[[str], None]
+RecordCallback = Callable[[int, object, HistorySyncResult], None]
+RunningCheck = Callable[[], bool]
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,6 +174,8 @@ def synchronize_archives(
     record_adapter: RecordAdapter = archive_record_to_burn_record,
     sleeper: Sleeper = time.sleep,
     logger: Logger = print,
+    on_record_synchronized: RecordCallback | None = None,
+    is_running: RunningCheck = lambda: True,
 ) -> ArchiveReadResult:
     """Speichert neue Abbrände sofort und unabhängig von MQTT lokal.
 
@@ -204,6 +208,9 @@ def synchronize_archives(
     archive_numbers = strategy.archive_numbers()
 
     for number in archive_numbers:
+        if not is_running():
+            break
+
         archives_examined += 1
 
         try:
@@ -229,6 +236,17 @@ def synchronize_archives(
             else:
                 outcome = ArchiveOutcome.READ_ERROR
                 logger(f"Archiv {number}: lokale Speicherung fehlgeschlagen.")
+
+            # Optionale Verbraucher laufen bewusst erst nach dem lokalen
+            # Speichern und dürfen den Historienabgleich nicht gefährden.
+            if on_record_synchronized is not None:
+                try:
+                    on_record_synchronized(number, archive_record, sync_result)
+                except Exception as error:  # optionale externe Integration
+                    logger(
+                        f"Archiv {number}: nachgelagerte Verarbeitung "
+                        f"fehlgeschlagen: {error}"
+                    )
 
         except (OSError, RuntimeError, ValueError) as error:
             read_failures += 1

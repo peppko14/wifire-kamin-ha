@@ -183,6 +183,28 @@ class ArchiveSyncTests(unittest.TestCase):
         self.assertEqual(sync.read_failures, 1)
         self.assertEqual(len(manager.records), 1)
 
+    def test_stop_request_prevents_the_next_archive_request(self) -> None:
+        manager = FakeManager([result(imported=("id-1",))])
+        running = True
+        calls: list[int] = []
+
+        def stop_during_delay(seconds: float) -> None:
+            nonlocal running
+            running = False
+
+        synchronize_archives(
+            manager,  # type: ignore[arg-type]
+            self.settings(last=3),
+            raw_reader=lambda url, number: calls.append(number) or str(number),
+            decoder=lambda raw: int(raw),
+            record_adapter=lambda number: burn(number),
+            sleeper=stop_during_delay,
+            logger=lambda message: None,
+            is_running=lambda: running,
+        )
+
+        self.assertEqual(calls, [1])
+
 
 if __name__ == "__main__":
     unittest.main()
