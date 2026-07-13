@@ -10,8 +10,14 @@ from datetime import datetime
 from statistics import fmean
 from typing import Iterable, Mapping
 
+from protocol.duration import (
+    DurationValueError,
+    calculate_duration_minutes,
+    unwrap_phase_minutes as _unwrap_phase_minutes,
+)
 
-__version__ = "1.1.0"
+
+__version__ = "1.2.0"
 
 PHASE_FIELDS = (
     "stage_90_minute",
@@ -109,32 +115,11 @@ def _optional_phase(record: Mapping[str, object], field: str) -> int | None:
 def unwrap_phase_minutes(
     stages: Iterable[int | None],
 ) -> tuple[int | None, ...]:
-    """Entrollt kumulierte 8-Bit-Minutenwerte über den 255er-Überlauf."""
-    unwrapped: list[int | None] = []
-    previous: int | None = None
-
-    for raw_value in stages:
-        if raw_value is None:
-            unwrapped.append(None)
-            continue
-        if isinstance(raw_value, bool) or not isinstance(raw_value, int):
-            raise HistoryStatisticsError(
-                "Phasenwerte müssen Ganzzahlen oder null sein."
-            )
-        if not 0 <= raw_value <= 255:
-            raise HistoryStatisticsError(
-                "Phasenwerte müssen zwischen 0 und 255 liegen."
-            )
-
-        value = raw_value
-        if previous is not None:
-            while value < previous:
-                value += 256
-
-        unwrapped.append(value)
-        previous = value
-
-    return tuple(unwrapped)
+    """Kompatibilitätszugriff auf die zentrale Dauerlogik."""
+    try:
+        return _unwrap_phase_minutes(stages)
+    except DurationValueError as error:
+        raise HistoryStatisticsError(str(error)) from error
 
 
 def calculate_burn_duration_minutes(
@@ -142,8 +127,16 @@ def calculate_burn_duration_minutes(
 ) -> int | None:
     """Bestimmt die vollständige Dauer aus dem entrollten stage_0-Wert."""
     stages = tuple(_optional_phase(record, field) for field in PHASE_FIELDS)
-    unwrapped = unwrap_phase_minutes(stages)
-    return unwrapped[-1]
+    try:
+        return calculate_duration_minutes(
+            stage_90_minute=stages[0],
+            stage_75_minute=stages[1],
+            stage_50_minute=stages[2],
+            stage_25_minute=stages[3],
+            stage_0_minute=stages[4],
+        )
+    except DurationValueError as error:
+        raise HistoryStatisticsError(str(error)) from error
 
 
 def _parse_record(record: Mapping[str, object]) -> _RecordMetrics:

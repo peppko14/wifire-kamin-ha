@@ -7,6 +7,44 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-14
+
+### Hinzugefügt
+
+- Zentrale Dauerdefinition in `protocol/duration.py`
+- Fachliche Qualitätsprüfung in `protocol/quality.py`
+- Verpflichtender Qualitätsblock für reguläre Historien-Dateien
+- Getrennte, atomische Diagnoseablage unter `data/history-incomplete/`
+- Lesendes Historien-Audit mit Text- und JSON-Ausgabe
+- Vollständige Schema- und Qualitätsdokumentation in
+  `docs/history-schema.md`
+
+### Geändert
+
+- Historienformat auf Schema 2 umgestellt
+- Abbrenndauer wird ausschließlich aus dem entrollten Zeitpunkt der
+  Klappenstellung 0 % bestimmt
+- Messpunktanzahl und Abbrenndauer sind fachlich getrennt
+- Schema 1 wurde durch einen vollständigen Neuimport aus dem Ringpuffer
+  ersetzt und wird nicht mehr unterstützt
+- Bekannte Ringpufferplätze 1 bis 23 sind als Scan-Strategie und nicht als
+  feste Protokollgrenze dokumentiert
+
+### Datenqualität
+
+- Temperaturen außerhalb von −40 bis 1200 °C werden abgewiesen
+- Unvollständige und ungültige Datensätze gelangen nicht in die Statistik
+- Zeitstempel vor 2020 bleiben verwendbar und werden mit
+  `timestamp_uncertain` gekennzeichnet
+- Archivnummern oberhalb von 23 bleiben zulässig
+
+### Getestet
+
+- 215 automatisierte Tests
+- Audit von 22 lesbaren Schema-2-Dateien
+- 16 unauffällige und 6 zeitlich unsichere historische Abbrände
+- Ein getrennt gespeicherter, unvollständiger Diagnose-Datensatz
+
 ## [0.8.0] - 2026-07-13
 
 ### Hinzugefügt
