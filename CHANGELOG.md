@@ -5,6 +5,47 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- Schonende Synchronisation des vollständigen WiFire-Ringpuffers mit den
+  bekannten Archivplätzen 1 bis 23
+- Lokale Historienstatistik in `history/statistics.py`
+- Kommandozeilenwerkzeug `tools/history_statistics_v1_1_0.py` mit Text-,
+  JSON- und inklusiver `--since`-Ausgabe
+- Sechs Home-Assistant-Entitäten für Anzahl, neuesten Abbrand, gesamte und
+  mittlere Dauer sowie mittlere und höchste Temperatur
+- Konfigurationswert `STATISTICS_SINCE` für den optionalen Statistikzeitraum
+- Tests für Ringpuffer, lokale Speicherung, Statistikberechnung,
+  MQTT-Discovery und produktive Integration
+
+### Geändert
+
+- Neue Abbrände werden vor jeder MQTT-Veröffentlichung lokal gespeichert
+- Bereits bekannte Abbrände beenden den Ringpuffer-Scan frühzeitig
+- Archivzugriffe erfolgen ausschließlich nacheinander und mit mindestens
+  zehn Sekunden Abstand
+- Abbrenndauern berücksichtigen Überläufe der gespeicherten Phasenminuten
+- Statistiken werden nach einer seltenen Archiv-Synchronisation ausschließlich
+  aus der lokalen Historie neu berechnet
+- MQTT- und Statistikfehler verändern keine bereits gespeicherten Abbrände
+
+### Dokumentiert
+
+- Gemeinsame MQTT-Verfügbarkeit: Bei gestoppter Bridge zeigt Home Assistant
+  auch retained Statistikwerte als nicht verfügbar an
+- Abgrenzung zwischen gespeicherten Historienwerten und dem Online-Status der
+  Bridge
+
+### Getestet
+
+- 141 automatisierte Tests
+- Duplikatfreier zweiter Synchronisationslauf
+- Statistik mit 22 gespeicherten Datensätzen und Filter ab 2026-01-01
+- Produktive MQTT-Veröffentlichung von 16 berücksichtigten und 6
+  ausgefilterten Abbränden
+
 ## [0.6.1] - 2026-07-13
 
 ### Hinzugefügt
