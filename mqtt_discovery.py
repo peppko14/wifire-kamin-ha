@@ -11,11 +11,14 @@ import signal
 import time
 from pathlib import Path
 from typing import Any
-from urllib.request import Request, urlopen
 
 import paho.mqtt.client as mqtt
 
 import config
+from bridge.archive import (
+    ArchiveReader,
+    build_archive_attributes,
+)
 from bridge.discovery import build_discovery_payload
 from bridge.polling import (
     LivePoller,
@@ -28,7 +31,6 @@ from decoder import decode_live_data, read_live_data
 from history.manager import HistoryManager, create_default_history_manager
 from protocol.adapters import archive_record_to_burn_record
 from version import APP_VERSION
-from wifire_protocol import decode_archive_record
 
 
 APP_NAME = "WiFire-Kamin MQTT Bridge"
@@ -131,90 +133,10 @@ def interruptible_sleep(seconds: int | float) -> None:
         time.sleep(0.1)
 
 
-def read_archive_block(command: str) -> str:
-    """Liest einen Archivblock mit begrenzten Wiederholungen."""
-    last_error: Exception | None = None
-
-    for attempt in range(1, ARCHIVE_RETRY_COUNT + 1):
-        try:
-            body = json.dumps({"raw": command}).encode("utf-8")
-
-            request = Request(
-                ARCHIVE_URL,
-                data=body,
-                headers={
-                    "Content-Type": "text/plain",
-                    "Accept": "application/json",
-                    "Connection": "close",
-                },
-                method="POST",
-            )
-
-            with urlopen(
-                request,
-                timeout=ARCHIVE_REQUEST_TIMEOUT,
-            ) as response:
-                result = json.loads(
-                    response.read().decode("utf-8")
-                )
-
-            raw = result.get("raw")
-            if not isinstance(raw, str):
-                raise ValueError(
-                    "Archivantwort enthält kein gültiges Feld 'raw'."
-                )
-
-            bytes.fromhex(raw)
-            return raw
-
-        except (OSError, ValueError) as error:
-            last_error = error
-
-            print(
-                f"Archivversuch {attempt}/{ARCHIVE_RETRY_COUNT} "
-                f"fehlgeschlagen: {error}"
-            )
-
-            if attempt < ARCHIVE_RETRY_COUNT:
-                interruptible_sleep(ARCHIVE_RETRY_DELAY)
-
-    raise RuntimeError(
-        f"Archivabfrage nach {ARCHIVE_RETRY_COUNT} Versuchen "
-        f"fehlgeschlagen: {last_error}"
-    )
-
-
-def archive_attributes(record: Any) -> dict[str, object]:
-    """Erzeugt die MQTT-Attribute eines Archivdatensatzes."""
-    timestamp = (
-        record.timestamp.isoformat(timespec="minutes")
-        if record.timestamp
-        else None
-    )
-
-    return {
-        "archive_number": record.archive_number,
-        "start": timestamp,
-        "measurement_count": record.measurement_count,
-        "duration_minutes": record.measurement_count,
-        "start_temperature_c": record.start_temperature_c,
-        "end_temperature_c": record.end_temperature_c,
-        "max_temperature_c": record.max_temperature_c,
-        "max_temperature_minute": (
-            record.max_temperature_minute
-        ),
-        "stage_90_minute": record.stage_90_minute,
-        "stage_75_minute": record.stage_75_minute,
-        "stage_50_minute": record.stage_50_minute,
-        "stage_25_minute": record.stage_25_minute,
-        "stage_0_minute": record.stage_0_minute,
-        "temperatures_c": record.temperatures,
-    }
-
-
 def update_archives(
     mqtt_publisher: MqttPublisher,
     history_manager: HistoryManager,
+    archive_reader: ArchiveReader,
 ) -> None:
     """Aktualisiert MQTT-Archive und die lokale Historie."""
     print("Archivaktualisierung wird gestartet.")
@@ -227,8 +149,7 @@ def update_archives(
             return
 
         try:
-            raw = read_archive_block(command)
-            record = decode_archive_record(raw)
+            record = archive_reader.read_record(command)
 
             if record.timestamp is None:
                 print(
@@ -244,7 +165,7 @@ def update_archives(
             mqtt_publisher.publish_archive(
                 index,
                 state=state,
-                attributes=archive_attributes(record),
+                attributes=build_archive_attributes(record),
             )
 
             print(
@@ -418,6 +339,13 @@ def main() -> None:
     history_manager = create_default_history_manager(
         project_dir
     )
+    archive_reader = ArchiveReader(
+        archive_url=ARCHIVE_URL,
+        request_timeout=ARCHIVE_REQUEST_TIMEOUT,
+        retry_count=ARCHIVE_RETRY_COUNT,
+        retry_delay=ARCHIVE_RETRY_DELAY,
+        sleeper=interruptible_sleep,
+    )
 
     try:
         while running:
@@ -472,6 +400,7 @@ def main() -> None:
                 update_archives(
                     publisher,
                     history_manager,
+                    archive_reader,
                 )
                 last_archive_update = time.monotonic()
 
