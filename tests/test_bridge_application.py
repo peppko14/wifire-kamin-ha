@@ -40,7 +40,11 @@ if "config" not in sys.modules:
     config_module.WIFIRE_URL = "http://192.0.2.1/direct/00"
     sys.modules["config"] = config_module
 
-from bridge.application import BridgeApplication, RunningState
+from bridge.application import (
+    BridgeApplication,
+    RunningState,
+    build_archive_sync_settings,
+)
 
 
 class FakeConnection:
@@ -153,6 +157,40 @@ class BridgeApplicationTests(unittest.TestCase):
             application.run()
 
         self.assertEqual(connection.stopped, 1)
+
+
+class ArchiveSettingsTests(unittest.TestCase):
+    def test_defaults_cover_the_complete_known_ring_buffer(self) -> None:
+        config = types.SimpleNamespace(
+            WIFIRE_URL="http://192.0.2.1/direct/00"
+        )
+
+        settings = build_archive_sync_settings(config)
+
+        self.assertEqual(settings.first_archive, 1)
+        self.assertEqual(settings.last_archive, 23)
+        self.assertEqual(settings.archive_delay_seconds, 10)
+        settings.validate()
+
+    def test_explicit_archive_settings_are_preserved(self) -> None:
+        config = types.SimpleNamespace(
+            WIFIRE_URL="http://192.0.2.1/direct/00",
+            ARCHIVE_FIRST_SLOT=2,
+            ARCHIVE_LAST_SLOT=20,
+            ARCHIVE_REQUEST_TIMEOUT=20,
+            ARCHIVE_RETRY_COUNT=4,
+            ARCHIVE_RETRY_DELAY=12,
+            ARCHIVE_REQUEST_DELAY=15,
+        )
+
+        settings = build_archive_sync_settings(config)
+
+        self.assertEqual(settings.first_archive, 2)
+        self.assertEqual(settings.last_archive, 20)
+        self.assertEqual(settings.request_timeout, 20)
+        self.assertEqual(settings.retry_count, 4)
+        self.assertEqual(settings.retry_delay_seconds, 12)
+        self.assertEqual(settings.archive_delay_seconds, 15)
 
 
 if __name__ == "__main__":

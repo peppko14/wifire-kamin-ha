@@ -11,8 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
-from bridge.archive import ArchiveReader
-from bridge.archive_sync import ArchiveSynchronizer
+from bridge.archive_sync import RingBufferArchiveSynchronizer
 from bridge.mqtt_client import MqttConnection
 from bridge.polling import LivePoller, PollingSettings
 from bridge.runtime import BridgeRuntime
@@ -20,17 +19,10 @@ from bridge.scheduler import InterruptibleSleeper, IntervalSchedule
 from bridge.topics import MqttTopics
 from decoder import decode_live_data, read_live_data
 from history.manager import create_default_history_manager
-from history.sync import build_archive_url
+from history.sync import ArchiveSyncSettings
 
 
-__version__ = "1.0.0"
-
-
-ARCHIVE_COMMANDS = (
-    ("archive_1", "aacc3355023501ffff"),
-    ("archive_2", "aacc3355023502ffff"),
-    ("archive_3", "aacc3355023503ffff"),
-)
+__version__ = "1.1.0"
 
 
 Logger = Callable[[str], None]
@@ -97,6 +89,31 @@ class BridgeApplication:
             self.logger("WiFire-Kamin MQTT Bridge beendet.")
 
 
+def build_archive_sync_settings(config_module: Any) -> ArchiveSyncSettings:
+    """Überträgt die portable Projektkonfiguration in Sync-Einstellungen."""
+    return ArchiveSyncSettings(
+        live_url=config_module.WIFIRE_URL,
+        first_archive=getattr(config_module, "ARCHIVE_FIRST_SLOT", 1),
+        last_archive=getattr(config_module, "ARCHIVE_LAST_SLOT", 23),
+        request_timeout=getattr(
+            config_module,
+            "ARCHIVE_REQUEST_TIMEOUT",
+            15,
+        ),
+        retry_count=getattr(config_module, "ARCHIVE_RETRY_COUNT", 3),
+        retry_delay_seconds=getattr(
+            config_module,
+            "ARCHIVE_RETRY_DELAY",
+            10,
+        ),
+        archive_delay_seconds=getattr(
+            config_module,
+            "ARCHIVE_REQUEST_DELAY",
+            10,
+        ),
+    )
+
+
 def create_application(
     config_module: Any,
     *,
@@ -128,37 +145,11 @@ def create_application(
     history_manager = create_default_history_manager(
         project_dir
     )
-    archive_reader = ArchiveReader(
-        archive_url=build_archive_url(
-            config_module.WIFIRE_URL
-        ),
-        request_timeout=getattr(
-            config_module,
-            "ARCHIVE_REQUEST_TIMEOUT",
-            15,
-        ),
-        retry_count=getattr(
-            config_module,
-            "ARCHIVE_RETRY_COUNT",
-            3,
-        ),
-        retry_delay=getattr(
-            config_module,
-            "ARCHIVE_RETRY_DELAY",
-            10,
-        ),
-        sleeper=sleeper,
-    )
-    archive_synchronizer = ArchiveSynchronizer(
-        commands=ARCHIVE_COMMANDS,
-        reader=archive_reader,
+    archive_settings = build_archive_sync_settings(config_module)
+    archive_synchronizer = RingBufferArchiveSynchronizer(
+        settings=archive_settings,
         publisher=connection.publisher,
         history_manager=history_manager,
-        request_delay=getattr(
-            config_module,
-            "ARCHIVE_REQUEST_DELAY",
-            10,
-        ),
         sleeper=sleeper,
         is_running=running_state,
     )
