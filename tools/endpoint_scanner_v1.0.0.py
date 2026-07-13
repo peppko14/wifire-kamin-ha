@@ -63,7 +63,10 @@ def request_endpoint(
                 dict(error.headers.items()),
             )
 
-        except Exception as error:
+        except OSError as error:
+            # HTTPError (z. B. 404/500) wird oben bereits als gültige
+            # Antwort behandelt. Hier landen echte Verbindungsfehler
+            # (Timeout, Verbindung abgelehnt, DNS, ...).
             last_error = error
             print(
                 f"  Versuch {attempt}/{retries} fehlgeschlagen: "
@@ -185,7 +188,11 @@ def main() -> None:
             else:
                 print(classification.upper())
 
-        except Exception as error:
+        except RuntimeError as error:
+            # request_endpoint() wirft RuntimeError, nachdem alle
+            # Versuche für diesen Endpunkt ausgeschöpft sind.
+            # classify() wirft nichts (behandelt JSON-/Hex-Fehler
+            # bereits intern als Klassifizierung).
             counters["request_error"] = (
                 counters.get("request_error", 0) + 1
             )

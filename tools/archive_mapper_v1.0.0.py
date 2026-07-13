@@ -69,7 +69,9 @@ def request_archive(number: int, retries: int, delay: float) -> str:
             bytes.fromhex(raw)
             return raw
 
-        except Exception as error:
+        except (OSError, ValueError) as error:
+            # OSError: HTTP-/Verbindungsfehler. ValueError: kaputtes
+            # JSON, fehlendes raw-Feld oder ungültiges Hex.
             last_error = error
             print(
                 f"  Versuch {attempt}/{retries} fehlgeschlagen: "
@@ -93,7 +95,7 @@ def classify(raw: str) -> tuple[str, dict]:
 
     try:
         record = decode_archive_record(raw)
-    except Exception as error:
+    except ValueError as error:
         details["decode_error"] = str(error)
         return "invalid_archive", details
 
@@ -122,7 +124,7 @@ def classify(raw: str) -> tuple[str, dict]:
 def write_csv(number: int, raw: str, output_dir: Path) -> str | None:
     try:
         record = decode_archive_record(raw)
-    except Exception:
+    except ValueError:
         return None
 
     if not record.temperatures:
@@ -222,7 +224,9 @@ def main() -> None:
             else:
                 print(classification.upper())
 
-        except Exception as error:
+        except RuntimeError as error:
+            # request_archive() wirft RuntimeError, nachdem alle
+            # Versuche für dieses Archiv ausgeschöpft sind.
             counters["request_error"] = (
                 counters.get("request_error", 0) + 1
             )
