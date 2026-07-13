@@ -9,6 +9,7 @@ from datetime import datetime
 import unittest
 
 from history.period_statistics import (
+    calculate_current_period_statistics,
     calculate_heating_season_statistics,
     calculate_monthly_statistics,
 )
@@ -150,6 +151,54 @@ class HeatingSeasonStatisticsTests(unittest.TestCase):
 
         self.assertEqual(result[0].statistics.total_duration_minutes, 300)
         self.assertEqual(result[0].statistics.average_duration_minutes, 150.0)
+
+
+class CurrentPeriodStatisticsTests(unittest.TestCase):
+    def test_current_periods_select_only_matching_records(self) -> None:
+        result = calculate_current_period_statistics(
+            [
+                record("2026-03-01T20:00:00", 400),
+                record("2026-04-01T20:00:00", 500),
+            ],
+            at=datetime(2026, 4, 30),
+        )
+
+        self.assertEqual(result.month.month.key, "2026-04")
+        self.assertEqual(result.month.statistics.burn_count, 1)
+        self.assertEqual(result.season.season.label, "2025/2026")
+        self.assertEqual(result.season.statistics.burn_count, 2)
+        self.assertEqual(
+            [item.season.label for item in result.seasons],
+            ["2025/2026", "2024/2025", "2023/2024"],
+        )
+
+    def test_empty_current_periods_have_neutral_statistics(self) -> None:
+        result = calculate_current_period_statistics(
+            [record("2026-04-01T20:00:00", 500)],
+            at=datetime(2026, 7, 13),
+        )
+
+        self.assertEqual(result.month.month.key, "2026-07")
+        self.assertEqual(result.month.statistics.burn_count, 0)
+        self.assertEqual(result.month.statistics.total_duration_minutes, 0)
+        self.assertIsNone(
+            result.month.statistics.average_max_temperature_c
+        )
+        self.assertEqual(result.season.season.label, "2026/2027")
+        self.assertEqual(result.season.statistics.burn_count, 0)
+        self.assertEqual(len(result.seasons), 3)
+
+    def test_current_period_payload_is_nested_and_serializable(self) -> None:
+        payload = calculate_current_period_statistics(
+            [],
+            at=datetime(2026, 7, 13),
+        ).to_dict()
+
+        self.assertEqual(payload["current_month"]["period"], "2026-07")
+        self.assertEqual(
+            [item["label"] for item in payload["heating_seasons"]],
+            ["2026/2027", "2025/2026", "2024/2025"],
+        )
 
 
 if __name__ == "__main__":

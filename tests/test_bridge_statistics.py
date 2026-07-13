@@ -14,6 +14,7 @@ from bridge.statistics import (
     parse_statistics_since,
 )
 from history.statistics import HistoryStatistics
+from history.period_statistics import CurrentPeriodStatistics
 
 
 def record(start: str, maximum: int) -> dict[str, object]:
@@ -43,9 +44,16 @@ class FakeHistoryProvider:
 class FakePublisher:
     def __init__(self) -> None:
         self.statistics: list[HistoryStatistics] = []
+        self.period_statistics: list[CurrentPeriodStatistics] = []
 
     def publish_statistics(self, statistics: HistoryStatistics) -> None:
         self.statistics.append(statistics)
+
+    def publish_period_statistics(
+        self,
+        statistics: CurrentPeriodStatistics,
+    ) -> None:
+        self.period_statistics.append(statistics)
 
 
 class StatisticsSinceTests(unittest.TestCase):
@@ -77,6 +85,7 @@ class HistoryStatisticsReporterTests(unittest.TestCase):
             publisher=publisher,
             since=datetime(2026, 1, 1),
             logger=messages.append,
+            now=lambda: datetime(2026, 4, 30),
         )
 
         statistics = reporter.refresh()
@@ -86,6 +95,16 @@ class HistoryStatisticsReporterTests(unittest.TestCase):
         self.assertEqual(statistics.burn_count, 1)
         self.assertEqual(statistics.excluded_record_count, 1)
         self.assertEqual(publisher.statistics, [statistics])
+        self.assertEqual(len(publisher.period_statistics), 1)
+        periods = publisher.period_statistics[0]
+        self.assertEqual(periods.month.month.key, "2026-04")
+        self.assertEqual(periods.month.statistics.burn_count, 1)
+        self.assertEqual(periods.season.season.label, "2025/2026")
+        self.assertEqual(periods.season.statistics.burn_count, 1)
+        self.assertEqual(
+            [item.season.label for item in periods.seasons],
+            ["2025/2026", "2024/2025", "2023/2024"],
+        )
         self.assertTrue(any("1 Abbrände" in message for message in messages))
 
     def test_empty_history_is_published_as_neutral_statistics(self) -> None:
@@ -94,12 +113,22 @@ class HistoryStatisticsReporterTests(unittest.TestCase):
             history_provider=FakeHistoryProvider([]),
             publisher=publisher,
             logger=lambda message: None,
+            now=lambda: datetime(2026, 7, 13),
         )
 
         statistics = reporter.refresh()
 
         self.assertEqual(statistics.burn_count, 0)
         self.assertEqual(publisher.statistics, [statistics])
+        periods = publisher.period_statistics[0]
+        self.assertEqual(periods.month.month.key, "2026-07")
+        self.assertEqual(periods.month.statistics.burn_count, 0)
+        self.assertEqual(periods.season.season.label, "2026/2027")
+        self.assertEqual(periods.season.statistics.burn_count, 0)
+        self.assertEqual(
+            [item.season.label for item in periods.seasons],
+            ["2026/2027", "2025/2026", "2024/2025"],
+        )
 
 
 if __name__ == "__main__":
