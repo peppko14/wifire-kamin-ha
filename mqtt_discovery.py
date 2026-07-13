@@ -445,11 +445,30 @@ def main() -> None:
         f"Verbinde mit MQTT-Broker "
         f"{config.MQTT_HOST}:{config.MQTT_PORT} ..."
     )
-    client.connect(
-        config.MQTT_HOST,
-        config.MQTT_PORT,
-        keepalive=60,
-    )
+
+    # connect_async() statt connect(): der eigentliche Verbindungsaufbau
+    # (inkl. Wiederholungsversuche) läuft im Netzwerk-Thread, den
+    # loop_start() gleich startet. Ist der Broker beim Start nicht
+    # erreichbar (z. B. noch nicht hochgefahren), stürzt der Prozess
+    # dadurch nicht mehr ab, sondern paho-mqtt versucht es im
+    # Hintergrund weiter (siehe reconnect_delay_set oben). connect()
+    # dagegen ist blockierend und hätte bei einem nicht erreichbaren
+    # Broker eine Exception geworfen, die den kompletten Dienst
+    # beendet hätte (systemd hätte ihn dann komplett neu gestartet,
+    # statt einfach weiter zu versuchen).
+    try:
+        client.connect_async(
+            config.MQTT_HOST,
+            config.MQTT_PORT,
+            keepalive=60,
+        )
+    except (OSError, ValueError) as error:
+        # Tritt praktisch nur bei einem echten Konfigurationsfehler
+        # auf (z. B. ungültiger Hostname/Port in config.py), da
+        # connect_async() selbst keine Netzwerkverbindung aufbaut.
+        print(f"MQTT-Konfiguration ungültig: {error}")
+        raise
+
     client.loop_start()
 
     consecutive_failures = 0
