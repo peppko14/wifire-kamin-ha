@@ -50,7 +50,64 @@ class HistoryStorageTests(unittest.TestCase):
                 HISTORY_SCHEMA_VERSION,
             )
             self.assertEqual(data["max_temperature_c"], 453)
+            self.assertEqual(data["duration_minutes"], 169)
+            self.assertEqual(
+                data["duration_source"],
+                "stage_0_unwrapped",
+            )
             self.assertEqual(len(data["burn_id"]), 64)
+
+    def test_current_schema_is_version_two(self) -> None:
+        self.assertEqual(HISTORY_SCHEMA_VERSION, 2)
+
+    def test_schema_one_file_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            storage = HistoryStorage(Path(directory))
+            payload = storage.serialize_record(self.build_record())
+            payload["schema_version"] = 1
+            payload["duration_minutes"] = payload["measurement_count"]
+            payload.pop("duration_source")
+            path = Path(directory) / "legacy.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+
+            with self.assertRaises(HistoryStorageError):
+                storage.load_file(path)
+
+    def test_schema_two_file_is_readable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            storage = HistoryStorage(Path(directory))
+            path, _ = storage.save(self.build_record())
+
+            loaded = storage.load_file(path)
+
+            self.assertEqual(loaded["schema_version"], 2)
+            self.assertEqual(loaded["duration_minutes"], 169)
+            self.assertEqual(
+                loaded["duration_source"],
+                "stage_0_unwrapped",
+            )
+
+    def test_unsupported_schema_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            storage = HistoryStorage(Path(directory))
+            payload = storage.serialize_record(self.build_record())
+            payload["schema_version"] = 3
+            path = Path(directory) / "future.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+
+            with self.assertRaises(HistoryStorageError):
+                storage.load_file(path)
+
+    def test_boolean_schema_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            storage = HistoryStorage(Path(directory))
+            payload = storage.serialize_record(self.build_record())
+            payload["schema_version"] = True
+            path = Path(directory) / "boolean.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+
+            with self.assertRaises(HistoryStorageError):
+                storage.load_file(path)
 
     def test_duplicate_is_not_written_twice(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
