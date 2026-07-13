@@ -22,7 +22,7 @@ from urllib.request import Request, urlopen
 __version__ = "1.0.0"
 
 BASE_URL = "http://192.168.0.1/direct"
-OUTPUT_DIR = Path.home() / "wifire-reader" / "endpoint-scans"
+OUTPUT_DIR = Path(__file__).resolve().parent.parent / "data" / "endpoint-scans"
 REQUEST_TIMEOUT = 10
 
 
