@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
 from io import StringIO
 import json
@@ -16,8 +16,10 @@ import unittest
 from history.statistics import HistoryStatistics
 from history.storage import HistoryStorage
 from protocol.models import BurnRecord
-from tools.history_statistics_v1_1_0 import (
+from tools.history_statistics_v1_2_0 import (
+    format_monthly_report,
     format_report,
+    format_season_report,
     load_statistics,
     main,
     parse_since,
@@ -25,12 +27,18 @@ from tools.history_statistics_v1_1_0 import (
 
 
 class HistoryStatisticsToolTests(unittest.TestCase):
-    def save_record(self, directory: Path) -> None:
+    def save_record(
+        self,
+        directory: Path,
+        *,
+        start: datetime = datetime(2026, 1, 1, 20, 0),
+        maximum: int = 400,
+    ) -> None:
         storage = HistoryStorage(directory)
         storage.save(
             BurnRecord(
-                start=datetime(2026, 1, 1, 20, 0),
-                temperatures_c=(24, 100, 400, 80),
+                start=start,
+                temperatures_c=(24, 100, maximum, 80),
                 source_archive_number=1,
                 stage_90_minute=10,
                 stage_75_minute=40,
@@ -126,6 +134,104 @@ class HistoryStatisticsToolTests(unittest.TestCase):
             parse_since("2026-01-01T12:30:00"),
             datetime(2026, 1, 1, 12, 30),
         )
+
+    def test_monthly_json_groups_records_by_calendar_month(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            self.save_record(path, start=datetime(2026, 1, 10, 20, 0))
+            self.save_record(path, start=datetime(2026, 2, 10, 20, 0))
+            output = StringIO()
+
+            with redirect_stdout(output):
+                exit_code = main([
+                    "--history-dir",
+                    str(path),
+                    "--monthly",
+                    "--json",
+                ])
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(payload["group_by"], "month")
+            self.assertEqual(
+                [item["period"] for item in payload["periods"]],
+                ["2026-01", "2026-02"],
+            )
+
+    def test_season_json_uses_july_to_june_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            self.save_record(path, start=datetime(2026, 6, 30, 20, 0))
+            self.save_record(path, start=datetime(2026, 7, 1, 20, 0))
+            output = StringIO()
+
+            with redirect_stdout(output):
+                exit_code = main([
+                    "--history-dir",
+                    str(path),
+                    "--seasons",
+                    "--json",
+                ])
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(payload["group_by"], "heating_season")
+            self.assertEqual(
+                [item["label"] for item in payload["periods"]],
+                ["2025/2026", "2026/2027"],
+            )
+
+    def test_monthly_text_report_contains_period_values(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            self.save_record(path)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                exit_code = main([
+                    "--history-dir",
+                    str(path),
+                    "--monthly",
+                ])
+
+            self.assertEqual(exit_code, 0)
+            self.assertIn("WiFire-Kamin Monatsstatistik", output.getvalue())
+            self.assertIn("2026-01", output.getvalue())
+
+    def test_season_text_report_contains_readable_label(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            self.save_record(path)
+            output = StringIO()
+
+            with redirect_stdout(output):
+                exit_code = main([
+                    "--history-dir",
+                    str(path),
+                    "--seasons",
+                ])
+
+            self.assertEqual(exit_code, 0)
+            self.assertIn(
+                "WiFire-Kamin Heizsaisonstatistik",
+                output.getvalue(),
+            )
+            self.assertIn("2025/2026", output.getvalue())
+
+    def test_empty_period_reports_are_explicit(self) -> None:
+        self.assertIn(
+            "Keine Abbrände",
+            format_monthly_report(()),
+        )
+        self.assertIn(
+            "Keine Abbrände",
+            format_season_report(()),
+        )
+
+    def test_monthly_and_seasons_are_mutually_exclusive(self) -> None:
+        with redirect_stderr(StringIO()):
+            with self.assertRaises(SystemExit):
+                main(["--monthly", "--seasons"])
 
 
 if __name__ == "__main__":

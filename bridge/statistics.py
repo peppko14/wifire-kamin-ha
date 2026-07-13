@@ -10,13 +10,17 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable, Mapping, Protocol
 
+from history.period_statistics import (
+    CurrentPeriodStatistics,
+    calculate_current_period_statistics,
+)
 from history.statistics import (
     HistoryStatistics,
     calculate_history_statistics,
 )
 
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 
 Logger = Callable[[str], None]
@@ -29,6 +33,12 @@ class HistoryProviderLike(Protocol):
 
 class StatisticsPublisherLike(Protocol):
     def publish_statistics(self, statistics: HistoryStatistics) -> None:
+        ...
+
+    def publish_period_statistics(
+        self,
+        statistics: CurrentPeriodStatistics,
+    ) -> None:
         ...
 
 
@@ -60,6 +70,7 @@ class HistoryStatisticsReporter:
     publisher: StatisticsPublisherLike
     since: datetime | None = None
     logger: Logger = print
+    now: Callable[[], datetime] = datetime.now
 
     def refresh(self) -> HistoryStatistics:
         """Liest die Historie neu ein und veröffentlicht eine Momentaufnahme."""
@@ -69,9 +80,18 @@ class HistoryStatisticsReporter:
             since=self.since,
         )
         self.publisher.publish_statistics(statistics)
+        periods = calculate_current_period_statistics(
+            records,
+            at=self.now(),
+            since=self.since,
+        )
+        self.publisher.publish_period_statistics(periods)
         self.logger(
             "Historienstatistik veröffentlicht: "
             f"{statistics.burn_count} Abbrände berücksichtigt, "
-            f"{statistics.excluded_record_count} ausgefiltert."
+            f"{statistics.excluded_record_count} ausgefiltert; "
+            f"Monat {periods.month.month.key}, "
+            "Heizsaisons "
+            f"{', '.join(item.season.label for item in periods.seasons)}."
         )
         return statistics

@@ -7,6 +7,40 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-13
+
+### Hinzugefügt
+
+- Stabile Kalendermonats- und Heizsaisonmodelle in `history/periods.py`
+- Monats- und Saisonaggregation in `history/period_statistics.py`
+- Heizsaison vom 1. Juli bis zum 30. Juni des Folgejahres
+- Text- und JSON-Berichte für Monate und Heizsaisons im Werkzeug
+  `tools/history_statistics_v1_2_0.py`
+- Vier feste Home-Assistant-Entitäten für den aktuellen Statistikmonat
+- Drei automatisch rollierende Heizsaisons mit jeweils Saisonbezeichnung,
+  Anzahl, gesamter und mittlerer Dauer, mittlerer Maximaltemperatur und
+  Höchsttemperatur
+- Eigenes retained MQTT-Topic für aktuelle Periodenstatistiken
+
+### Geändert
+
+- Statistikwerkzeug von Version 1.1.0 auf 1.2.0 aktualisiert
+- `--monthly` und `--seasons` als gegenseitig exklusive Berichtsarten ergänzt
+- Der inklusive `--since`-Filter gilt auch für Monats- und Saisonberichte
+- Periodenstatistiken werden gemeinsam mit der bestehenden Historienstatistik
+  nach einer Archiv-Synchronisation aktualisiert
+- Home Assistant verwendet feste Saisonplätze statt dynamisch wachsender
+  Entitäten pro historischem Zeitraum
+
+### Getestet
+
+- 173 automatisierte Tests
+- Reale Monatsauswertung mit 16 Abbränden aus Februar bis April 2026
+- Reale Saison `2025/2026` mit 16 Abbränden, 3298 Minuten Gesamtdauer,
+  206,1 Minuten mittlerer Dauer und 665 °C Höchsttemperatur
+- Produktive MQTT-Discovery und Darstellung der drei Saisonzeiträume in
+  Home Assistant
+
 ## [0.7.0] - 2026-07-13
 
 ### Hinzugefügt
