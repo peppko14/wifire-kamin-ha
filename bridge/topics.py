@@ -8,6 +8,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
+__version__ = "1.1.0"
+
+
 @dataclass(frozen=True, slots=True)
 class MqttTopics:
     """Erzeugt alle MQTT-Topics aus Geräte-ID und Discovery-Präfix."""
@@ -26,6 +29,10 @@ class MqttTopics:
     @property
     def availability(self) -> str:
         return f"{self.base}/availability"
+
+    @property
+    def statistics(self) -> str:
+        return f"{self.base}/statistics"
 
     @property
     def home_assistant_status(self) -> str:

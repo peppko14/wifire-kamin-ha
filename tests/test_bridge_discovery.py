@@ -85,6 +85,57 @@ class DiscoveryTests(unittest.TestCase):
             payload["components"],
         )
 
+    def test_payload_contains_six_statistics_components(self) -> None:
+        payload = build_discovery_payload(
+            FakeConfig,
+            self.topics,
+            app_name="Bridge",
+            app_version="0.7.0",
+        )
+        components = payload["components"]
+        expected = {
+            "wifire_kamin_statistics_burn_count",
+            "wifire_kamin_statistics_latest_burn",
+            "wifire_kamin_statistics_total_duration",
+            "wifire_kamin_statistics_average_duration",
+            "wifire_kamin_statistics_average_max_temperature",
+            "wifire_kamin_statistics_highest_temperature",
+        }
+
+        self.assertTrue(expected.issubset(components))
+        for component_id in expected:
+            self.assertEqual(
+                components[component_id]["state_topic"],
+                "wifire_kamin/wifire_kamin/statistics",
+            )
+
+    def test_statistics_components_have_expected_device_classes(self) -> None:
+        components = build_discovery_payload(
+            FakeConfig,
+            self.topics,
+            app_name="Bridge",
+            app_version="0.7.0",
+        )["components"]
+
+        self.assertEqual(
+            components["wifire_kamin_statistics_latest_burn"][
+                "device_class"
+            ],
+            "timestamp",
+        )
+        self.assertEqual(
+            components["wifire_kamin_statistics_average_duration"][
+                "device_class"
+            ],
+            "duration",
+        )
+        self.assertEqual(
+            components[
+                "wifire_kamin_statistics_average_max_temperature"
+            ]["device_class"],
+            "temperature",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

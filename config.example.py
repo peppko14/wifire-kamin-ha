@@ -36,3 +36,7 @@ ARCHIVE_REQUEST_DELAY = 10
 ARCHIVE_REQUEST_TIMEOUT = 15
 ARCHIVE_RETRY_COUNT = 3
 ARCHIVE_RETRY_DELAY = 10
+
+# Statistikfilter; None berücksichtigt alle gespeicherten Datensätze.
+# Beispiel zum Ausschließen falsch datierter Altbestände: "2026-01-01"
+STATISTICS_SINCE = None
