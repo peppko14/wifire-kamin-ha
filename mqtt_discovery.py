@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 peppko14
+# SPDX-License-Identifier: GPL-3.0-only
+
+"""WiFire-Kamin MQTT Bridge."""
+
+from __future__ import annotations
 
 import json
 import signal
@@ -11,6 +17,7 @@ import paho.mqtt.client as mqtt
 
 import config
 from bridge.discovery import build_discovery_payload
+from bridge.publisher import MqttPublisher
 from bridge.topics import MqttTopics
 from decoder import decode_live_data, read_live_data
 from history.manager import HistoryManager, create_default_history_manager
@@ -26,27 +33,57 @@ TOPICS = MqttTopics(
     discovery_prefix=config.MQTT_DISCOVERY_PREFIX,
 )
 
-BASE_TOPIC = TOPICS.base
-STATE_TOPIC = TOPICS.state
-AVAILABILITY_TOPIC = TOPICS.availability
-HA_STATUS_TOPIC = TOPICS.home_assistant_status
-DEVICE_DISCOVERY_TOPIC = TOPICS.device_discovery
-
-NORMAL_UPDATE_INTERVAL = getattr(config, "NORMAL_UPDATE_INTERVAL", 60)
+NORMAL_UPDATE_INTERVAL = getattr(
+    config,
+    "NORMAL_UPDATE_INTERVAL",
+    60,
+)
 ACTIVE_FIRE_UPDATE_INTERVAL = getattr(
-    config, "ACTIVE_FIRE_UPDATE_INTERVAL", 10
+    config,
+    "ACTIVE_FIRE_UPDATE_INTERVAL",
+    10,
 )
-ERROR_RETRY_INTERVAL = getattr(config, "ERROR_RETRY_INTERVAL", 300)
+ERROR_RETRY_INTERVAL = getattr(
+    config,
+    "ERROR_RETRY_INTERVAL",
+    300,
+)
 ACTIVE_FIRE_TEMPERATURE_C = getattr(
-    config, "ACTIVE_FIRE_TEMPERATURE_C", 40
+    config,
+    "ACTIVE_FIRE_TEMPERATURE_C",
+    40,
 )
-OFFLINE_AFTER_FAILURES = getattr(config, "OFFLINE_AFTER_FAILURES", 3)
+OFFLINE_AFTER_FAILURES = getattr(
+    config,
+    "OFFLINE_AFTER_FAILURES",
+    3,
+)
 
-ARCHIVE_UPDATE_INTERVAL = getattr(config, "ARCHIVE_UPDATE_INTERVAL", 21600)
-ARCHIVE_REQUEST_DELAY = getattr(config, "ARCHIVE_REQUEST_DELAY", 2)
-ARCHIVE_REQUEST_TIMEOUT = getattr(config, "ARCHIVE_REQUEST_TIMEOUT", 15)
-ARCHIVE_RETRY_COUNT = getattr(config, "ARCHIVE_RETRY_COUNT", 3)
-ARCHIVE_RETRY_DELAY = getattr(config, "ARCHIVE_RETRY_DELAY", 5)
+ARCHIVE_UPDATE_INTERVAL = getattr(
+    config,
+    "ARCHIVE_UPDATE_INTERVAL",
+    21600,
+)
+ARCHIVE_REQUEST_DELAY = getattr(
+    config,
+    "ARCHIVE_REQUEST_DELAY",
+    2,
+)
+ARCHIVE_REQUEST_TIMEOUT = getattr(
+    config,
+    "ARCHIVE_REQUEST_TIMEOUT",
+    15,
+)
+ARCHIVE_RETRY_COUNT = getattr(
+    config,
+    "ARCHIVE_RETRY_COUNT",
+    3,
+)
+ARCHIVE_RETRY_DELAY = getattr(
+    config,
+    "ARCHIVE_RETRY_DELAY",
+    5,
+)
 
 ARCHIVE_URL = "http://192.168.0.1/direct/35"
 ARCHIVE_COMMANDS = {
@@ -56,25 +93,27 @@ ARCHIVE_COMMANDS = {
 }
 
 running = True
-latest_state: dict | None = None
+latest_state: dict[str, Any] | None = None
+publisher: MqttPublisher | None = None
 
 
 def stop_program(*_: Any) -> None:
+    """Beendet die Hauptschleife kontrolliert."""
     global running
     running = False
 
 
-def archive_state_topic(number: int) -> str:
-    return f"{BASE_TOPIC}/archive/{number}/state"
-
-
-def archive_attributes_topic(number: int) -> str:
-    return f"{BASE_TOPIC}/archive/{number}/attributes"
-
-
+def require_publisher() -> MqttPublisher:
+    """Liefert den initialisierten MQTT-Publisher."""
+    if publisher is None:
+        raise RuntimeError(
+            "MQTT-Publisher wurde noch nicht initialisiert."
+        )
+    return publisher
 
 
 def publish_discovery(client: mqtt.Client) -> None:
+    """Veröffentlicht die Home-Assistant-Device-Discovery."""
     payload = build_discovery_payload(
         config,
         TOPICS,
@@ -83,7 +122,7 @@ def publish_discovery(client: mqtt.Client) -> None:
     )
 
     client.publish(
-        DEVICE_DISCOVERY_TOPIC,
+        TOPICS.device_discovery,
         payload=json.dumps(payload, ensure_ascii=False),
         qos=1,
         retain=True,
@@ -94,47 +133,25 @@ def publish_discovery(client: mqtt.Client) -> None:
         f'"{config.DEVICE_NAME}" veröffentlicht.'
     )
 
-def publish_availability(client: mqtt.Client, online: bool) -> None:
-    client.publish(
-        AVAILABILITY_TOPIC,
-        payload="online" if online else "offline",
-        qos=1,
-        retain=True,
-    )
 
+def interruptible_sleep(seconds: int | float) -> None:
+    """Schläft in kurzen Abschnitten und reagiert auf Stoppsignale."""
+    steps = max(1, int(seconds * 10))
 
-def publish_state(client: mqtt.Client, data: dict) -> None:
-    payload = {
-        "temperature_c": data["temperature_c"],
-        "flap_percent": data["flap_percent"],
-        "flap_moving": data["flap_moving"],
-        "burn_time": data["burn_time"],
-        "burn_total_minutes": data["burn_total_minutes"],
-        "door_open": data["door_open"],
-        "door_state": data["door_state"],
-        "fan_raw": data["fan_raw"],
-    }
-    client.publish(
-        STATE_TOPIC,
-        payload=json.dumps(payload, ensure_ascii=False),
-        qos=1,
-        retain=False,
-    )
-
-
-def interruptible_sleep(seconds: int) -> None:
-    for _ in range(max(1, seconds * 10)):
+    for _ in range(steps):
         if not running:
             break
         time.sleep(0.1)
 
 
 def read_archive_block(command: str) -> str:
+    """Liest einen Archivblock mit begrenzten Wiederholungen."""
     last_error: Exception | None = None
 
     for attempt in range(1, ARCHIVE_RETRY_COUNT + 1):
         try:
             body = json.dumps({"raw": command}).encode("utf-8")
+
             request = Request(
                 ARCHIVE_URL,
                 data=body,
@@ -145,11 +162,14 @@ def read_archive_block(command: str) -> str:
                 },
                 method="POST",
             )
+
             with urlopen(
                 request,
                 timeout=ARCHIVE_REQUEST_TIMEOUT,
             ) as response:
-                result = json.loads(response.read().decode("utf-8"))
+                result = json.loads(
+                    response.read().decode("utf-8")
+                )
 
             raw = result.get("raw")
             if not isinstance(raw, str):
@@ -157,19 +177,17 @@ def read_archive_block(command: str) -> str:
                     "Archivantwort enthält kein gültiges Feld 'raw'."
                 )
 
+            bytes.fromhex(raw)
             return raw
 
         except (OSError, ValueError) as error:
-            # OSError deckt u. a. URLError/HTTPError/Timeouts ab,
-            # ValueError deckt ungültiges JSON sowie unser eigenes
-            # "raw fehlt"/"kein gültiges Hex" ab. Andere Exceptions
-            # (z. B. echte Programmfehler) sollen hier nicht als
-            # simple "Lesefehler" verschluckt werden.
             last_error = error
+
             print(
                 f"Archivversuch {attempt}/{ARCHIVE_RETRY_COUNT} "
                 f"fehlgeschlagen: {error}"
             )
+
             if attempt < ARCHIVE_RETRY_COUNT:
                 interruptible_sleep(ARCHIVE_RETRY_DELAY)
 
@@ -179,12 +197,14 @@ def read_archive_block(command: str) -> str:
     )
 
 
-def archive_attributes(record: Any) -> dict:
+def archive_attributes(record: Any) -> dict[str, object]:
+    """Erzeugt die MQTT-Attribute eines Archivdatensatzes."""
     timestamp = (
         record.timestamp.isoformat(timespec="minutes")
         if record.timestamp
         else None
     )
+
     return {
         "archive_number": record.archive_number,
         "start": timestamp,
@@ -193,7 +213,9 @@ def archive_attributes(record: Any) -> dict:
         "start_temperature_c": record.start_temperature_c,
         "end_temperature_c": record.end_temperature_c,
         "max_temperature_c": record.max_temperature_c,
-        "max_temperature_minute": record.max_temperature_minute,
+        "max_temperature_minute": (
+            record.max_temperature_minute
+        ),
         "stage_90_minute": record.stage_90_minute,
         "stage_75_minute": record.stage_75_minute,
         "stage_50_minute": record.stage_50_minute,
@@ -204,12 +226,16 @@ def archive_attributes(record: Any) -> dict:
 
 
 def update_archives(
-    client: mqtt.Client,
+    mqtt_publisher: MqttPublisher,
     history_manager: HistoryManager,
 ) -> None:
+    """Aktualisiert MQTT-Archive und die lokale Historie."""
     print("Archivaktualisierung wird gestartet.")
 
-    for index, (name, command) in enumerate(ARCHIVE_COMMANDS.items(), start=1):
+    for index, (name, command) in enumerate(
+        ARCHIVE_COMMANDS.items(),
+        start=1,
+    ):
         if not running:
             return
 
@@ -218,25 +244,20 @@ def update_archives(
             record = decode_archive_record(raw)
 
             if record.timestamp is None:
-                print(f"{name}: kein gültiger Zeitstempel – übersprungen.")
+                print(
+                    f"{name}: kein gültiger Zeitstempel – "
+                    f"übersprungen."
+                )
                 continue
 
-            state = record.timestamp.isoformat(timespec="seconds")
-
-            client.publish(
-                archive_state_topic(index),
-                payload=state,
-                qos=1,
-                retain=True,
+            state = record.timestamp.isoformat(
+                timespec="seconds"
             )
-            client.publish(
-                archive_attributes_topic(index),
-                payload=json.dumps(
-                    archive_attributes(record),
-                    ensure_ascii=False,
-                ),
-                qos=1,
-                retain=True,
+
+            mqtt_publisher.publish_archive(
+                index,
+                state=state,
+                attributes=archive_attributes(record),
             )
 
             print(
@@ -246,7 +267,9 @@ def update_archives(
             )
 
             burn_record = archive_record_to_burn_record(record)
-            history_result = history_manager.synchronize([burn_record])
+            history_result = history_manager.synchronize(
+                [burn_record]
+            )
 
             if history_result.imported_count:
                 print(
@@ -259,17 +282,11 @@ def update_archives(
                 )
             elif history_result.skipped_incomplete:
                 print(
-                    f"{name}: unvollständiger Abbrand nicht gespeichert."
+                    f"{name}: unvollständiger Abbrand "
+                    f"nicht gespeichert."
                 )
 
         except (RuntimeError, ValueError) as error:
-            # RuntimeError kommt von read_archive_block, wenn alle
-            # Versuche fehlgeschlagen sind. ValueError kommt von
-            # decode_archive_record bei einem unerwarteten/kaputten
-            # Datensatz. Beides sind erwartbare Betriebsfälle für ein
-            # einzelnes Archiv – die anderen zwei laufen unabhängig
-            # weiter. Ein echter Programmfehler soll dagegen sichtbar
-            # werden statt hier als "Archivfehler" zu verschwinden.
             print(f"{name}: Archivfehler: {error}")
 
         if index < len(ARCHIVE_COMMANDS):
@@ -279,13 +296,17 @@ def update_archives(
 
 
 def get_next_poll_interval(
-    current_state: dict | None,
+    current_state: dict[str, Any] | None,
     read_failed: bool,
 ) -> tuple[int, str]:
+    """Bestimmt das nächste Live-Abfrageintervall."""
     if read_failed or current_state is None:
         return ERROR_RETRY_INTERVAL, "Lesefehler"
 
-    if current_state["temperature_c"] >= ACTIVE_FIRE_TEMPERATURE_C:
+    if (
+        current_state["temperature_c"]
+        >= ACTIVE_FIRE_TEMPERATURE_C
+    ):
         return ACTIVE_FIRE_UPDATE_INTERVAL, "aktiver Abbrand"
 
     return NORMAL_UPDATE_INTERVAL, "Normalbetrieb"
@@ -298,17 +319,23 @@ def on_connect(
     reason_code: mqtt.ReasonCode,
     properties: mqtt.Properties | None,
 ) -> None:
+    """Paho-Callback nach erfolgreicher MQTT-Verbindung."""
     if reason_code.is_failure:
-        print(f"MQTT-Verbindung fehlgeschlagen: {reason_code}")
+        print(
+            f"MQTT-Verbindung fehlgeschlagen: {reason_code}"
+        )
         return
 
     print("Mit MQTT verbunden.")
-    client.subscribe(HA_STATUS_TOPIC, qos=1)
+    client.subscribe(TOPICS.home_assistant_status, qos=1)
+
     publish_discovery(client)
-    publish_availability(client, True)
+
+    mqtt_publisher = require_publisher()
+    mqtt_publisher.publish_availability(True)
 
     if latest_state is not None:
-        publish_state(client, latest_state)
+        mqtt_publisher.publish_state(latest_state)
 
 
 def on_message(
@@ -316,18 +343,32 @@ def on_message(
     userdata: Any,
     message: mqtt.MQTTMessage,
 ) -> None:
-    if message.topic != HA_STATUS_TOPIC:
+    """Veröffentlicht Discovery erneut, wenn Home Assistant startet."""
+    if message.topic != TOPICS.home_assistant_status:
         return
 
-    payload = message.payload.decode("utf-8", errors="replace").strip().lower()
+    payload = (
+        message.payload.decode(
+            "utf-8",
+            errors="replace",
+        )
+        .strip()
+        .lower()
+    )
 
     if payload == "online":
-        print("Home Assistant ist online – Discovery wird erneut gesendet.")
+        print(
+            "Home Assistant ist online – "
+            "Discovery wird erneut gesendet."
+        )
+
         publish_discovery(client)
-        publish_availability(client, True)
+
+        mqtt_publisher = require_publisher()
+        mqtt_publisher.publish_availability(True)
 
         if latest_state is not None:
-            publish_state(client, latest_state)
+            mqtt_publisher.publish_state(latest_state)
 
 
 def on_disconnect(
@@ -337,12 +378,17 @@ def on_disconnect(
     reason_code: mqtt.ReasonCode,
     properties: mqtt.Properties | None,
 ) -> None:
+    """Paho-Callback nach einer MQTT-Unterbrechung."""
     if running and reason_code.is_failure:
-        print(f"MQTT-Verbindung unterbrochen: {reason_code}")
+        print(
+            f"MQTT-Verbindung unterbrochen: {reason_code}"
+        )
 
 
 def main() -> None:
+    """Startet die MQTT-Bridge und die adaptive Polling-Schleife."""
     global latest_state
+    global publisher
 
     signal.signal(signal.SIGINT, stop_program)
     signal.signal(signal.SIGTERM, stop_program)
@@ -352,6 +398,8 @@ def main() -> None:
         client_id=f"{config.DEVICE_ID}_bridge",
         reconnect_on_failure=True,
     )
+
+    publisher = MqttPublisher(client, TOPICS)
 
     client.on_connect = on_connect
     client.on_message = on_message
@@ -364,29 +412,22 @@ def main() -> None:
         )
 
     client.will_set(
-        AVAILABILITY_TOPIC,
+        TOPICS.availability,
         payload="offline",
         qos=1,
         retain=True,
     )
 
-    client.reconnect_delay_set(min_delay=2, max_delay=60)
+    client.reconnect_delay_set(
+        min_delay=2,
+        max_delay=60,
+    )
 
     print(
         f"Verbinde mit MQTT-Broker "
         f"{config.MQTT_HOST}:{config.MQTT_PORT} ..."
     )
 
-    # connect_async() statt connect(): der eigentliche Verbindungsaufbau
-    # (inkl. Wiederholungsversuche) läuft im Netzwerk-Thread, den
-    # loop_start() gleich startet. Ist der Broker beim Start nicht
-    # erreichbar (z. B. noch nicht hochgefahren), stürzt der Prozess
-    # dadurch nicht mehr ab, sondern paho-mqtt versucht es im
-    # Hintergrund weiter (siehe reconnect_delay_set oben). connect()
-    # dagegen ist blockierend und hätte bei einem nicht erreichbaren
-    # Broker eine Exception geworfen, die den kompletten Dienst
-    # beendet hätte (systemd hätte ihn dann komplett neu gestartet,
-    # statt einfach weiter zu versuchen).
     try:
         client.connect_async(
             config.MQTT_HOST,
@@ -394,9 +435,6 @@ def main() -> None:
             keepalive=60,
         )
     except (OSError, ValueError) as error:
-        # Tritt praktisch nur bei einem echten Konfigurationsfehler
-        # auf (z. B. ungültiger Hostname/Port in config.py), da
-        # connect_async() selbst keine Netzwerkverbindung aufbaut.
         print(f"MQTT-Konfiguration ungültig: {error}")
         raise
 
@@ -407,7 +445,9 @@ def main() -> None:
     last_archive_update = 0.0
 
     project_dir = Path(__file__).resolve().parent
-    history_manager = create_default_history_manager(project_dir)
+    history_manager = create_default_history_manager(
+        project_dir
+    )
 
     try:
         while running:
@@ -416,14 +456,15 @@ def main() -> None:
             try:
                 raw = read_live_data()
                 data = decode_live_data(raw)
+
                 latest_state = data
                 consecutive_failures = 0
 
                 if not availability_online:
-                    publish_availability(client, True)
+                    publisher.publish_availability(True)
                     availability_online = True
 
-                publish_state(client, data)
+                publisher.publish_state(data)
 
                 print(
                     f"{data['temperature_c']} °C | "
@@ -433,13 +474,6 @@ def main() -> None:
                 )
 
             except (OSError, ValueError) as error:
-                # OSError: Netzwerkfehler beim Abruf (Timeout, Verbindung
-                # abgelehnt, DNS, ...). ValueError: kaputtes JSON oder ein
-                # von decode_live_data erkannter ungültiger Datensatz.
-                # Ein unerwarteter Fehlertyp weist auf einen echten Bug
-                # hin und soll den Prozess sichtbar beenden (systemd
-                # startet ihn neu und der Fehler landet im Journal),
-                # statt endlos als "Lesefehler" maskiert zu werden.
                 read_failed = True
                 consecutive_failures += 1
 
@@ -449,33 +483,50 @@ def main() -> None:
                 )
 
                 if (
-                    consecutive_failures >= OFFLINE_AFTER_FAILURES
+                    consecutive_failures
+                    >= OFFLINE_AFTER_FAILURES
                     and availability_online
                 ):
-                    publish_availability(client, False)
+                    publisher.publish_availability(False)
                     availability_online = False
-                    print("WiFire-Kamin wird als offline gemeldet.")
+
+                    print(
+                        "WiFire-Kamin wird als offline gemeldet."
+                    )
 
             now = time.monotonic()
-            if now - last_archive_update >= ARCHIVE_UPDATE_INTERVAL:
-                update_archives(client, history_manager)
+
+            if (
+                now - last_archive_update
+                >= ARCHIVE_UPDATE_INTERVAL
+            ):
+                update_archives(
+                    publisher,
+                    history_manager,
+                )
                 last_archive_update = time.monotonic()
 
-            next_interval, interval_reason = get_next_poll_interval(
-                latest_state,
-                read_failed,
+            next_interval, interval_reason = (
+                get_next_poll_interval(
+                    latest_state,
+                    read_failed,
+                )
             )
+
             print(
                 f"Nächste Abfrage in {next_interval} Sekunden "
                 f"({interval_reason})."
             )
+
             interruptible_sleep(next_interval)
 
     finally:
-        publish_availability(client, False)
+        publisher.publish_availability(False)
         time.sleep(0.2)
+
         client.loop_stop()
         client.disconnect()
+
         print("WiFire-Kamin MQTT Bridge beendet.")
 
 
