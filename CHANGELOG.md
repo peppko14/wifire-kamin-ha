@@ -7,6 +7,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-14
+
 ### Hinzugefügt
 
 - Zentrale Dauerdefinition in `protocol/duration.py`
