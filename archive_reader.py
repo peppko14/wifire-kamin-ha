@@ -5,7 +5,6 @@ import time
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from wifire_protocol import decode_archive_record
@@ -99,12 +98,10 @@ def main() -> None:
                 f"Maximum {record.max_temperature_c} °C"
             )
 
-        except (
-            HTTPError,
-            URLError,
-            ValueError,
-            json.JSONDecodeError,
-        ) as error:
+        except (OSError, ValueError) as error:
+            # OSError deckt HTTPError/URLError sowie rohe Timeouts ab,
+            # ValueError deckt json.JSONDecodeError sowie unsere eigene
+            # Validierung (fehlendes 'raw'-Feld, ungültiges Hex) ab.
             result["records"][name] = {
                 "command": command,
                 "error": str(error),
