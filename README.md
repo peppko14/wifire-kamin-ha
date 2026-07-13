@@ -1,243 +1,200 @@
 # WiFire-Kamin Home Assistant Bridge
 
-> Eine rein **lesende MQTT-Bridge** für die FireControls
-> WiFire-Kaminsteuerung zur Integration in Home Assistant.
+Eine ausschließlich lesende MQTT-Bridge für eine FireControls
+WiFire-Kaminsteuerung. Sie überträgt Live-Daten an Home Assistant und
+sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
 
-## Projektziel
+## Funktionen
 
-Dieses Projekt ermöglicht die Einbindung einer **FireControls
-WiFire**-Kaminsteuerung in Home Assistant.
+- Home Assistant MQTT Discovery ohne YAML-Konfiguration
+- Temperatur, Luftklappe, Türstatus und Abbrenndauer
+- optionale Diagnoseentität für einen gekoppelten Lüfter
+- adaptive Live-Abfrage:
+  - 10 Sekunden während eines aktiven Abbrands
+  - 60 Sekunden im Normalbetrieb
+  - 5 Minuten nach Kommunikationsfehlern
+- lesender Zugriff auf archivierte Abbrände
+- automatische lokale Historisierung unter `data/history/`
+- stabile SHA-256-ID und Duplikaterkennung
+- atomisches Speichern der JSON-Dateien
+- Import bereits vorhandener Archive
+- begrenzte Wiederholungsversuche für die instabile Geräteschnittstelle
+- portabler systemd-Installer
 
-Der Schwerpunkt liegt auf:
+Das Projekt schreibt keine Daten oder Einstellungen zur Steuerung zurück.
 
--   Live-Daten per MQTT
--   automatischer Home-Assistant-Discovery
--   Archivierung historischer Abbrände
--   langfristiger Historisierung
--   statistischer Auswertung
--   Reverse Engineering des WiFire-Protokolls
+## Getestete Umgebung
 
-Das Projekt ist **kein Ersatz für die originale FireControls-App** und
-verändert **keine Einstellungen** der Kaminsteuerung.
+- Raspberry Pi 3 Model B+
+- Raspberry Pi OS
+- Python 3.11 oder neuer
+- Mosquitto MQTT Broker
+- Home Assistant mit MQTT-Integration
+- FireControls WiFire in der im Projekt untersuchten Geräte-/Firmwarevariante
 
-------------------------------------------------------------------------
+Nicht unterstützt werden die modernere **FireControls WiFire NET**-Variante
+und **WiFire H2O**. Die optionale Lüfterfunktion der unterstützten WiFire
+konnte mangels angeschlossener Hardware nicht praktisch getestet werden.
 
-# Funktionen
+## Netzwerkaufbau
 
--   MQTT-Bridge für Home Assistant
--   MQTT Discovery
--   Temperatur, Türstatus, Luftklappenstellung und Restlaufzeit
--   Dynamische Abfrageintervalle
-    -   10 Sekunden während eines Abbrands
-    -   60 Sekunden im Normalbetrieb
-    -   5 Minuten bei Kommunikationsfehlern
--   Archivauslese
--   Import historischer Abbrände
--   Reverse-Engineering-Werkzeuge
--   Portabler systemd-Installer
+Der Raspberry Pi verwendet zwei Verbindungen:
 
-------------------------------------------------------------------------
-
-# Unterstützte Hardware
-
-## Raspberry Pi
-
-Entwickelt und getestet mit:
-
--   Raspberry Pi 3 Model B+
-
-Andere Raspberry-Pi-Modelle sollten grundsätzlich funktionieren, wurden
-bisher jedoch nicht getestet.
-
-## Kaminsteuerung
-
-Unterstützt:
-
--   FireControls **WiFire**
-
-Nicht unterstützt:
-
--   FireControls **WiFire NET**
--   FireControls **WiFire H2O** (wassergeführte Kaminsteuerung)
-
-------------------------------------------------------------------------
-
-# Projektumfang
-
-Das Projekt stellt ausschließlich **lesende Funktionen** bereit.
-
-Es können unter anderem folgende Informationen ausgelesen werden:
-
--   aktuelle Temperatur
--   Türstatus
--   Luftklappenstellung
--   Restlaufzeit
--   archivierte Abbrände
--   Temperaturverläufe
-
-Es werden **keine Daten zur Kaminsteuerung zurückgeschrieben**.
-
-------------------------------------------------------------------------
-
-# Nicht im Projektumfang (Out of Scope)
-
-Bewusst nicht vorgesehen sind:
-
--   Ändern von Einstellungen der Kaminsteuerung
--   Schließzeitverzögerung ändern
--   Anpassung der Abbrandparameter
--   Firmware-Updates
--   sonstige Schreibzugriffe
-
-Für Konfiguration und Parametrierung ist weiterhin die originale
-FireControls-App vorgesehen.
-
-------------------------------------------------------------------------
-
-# Bekannte Einschränkungen
-
-Die FireControls WiFire unterstützt optionale Zusatzfunktionen.
-
-Folgende Funktion konnte bisher nicht getestet werden:
-
--   Lüftersteuerung (z. B. Abluftsteuerung für ein Kochfeld)
-
-Da diese Hardware an meiner Anlage nicht vorhanden ist, kann hierfür
-derzeit keine Unterstützung zugesichert werden.
-
-------------------------------------------------------------------------
-
-# Projektstruktur
-
-``` text
-wifire-kamin-ha/
-├── docs/
-├── systemd/
-├── tools/
-├── data/
-├── mqtt_discovery.py
-├── wifire_protocol.py
-├── version.py
-├── config.example.py
-├── VERSION
-├── CHANGELOG.md
-└── README.md
+```text
+Heimnetz/MQTT <-- Ethernet --> Raspberry Pi <-- WLAN --> WiFire-Kamin
 ```
 
-------------------------------------------------------------------------
+- `eth0` verbindet den Raspberry mit dem Heimnetz und MQTT-Broker.
+- `wlan0` verbindet ihn ausschließlich mit dem WiFire-WLAN.
+- Die getestete WiFire-Steuerung ist unter `192.168.0.1` erreichbar.
 
-# Installation
+## Installation
 
 Repository klonen:
 
-``` bash
-git clone <repository-url>
+```bash
+git clone https://github.com/peppko14/wifire-kamin-ha.git
 cd wifire-kamin-ha
 ```
 
-Virtuelle Umgebung erstellen:
+Virtuelle Umgebung und Abhängigkeiten einrichten:
 
-``` bash
+```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Konfiguration anlegen:
+Private Konfiguration anlegen:
 
-``` bash
+```bash
 cp config.example.py config.py
+nano config.py
 ```
 
-`config.py` an die eigene Umgebung anpassen.
+Mindestens MQTT-Adresse, Benutzername und Passwort anpassen. `config.py`
+ist von Git ausgeschlossen.
 
-## systemd installieren
+## Manueller Start
 
-``` bash
+```bash
+source venv/bin/activate
+python3 -u mqtt_discovery.py
+```
+
+Mit `Strg+C` wird die Bridge kontrolliert beendet.
+
+## systemd-Dienst
+
+```bash
 chmod +x systemd/install_service_v0.5.1.sh
 sudo systemd/install_service_v0.5.1.sh
 ```
 
-Der Installer erkennt automatisch:
+Der Installer erkennt Benutzer, Projektpfad und Python-Umgebung. Status
+prüfen:
 
--   Linux-Benutzer
--   Projektpfad
--   Python-Interpreter
--   virtuelle Umgebung
-
-------------------------------------------------------------------------
-
-# Home Assistant
-
-Die MQTT-Discovery erzeugt automatisch das Gerät **WiFire-Kamin**.
-
-Bereitgestellt werden unter anderem:
-
--   Temperatur
--   Luftklappenstellung
--   Türstatus
--   Restlaufzeit
--   Diagnoseinformationen
-
-------------------------------------------------------------------------
-
-# Werkzeuge
-
-## Reverse Engineering
-
-``` bash
-python3 tools/reverse_engineering_suite_v1.0.0.py
+```bash
+sudo systemctl status wifire-kamin.service --no-pager -l
 ```
 
-## Archiv-Mapper
+## Home Assistant
 
-``` bash
-python3 tools/archive_mapper_v1.0.0.py
+MQTT Discovery erzeugt automatisch das Gerät **WiFire-Kamin** mit
+Entitäten für:
+
+- Temperatur
+- Luftklappenstellung und Bewegung
+- Türstatus
+- Abbrenndauer
+- Verfügbarkeit
+- drei aktuelle Archivplätze als Diagnoseentitäten
+- optionaler Lüfter-Rohwert
+
+Ein Eintrag in `configuration.yaml` ist nicht erforderlich.
+
+## Lokale Abbrandhistorie
+
+Abgeschlossene Abbrände werden als einzelne JSON-Dateien gespeichert:
+
+```text
+data/history/<startzeit>_<kurze-burn-id>.json
 ```
 
-## Endpunkt-Scanner
+Die ID basiert auf Startzeit, Messpunktanzahl und vollständiger
+Temperaturkurve. Die rotierende Archivnummer gehört bewusst nicht zur
+Identität. Dadurch wird derselbe Abbrand nicht mehrfach gespeichert.
 
-``` bash
-python3 tools/endpoint_scanner_v1.0.0.py
+`data/` enthält persönliche Laufzeitdaten und wird nicht versioniert.
+
+### Bestehende Archive importieren
+
+Da die WiFire-Schnittstelle empfindlich auf schnelle Folgeanfragen
+reagiert, sollten konservative Pausen verwendet werden:
+
+```bash
+python3 -u tools/history_importer_v1_0_1.py \
+  --first 1 \
+  --last 23 \
+  --delay 10 \
+  --retries 5
 ```
 
-## Archiv-Importer
+Während eines manuellen Vollimports sollte der laufende Bridge-Dienst
+gestoppt sein, damit nicht mehrere Prozesse gleichzeitig zugreifen.
 
-``` bash
-python3 tools/archive_importer_v1.0.0.py
+## Projektstruktur
+
+```text
+wifire-kamin-ha/
+├── bridge/              MQTT, Polling, Archiv und Laufzeitsteuerung
+├── history/             IDs, Speicherung und History Manager
+├── protocol/            Datenmodelle und Archivadapter
+├── tests/               automatisierte Unit-Tests
+├── tools/               Import- und Analysewerkzeuge
+├── docs/                Architektur und Entwicklungsrichtlinien
+├── systemd/             portable Dienstinstallation
+├── data/                lokale, nicht versionierte Laufzeitdaten
+├── mqtt_discovery.py    schlanker Programmeinstieg
+├── decoder.py           Live-Dekodierung
+├── wifire_protocol.py   Archivdekodierung
+├── config.example.py    öffentliche Konfigurationsvorlage
+├── VERSION
+└── CHANGELOG.md
 ```
 
-------------------------------------------------------------------------
+## Tests
 
-# Saisonbetrieb
+```bash
+python3 -m unittest discover -s tests -p "test_*.py" -v
+```
 
-Empfohlener Betrieb:
+Version 0.6.0 umfasst 79 automatisierte Tests.
 
--   Oktober bis April: Raspberry Pi eingeschaltet
--   Mai bis September: Raspberry sauber herunterfahren oder stromlos
-    schalten
+## Werkzeuge
 
-------------------------------------------------------------------------
+- `tools/history_importer_v1_0_1.py`: lokale Historie importieren
+- `tools/archive_importer_v1.0.0.py`: Archivdaten untersuchen
+- `tools/archive_mapper_v1.0.0.py`: Archivfelder zuordnen
+- `tools/endpoint_scanner_v1.0.0.py`: bekannte Endpunkte prüfen
+- `tools/reverse_engineering_suite_v1.0.0.py`: Protokollanalyse
 
-# Roadmap
+## Roadmap
 
--   Dauerhafte lokale Historienverwaltung
--   Automatische Sicherung neuer Abbrände
--   Statistikfunktionen
--   Lovelace-Dashboard
+Für eine spätere Version vorgesehen:
 
-------------------------------------------------------------------------
+- Statistiken aus der lokalen Historie
+- Monats- und Saisonvergleiche
+- Home-Assistant-Dashboard
+- weiter vereinheitlichte Protokollschnittstelle
 
-# Lizenz
+## Lizenz
 
-Die Lizenz wird mit einem zukünftigen Release ergänzt.
+Dieses Projekt steht unter der GNU General Public License v3.0 only.
+Details enthält die Datei `LICENSE`.
 
-------------------------------------------------------------------------
+## Haftungsausschluss
 
-# Haftungsausschluss
-
-Dieses Projekt ist ein privates Hobbyprojekt und steht in keiner
-Verbindung zur FireControls GmbH.
-
-Alle genannten Marken- und Produktnamen sind Eigentum ihrer jeweiligen
-Inhaber.
+Dieses private Hobbyprojekt steht in keiner Verbindung zu FireControls.
+Alle Marken- und Produktnamen gehören ihren jeweiligen Inhabern. Die
+Nutzung erfolgt auf eigene Verantwortung.

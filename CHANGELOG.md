@@ -5,6 +5,48 @@ Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert
 Das Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [0.6.0] - 2026-07-13
+
+### Hinzugefügt
+
+- Modulare Bridge-Pakete für MQTT-Topics, Discovery, Publishing,
+  Live-Polling, Archivzugriff, Archiv-Synchronisation, Zeitplanung und
+  Laufzeitsteuerung
+- Zentrale Datenmodelle `LiveStatus` und `BurnRecord`
+- Stabile SHA-256-ID für jeden abgeschlossenen Abbrand
+- Atomische lokale Speicherung unter `data/history/`
+- Duplikaterkennung unabhängig von der rotierenden Archivnummer
+- History Manager für Import und automatische Synchronisation
+- Versioniertes Importwerkzeug `tools/history_importer_v1_0_1.py`
+- Automatische Übernahme neuer Archivdatensätze in die lokale Historie
+- Umfangreiche Unit-Tests für Bridge, Protokolladapter und Historie
+
+### Geändert
+
+- Große Teile der bisherigen Logik aus `mqtt_discovery.py` in klar
+  getrennte, testbare Module ausgelagert
+- Archivzugriffe werden mit begrenzten Wiederholungen und kontrollierten
+  Pausen ausgeführt
+- Archiv-URL wird portabel aus der konfigurierten Live-URL abgeleitet
+- Stabile Pausen von zehn Sekunden sind Standard für Archivzugriffe
+- Zeitplanung und unterbrechbare Wartezeiten sind zentral gekapselt
+- Dokumentation und Beispielkonfiguration an den Stand von v0.6.0
+  angepasst
+- Hardwareabgrenzung zwischen WiFire, WiFire NET und WiFire H2O präzisiert
+
+### Getestet
+
+- 79 automatisierte Tests
+- Import von 22 abgeschlossenen historischen Abbränden
+- Erkennung und Überspringen eines unvollständigen Archivdatensatzes
+- Stabiler Betrieb mit konservativen Pausen für den eingebetteten
+  WiFire-Webserver
+
+### Verschoben
+
+- Statistikberechnungen und ein Home-Assistant-Dashboard sind für eine
+  spätere Version vorgesehen.
+
 ## [0.5.1] - 2026-07-13
 
 ### Hinzugefügt
