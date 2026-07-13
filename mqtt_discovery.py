@@ -33,6 +33,7 @@ from bridge.scheduler import (
 from bridge.topics import MqttTopics
 from decoder import decode_live_data, read_live_data
 from history.manager import create_default_history_manager
+from history.sync import build_archive_url
 from version import APP_VERSION
 
 
@@ -59,7 +60,7 @@ ARCHIVE_UPDATE_INTERVAL = getattr(
 ARCHIVE_REQUEST_DELAY = getattr(
     config,
     "ARCHIVE_REQUEST_DELAY",
-    2,
+    10,
 )
 ARCHIVE_REQUEST_TIMEOUT = getattr(
     config,
@@ -74,10 +75,10 @@ ARCHIVE_RETRY_COUNT = getattr(
 ARCHIVE_RETRY_DELAY = getattr(
     config,
     "ARCHIVE_RETRY_DELAY",
-    5,
+    10,
 )
 
-ARCHIVE_URL = "http://192.168.0.1/direct/35"
+ARCHIVE_URL = build_archive_url(config.WIFIRE_URL)
 ARCHIVE_COMMANDS = {
     "archive_1": "aacc3355023501ffff",
     "archive_2": "aacc3355023502ffff",

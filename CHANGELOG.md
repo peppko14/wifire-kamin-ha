@@ -27,6 +27,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   getrennte, testbare Module ausgelagert
 - Archivzugriffe werden mit begrenzten Wiederholungen und kontrollierten
   Pausen ausgeführt
+- Archiv-URL wird portabel aus der konfigurierten Live-URL abgeleitet
+- Stabile Pausen von zehn Sekunden sind Standard für Archivzugriffe
 - Zeitplanung und unterbrechbare Wartezeiten sind zentral gekapselt
 - Dokumentation und Beispielkonfiguration an den Stand von v0.6.0
   angepasst
