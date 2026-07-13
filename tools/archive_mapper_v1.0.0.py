@@ -25,7 +25,7 @@ from wifire_protocol import decode_archive_record
 __version__ = "1.0.0"
 
 WIFIRE_URL = "http://192.168.0.1/direct/35"
-OUTPUT_DIR = Path.home() / "wifire-reader" / "archive-maps"
+OUTPUT_DIR = Path(__file__).resolve().parent.parent / "data" / "archive-maps"
 REQUEST_TIMEOUT = 15
 
 

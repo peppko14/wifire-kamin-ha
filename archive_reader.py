@@ -19,7 +19,7 @@ COMMANDS = {
     "bereich_00": "aacc33550235003500",
 }
 
-OUTPUT_DIR = Path.home() / "wifire-reader" / "archive"
+OUTPUT_DIR = Path(__file__).resolve().parent / "data" / "archive"
 
 
 def read_block(command: str) -> str:

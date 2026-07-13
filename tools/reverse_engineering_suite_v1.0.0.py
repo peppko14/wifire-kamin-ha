@@ -38,7 +38,7 @@ HOST = "http://192.168.0.1"
 DIRECT_BASE = f"{HOST}/direct"
 ARCHIVE_URL = f"{DIRECT_BASE}/35"
 
-OUTPUT_ROOT = Path.home() / "wifire-reader" / "reverse-engineering"
+OUTPUT_ROOT = Path(__file__).resolve().parent.parent / "data" / "reverse-engineering"
 
 REQUEST_TIMEOUT = 15
 
