@@ -247,12 +247,13 @@ Jede JSON-Datei enthält unter anderem:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "burn_id": "vollständiger SHA-256-Hash",
   "start": "2026-04-22T21:23:00",
   "source_archive_number": 1,
   "measurement_count": 121,
-  "duration_minutes": 121,
+  "duration_minutes": 169,
+  "duration_source": "stage_0_unwrapped",
   "max_temperature_c": 453,
   "max_temperature_minute": 26,
   "temperatures_c": [22, 24, 30],
@@ -261,7 +262,10 @@ Jede JSON-Datei enthält unter anderem:
 }
 ```
 
-Die Historien-Schema-Version ist unabhängig von der Projektversion.
+Die Historien-Schema-Version ist unabhängig von der Projektversion. Ab
+Version 0.9.0 wird ausschließlich Schema 2 unterstützt. Frühere lokale
+Schema-1-Dateien werden einmalig durch einen vollständigen, lesenden Neuimport
+aus dem WiFire-Ringpuffer ersetzt.
 
 ## Fehlerbehandlung
 

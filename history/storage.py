@@ -15,8 +15,8 @@ from history.identifiers import build_burn_id
 from protocol.models import BurnRecord
 
 
-__version__ = "1.0.0"
-HISTORY_SCHEMA_VERSION = 1
+__version__ = "2.0.0"
+HISTORY_SCHEMA_VERSION = 2
 
 
 class HistoryStorageError(RuntimeError):
@@ -120,7 +120,12 @@ class HistoryStorage:
                 f"Historien-Datei enthält kein JSON-Objekt: {path}"
             )
 
-        if data.get("schema_version") != HISTORY_SCHEMA_VERSION:
+        schema_version = data.get("schema_version")
+        if (
+            isinstance(schema_version, bool)
+            or not isinstance(schema_version, int)
+            or schema_version != HISTORY_SCHEMA_VERSION
+        ):
             raise HistoryStorageError(
                 f"Nicht unterstützte Schema-Version in {path}"
             )
