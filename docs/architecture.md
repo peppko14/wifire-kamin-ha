@@ -185,6 +185,13 @@ Datensätze getrennt und atomisch unter `data/history-incomplete/`. Diese
 Diagnose-Dateien besitzen eine eigene stabile ID, werden nicht von der
 Statistik gelesen und verändern die reguläre Historie nicht.
 
+### `history/audit.py`
+
+Prüft reguläre Historie und Diagnoseablage vollständig und ausschließlich
+lesend. Das Audit zählt Schema-Versionen, Qualitätsstatus, Warnungs- und
+Diagnosegründe sowie strukturell nicht lesbare Dateien. Das zugehörige Werkzeug
+`tools/history_audit_v1_0_0.py` unterstützt Text- und JSON-Ausgabe.
+
 ### `history/manager.py`
 
 Validiert Datensätze, erkennt vorhandene IDs und speichert nur neue,
