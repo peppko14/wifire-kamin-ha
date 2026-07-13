@@ -10,11 +10,11 @@ import paho.mqtt.client as mqtt
 
 import config
 from decoder import decode_live_data, read_live_data
+from version import APP_VERSION
 from wifire_protocol import decode_archive_record
 
 
 APP_NAME = "WiFire-Kamin MQTT Bridge"
-APP_VERSION = "0.4.1"
 
 BASE_TOPIC = f"wifire_kamin/{config.DEVICE_ID}"
 STATE_TOPIC = f"{BASE_TOPIC}/state"
