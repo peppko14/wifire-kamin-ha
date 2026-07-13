@@ -23,7 +23,7 @@ from protocol.adapters import archive_record_to_burn_record
 from wifire_protocol import decode_archive_record
 
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 
 Sleeper = Callable[[int | float], None]
@@ -31,6 +31,7 @@ RunningCheck = Callable[[], bool]
 Logger = Callable[[str], None]
 RecordAdapter = Callable[[Any], Any]
 AttributesBuilder = Callable[[Any], dict[str, object]]
+CompletionCallback = Callable[[], Any]
 
 
 class ArchiveReaderLike(Protocol):
@@ -74,6 +75,7 @@ class RingBufferArchiveSynchronizer:
     decoder: Decoder = decode_archive_record
     record_adapter: HistoryRecordAdapter = archive_record_to_burn_record
     attributes_builder: AttributesBuilder = build_archive_attributes
+    on_complete: CompletionCallback | None = None
 
     def _publish_after_local_storage(
         self,
@@ -109,6 +111,16 @@ class RingBufferArchiveSynchronizer:
             on_record_synchronized=self._publish_after_local_storage,
             is_running=self.is_running,
         )
+
+        if self.on_complete is not None:
+            try:
+                self.on_complete()
+            except Exception as error:  # optionale nachgelagerte Integration
+                self.logger(
+                    "Historienstatistik konnte nicht aktualisiert werden: "
+                    f"{error}"
+                )
+
         self.logger(
             "Ringpuffer-Synchronisation beendet: "
             f"{result.sync_result.imported_count} neu, "

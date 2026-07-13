@@ -16,13 +16,17 @@ from bridge.mqtt_client import MqttConnection
 from bridge.polling import LivePoller, PollingSettings
 from bridge.runtime import BridgeRuntime
 from bridge.scheduler import InterruptibleSleeper, IntervalSchedule
+from bridge.statistics import (
+    HistoryStatisticsReporter,
+    parse_statistics_since,
+)
 from bridge.topics import MqttTopics
 from decoder import decode_live_data, read_live_data
 from history.manager import create_default_history_manager
 from history.sync import ArchiveSyncSettings
 
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 
 Logger = Callable[[str], None]
@@ -145,6 +149,13 @@ def create_application(
     history_manager = create_default_history_manager(
         project_dir
     )
+    statistics_reporter = HistoryStatisticsReporter(
+        history_provider=history_manager,
+        publisher=connection.publisher,
+        since=parse_statistics_since(
+            getattr(config_module, "STATISTICS_SINCE", None)
+        ),
+    )
     archive_settings = build_archive_sync_settings(config_module)
     archive_synchronizer = RingBufferArchiveSynchronizer(
         settings=archive_settings,
@@ -152,6 +163,7 @@ def create_application(
         history_manager=history_manager,
         sleeper=sleeper,
         is_running=running_state,
+        on_complete=statistics_reporter.refresh,
     )
     runtime = BridgeRuntime(
         live_poller=live_poller,

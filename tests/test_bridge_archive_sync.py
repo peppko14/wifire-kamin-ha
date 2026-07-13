@@ -324,11 +324,12 @@ class RingBufferArchiveSynchronizerTests(unittest.TestCase):
                 record.archive_number
             ),
             attributes_builder=lambda record: {"maximum": 453},
+            on_complete=lambda: events.append("statistics"),
         )
 
         result = synchronizer.synchronize()
 
-        self.assertEqual(events, ["local", "mqtt"])
+        self.assertEqual(events, ["local", "mqtt", "statistics"])
         self.assertEqual(result.sync_result.imported_count, 1)
 
     def test_mqtt_failure_does_not_undo_local_result(self) -> None:
@@ -394,6 +395,42 @@ class RingBufferArchiveSynchronizerTests(unittest.TestCase):
         synchronizer.synchronize()
 
         self.assertEqual(publisher.archives, [])
+
+    def test_statistics_failure_does_not_change_local_result(self) -> None:
+        messages: list[str] = []
+
+        def fail_statistics() -> None:
+            raise RuntimeError("Statistik nicht verfügbar")
+
+        synchronizer = RingBufferArchiveSynchronizer(
+            settings=self.settings(),
+            history_manager=FakeHistoryManager(
+                HistorySyncResult(("id-1",), (), 0, 0)
+            ),  # type: ignore[arg-type]
+            publisher=FakePublisher(),
+            sleeper=lambda seconds: None,
+            logger=messages.append,
+            raw_reader=lambda url, number: str(number),
+            decoder=lambda raw: make_record(
+                int(raw),
+                datetime(2026, 4, 22, 21, 23),
+            ),
+            record_adapter=lambda record: self.burn_record(
+                record.archive_number
+            ),
+            attributes_builder=lambda record: {},
+            on_complete=fail_statistics,
+        )
+
+        result = synchronizer.synchronize()
+
+        self.assertEqual(result.sync_result.imported_count, 1)
+        self.assertTrue(
+            any(
+                "Historienstatistik konnte nicht aktualisiert" in message
+                for message in messages
+            )
+        )
 
 
 if __name__ == "__main__":
