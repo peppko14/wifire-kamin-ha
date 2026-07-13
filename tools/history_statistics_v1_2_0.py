@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 peppko14
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Zeigt Statistiken aus der lokalen WiFire-Abbrandhistorie an."""
+"""Zeigt Gesamt-, Monats- und Saisonstatistiken der Abbrandhistorie an."""
 
 from __future__ import annotations
 
@@ -14,12 +14,18 @@ import sys
 from typing import Sequence
 
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
+from history.period_statistics import (  # noqa: E402
+    HeatingSeasonStatistics,
+    MonthlyStatistics,
+    calculate_heating_season_statistics,
+    calculate_monthly_statistics,
+)
 from history.statistics import (  # noqa: E402
     HistoryStatistics,
     HistoryStatisticsError,
@@ -53,6 +59,17 @@ def build_parser() -> argparse.ArgumentParser:
         type=parse_since,
         help="Nur Abbrände ab diesem Datum berücksichtigen (inklusiv)",
     )
+    grouping = parser.add_mutually_exclusive_group()
+    grouping.add_argument(
+        "--monthly",
+        action="store_true",
+        help="Statistik nach Kalendermonaten gruppieren",
+    )
+    grouping.add_argument(
+        "--seasons",
+        action="store_true",
+        help="Statistik nach Heizsaisons von Juli bis Juni gruppieren",
+    )
     parser.add_argument(
         "--json",
         action="store_true",
@@ -66,14 +83,39 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def load_records(history_dir: Path) -> list[dict[str, object]]:
+    """Lädt alle lokalen Historiendatensätze."""
+    return HistoryStorage(history_dir).list_records()
+
+
 def load_statistics(
     history_dir: Path,
     *,
     since: datetime | None = None,
 ) -> HistoryStatistics:
-    """Lädt die lokale Historie und berechnet ihre Statistik."""
-    records = HistoryStorage(history_dir).list_records()
-    return calculate_history_statistics(records, since=since)
+    """Lädt die lokale Historie und berechnet ihre Gesamtstatistik."""
+    return calculate_history_statistics(load_records(history_dir), since=since)
+
+
+def load_monthly_statistics(
+    history_dir: Path,
+    *,
+    since: datetime | None = None,
+) -> tuple[MonthlyStatistics, ...]:
+    """Lädt die lokale Historie und berechnet Monatsstatistiken."""
+    return calculate_monthly_statistics(load_records(history_dir), since=since)
+
+
+def load_season_statistics(
+    history_dir: Path,
+    *,
+    since: datetime | None = None,
+) -> tuple[HeatingSeasonStatistics, ...]:
+    """Lädt die lokale Historie und berechnet Heizsaisonstatistiken."""
+    return calculate_heating_season_statistics(
+        load_records(history_dir),
+        since=since,
+    )
 
 
 def _number(value: float | int | None, suffix: str = "") -> str:
@@ -83,7 +125,7 @@ def _number(value: float | int | None, suffix: str = "") -> str:
 
 
 def format_report(statistics: HistoryStatistics) -> str:
-    """Formatiert die Statistik als kompakten deutschen Textbericht."""
+    """Formatiert die Gesamtstatistik als kompakten deutschen Bericht."""
     first = (
         statistics.first_burn_start.isoformat(timespec="minutes")
         if statistics.first_burn_start is not None
@@ -138,28 +180,90 @@ def format_report(statistics: HistoryStatistics) -> str:
     return "\n".join(lines)
 
 
+def _period_line(label: str, statistics: HistoryStatistics) -> str:
+    duration = _number(statistics.average_duration_minutes)
+    average_maximum = _number(statistics.average_max_temperature_c)
+    maximum = _number(statistics.highest_temperature_c)
+    return (
+        f"{label:<10} | {statistics.burn_count:>8} | "
+        f"{statistics.total_duration_minutes:>9} | {duration:>8} | "
+        f"{average_maximum:>7} | {maximum:>7}"
+    )
+
+
+def _format_period_report(
+    title: str,
+    rows: Sequence[tuple[str, HistoryStatistics]],
+) -> str:
+    lines = [
+        title,
+        "-" * len(title),
+        "Zeitraum   | Abbrände | Dauer min | Ø Dauer | Ø Max °C | Max °C",
+        "-----------+----------+-----------+----------+---------+--------",
+    ]
+    lines.extend(_period_line(label, statistics) for label, statistics in rows)
+    if not rows:
+        lines.append("Keine Abbrände im gewählten Zeitraum.")
+    return "\n".join(lines)
+
+
+def format_monthly_report(statistics: Sequence[MonthlyStatistics]) -> str:
+    """Formatiert chronologische Monatsstatistiken als Tabelle."""
+    return _format_period_report(
+        "WiFire-Kamin Monatsstatistik",
+        [(item.month.key, item.statistics) for item in statistics],
+    )
+
+
+def format_season_report(
+    statistics: Sequence[HeatingSeasonStatistics],
+) -> str:
+    """Formatiert chronologische Heizsaisonstatistiken als Tabelle."""
+    return _format_period_report(
+        "WiFire-Kamin Heizsaisonstatistik",
+        [(item.season.label, item.statistics) for item in statistics],
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     try:
-        statistics = load_statistics(
-            args.history_dir,
-            since=args.since,
-        )
+        if args.monthly:
+            periods = load_monthly_statistics(
+                args.history_dir,
+                since=args.since,
+            )
+            payload: object = {
+                "group_by": "month",
+                "periods": [item.to_dict() for item in periods],
+            }
+            report = format_monthly_report(periods)
+        elif args.seasons:
+            periods = load_season_statistics(
+                args.history_dir,
+                since=args.since,
+            )
+            payload = {
+                "group_by": "heating_season",
+                "periods": [item.to_dict() for item in periods],
+            }
+            report = format_season_report(periods)
+        else:
+            statistics = load_statistics(
+                args.history_dir,
+                since=args.since,
+            )
+            payload = statistics.to_dict()
+            report = format_report(statistics)
     except (HistoryStorageError, HistoryStatisticsError) as error:
         print(f"Statistikfehler: {error}", file=sys.stderr)
         return 1
 
     if args.json:
-        print(
-            json.dumps(
-                statistics.to_dict(),
-                indent=2,
-                ensure_ascii=False,
-            )
-        )
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
     else:
-        print(format_report(statistics))
+        print(report)
 
     return 0
 
