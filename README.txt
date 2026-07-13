@@ -14,6 +14,9 @@ Für den Betrieb der MQTT-Bridge werden folgende Dateien benötigt:
   decoder.py
   wifire_protocol.py     <-- wird von mqtt_discovery.py importiert,
                               ohne diese Datei startet der Dienst NICHT
+  version.py             <-- liest die VERSION-Datei aus, wird für das
+                              MQTT-Discovery-Payload benötigt
+  VERSION                <-- einzige Quelle der Versionsnummer
   mqtt_discovery.py
   requirements.txt
 
