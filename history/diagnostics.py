@@ -123,3 +123,42 @@ class HistoryDiagnosticStorage:
             ) from error
 
         return target, True, diagnostic_id
+
+    def load_file(self, path: Path) -> dict[str, object]:
+        """Lädt und prüft eine Diagnose-Datei grundlegend."""
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise HistoryDiagnosticError(
+                f"Diagnose-Datei ist nicht lesbar: {path}"
+            ) from error
+
+        if not isinstance(data, dict):
+            raise HistoryDiagnosticError(
+                f"Diagnose-Datei enthält kein JSON-Objekt: {path}"
+            )
+        if data.get("schema_version") != DIAGNOSTIC_SCHEMA_VERSION:
+            raise HistoryDiagnosticError(
+                f"Nicht unterstützte Diagnose-Schema-Version in {path}"
+            )
+
+        diagnostic_id = data.get("diagnostic_id")
+        quality = data.get("quality")
+        record = data.get("record")
+        if not isinstance(diagnostic_id, str) or len(diagnostic_id) != 64:
+            raise HistoryDiagnosticError(
+                f"Ungültige diagnostic_id in {path}"
+            )
+        if not isinstance(quality, dict) or quality.get("status") != "invalid":
+            raise HistoryDiagnosticError(
+                f"Ungültiger Qualitätsblock in {path}"
+            )
+        if not isinstance(quality.get("issues"), list):
+            raise HistoryDiagnosticError(
+                f"Ungültige Qualitätsmerkmale in {path}"
+            )
+        if not isinstance(record, dict):
+            raise HistoryDiagnosticError(
+                f"Diagnose-Datensatz fehlt in {path}"
+            )
+        return data

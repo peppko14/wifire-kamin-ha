@@ -11,6 +11,7 @@ import unittest
 
 from history.diagnostics import (
     DIAGNOSTIC_SCHEMA_VERSION,
+    HistoryDiagnosticError,
     HistoryDiagnosticStorage,
 )
 from protocol.models import BurnRecord
@@ -95,6 +96,27 @@ class HistoryDiagnosticStorageTests(unittest.TestCase):
             storage.save(record, validate_burn_record(record))
 
             self.assertEqual(list(Path(directory).glob("*.tmp")), [])
+
+    def test_invalid_json_is_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            storage = HistoryDiagnosticStorage(Path(directory))
+            path = Path(directory) / "broken.json"
+            path.write_text("{broken", encoding="utf-8")
+
+            with self.assertRaises(HistoryDiagnosticError):
+                storage.load_file(path)
+
+    def test_unsupported_schema_is_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            storage = HistoryDiagnosticStorage(Path(directory))
+            record = self.incomplete_record()
+            path, _, _ = storage.save(record, validate_burn_record(record))
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload["schema_version"] = 2
+            path.write_text(json.dumps(payload), encoding="utf-8")
+
+            with self.assertRaises(HistoryDiagnosticError):
+                storage.load_file(path)
 
 
 if __name__ == "__main__":
