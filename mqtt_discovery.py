@@ -23,9 +23,9 @@ from bridge.discovery import build_discovery_payload
 from bridge.polling import (
     LivePoller,
     PollingSettings,
-    get_next_poll_interval,
 )
 from bridge.publisher import MqttPublisher
+from bridge.runtime import BridgeRuntime
 from bridge.scheduler import (
     InterruptibleSleeper,
     IntervalSchedule,
@@ -102,6 +102,12 @@ def require_publisher() -> MqttPublisher:
             "MQTT-Publisher wurde noch nicht initialisiert."
         )
     return publisher
+
+
+def remember_latest_state(data: dict[str, Any]) -> None:
+    """Speichert den letzten Zustand für MQTT-Neuverbindungen."""
+    global latest_state
+    latest_state = data
 
 
 def publish_discovery(client: mqtt.Client) -> None:
@@ -201,7 +207,6 @@ def on_disconnect(
 
 def main() -> None:
     """Startet die MQTT-Bridge und die adaptive Polling-Schleife."""
-    global latest_state
     global publisher
 
     signal.signal(signal.SIGINT, stop_program)
@@ -254,8 +259,6 @@ def main() -> None:
 
     client.loop_start()
 
-    consecutive_failures = 0
-    availability_online = True
     archive_schedule = IntervalSchedule(
         ARCHIVE_UPDATE_INTERVAL
     )
@@ -281,73 +284,20 @@ def main() -> None:
         sleeper=sleeper,
         is_running=lambda: running,
     )
+    runtime = BridgeRuntime(
+        live_poller=LIVE_POLLER,
+        publisher=publisher,
+        archive_synchronizer=archive_synchronizer,
+        archive_schedule=archive_schedule,
+        polling_settings=POLLING_SETTINGS,
+        sleeper=sleeper,
+        is_running=lambda: running,
+        offline_after_failures=OFFLINE_AFTER_FAILURES,
+        on_state=remember_latest_state,
+    )
 
     try:
-        while running:
-            read_failed = False
-
-            try:
-                data = LIVE_POLLER.poll()
-
-                latest_state = data
-                consecutive_failures = 0
-
-                if not availability_online:
-                    publisher.publish_availability(True)
-                    availability_online = True
-
-                publisher.publish_state(data)
-
-                print(
-                    f"{data['temperature_c']} °C | "
-                    f"{data['flap_percent']} % | "
-                    f"{data['burn_time']} | "
-                    f"Tür {data['door_state']}"
-                )
-
-            except (OSError, ValueError) as error:
-                read_failed = True
-                consecutive_failures += 1
-
-                print(
-                    f"Lesefehler {consecutive_failures}/"
-                    f"{OFFLINE_AFTER_FAILURES}: {error}"
-                )
-
-                if (
-                    consecutive_failures
-                    >= OFFLINE_AFTER_FAILURES
-                    and availability_online
-                ):
-                    publisher.publish_availability(False)
-                    availability_online = False
-
-                    print(
-                        "WiFire-Kamin wird als offline gemeldet."
-                    )
-
-            now = time.monotonic()
-
-            if archive_schedule.is_due(now):
-                archive_synchronizer.synchronize()
-                archive_schedule.mark_updated(
-                    time.monotonic()
-                )
-
-            next_interval, interval_reason = (
-                get_next_poll_interval(
-                    latest_state,
-                    read_failed,
-                    POLLING_SETTINGS,
-                )
-            )
-
-            print(
-                f"Nächste Abfrage in {next_interval} Sekunden "
-                f"({interval_reason})."
-            )
-
-            sleeper(next_interval)
+        runtime.run()
 
     finally:
         publisher.publish_availability(False)
