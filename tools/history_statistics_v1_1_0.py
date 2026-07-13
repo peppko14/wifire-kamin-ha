@@ -7,13 +7,14 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import json
 from pathlib import Path
 import sys
 from typing import Sequence
 
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 if str(PROJECT_DIR) not in sys.path:
@@ -27,6 +28,16 @@ from history.statistics import (  # noqa: E402
 from history.storage import HistoryStorage, HistoryStorageError  # noqa: E402
 
 
+def parse_since(value: str) -> datetime:
+    """Liest ein ISO-Datum oder einen ISO-Zeitstempel inklusiv ein."""
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            "--since erwartet YYYY-MM-DD oder einen ISO-Zeitstempel."
+        ) from error
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Wertet die lokale WiFire-Abbrandhistorie aus."
@@ -36,6 +47,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=PROJECT_DIR / "data" / "history",
         help="Pfad zum Historienordner (Standard: data/history)",
+    )
+    parser.add_argument(
+        "--since",
+        type=parse_since,
+        help="Nur Abbrände ab diesem Datum berücksichtigen (inklusiv)",
     )
     parser.add_argument(
         "--json",
@@ -50,10 +66,14 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def load_statistics(history_dir: Path) -> HistoryStatistics:
+def load_statistics(
+    history_dir: Path,
+    *,
+    since: datetime | None = None,
+) -> HistoryStatistics:
     """Lädt die lokale Historie und berechnet ihre Statistik."""
     records = HistoryStorage(history_dir).list_records()
-    return calculate_history_statistics(records)
+    return calculate_history_statistics(records, since=since)
 
 
 def _number(value: float | int | None, suffix: str = "") -> str:
@@ -83,15 +103,18 @@ def format_report(statistics: HistoryStatistics) -> str:
     lines = [
         "WiFire-Kamin Abbrandstatistik",
         "-----------------------------",
-        f"Gespeicherte Abbrände:       {statistics.burn_count}",
-        f"Erster Abbrand:              {first}",
-        f"Neuester Abbrand:            {latest}",
+        f"Gespeicherte Datensätze:      {statistics.source_record_count}",
+        f"Berücksichtigte Abbrände:     {statistics.burn_count}",
+        f"Ausgefilterte Datensätze:     {statistics.excluded_record_count}",
+        f"Abbrände mit Dauer:           {statistics.duration_record_count}",
+        f"Erster Abbrand:               {first}",
+        f"Neuester Abbrand:             {latest}",
         (
-            "Gesamtdauer:                 "
+            "Gesamte Abbrenndauer:        "
             f"{statistics.total_duration_minutes} min"
         ),
         (
-            "Durchschnittliche Dauer:     "
+            "Mittlere Abbrenndauer:       "
             f"{_number(statistics.average_duration_minutes, ' min')}"
         ),
         (
@@ -119,7 +142,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     try:
-        statistics = load_statistics(args.history_dir)
+        statistics = load_statistics(
+            args.history_dir,
+            since=args.since,
+        )
     except (HistoryStorageError, HistoryStatisticsError) as error:
         print(f"Statistikfehler: {error}", file=sys.stderr)
         return 1
