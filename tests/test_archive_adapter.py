@@ -73,6 +73,9 @@ class ArchiveAdapterTests(unittest.TestCase):
 
         self.assertEqual(result.max_temperature_c, 620)
         self.assertEqual(result.max_temperature_minute, 3)
+        self.assertEqual(result.measurement_count, 5)
+        self.assertEqual(result.duration_minutes, 164)
+        self.assertEqual(result.duration_source, "stage_0_unwrapped")
         self.assertTrue(result.is_complete)
 
 

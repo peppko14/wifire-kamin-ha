@@ -12,10 +12,14 @@ from dataclasses import dataclass
 from typing import Any, Callable, ContextManager, Protocol
 from urllib.request import Request, urlopen
 
+from protocol.duration import (
+    DURATION_SOURCE_STAGE_0,
+    calculate_duration_minutes,
+)
 from wifire_protocol import decode_archive_record
 
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 
 class HttpResponse(Protocol):
@@ -124,12 +128,22 @@ def build_archive_attributes(
         if record.timestamp
         else None
     )
+    duration = calculate_duration_minutes(
+        stage_90_minute=record.stage_90_minute,
+        stage_75_minute=record.stage_75_minute,
+        stage_50_minute=record.stage_50_minute,
+        stage_25_minute=record.stage_25_minute,
+        stage_0_minute=record.stage_0_minute,
+    )
 
     return {
         "archive_number": record.archive_number,
         "start": timestamp,
         "measurement_count": record.measurement_count,
-        "duration_minutes": record.measurement_count,
+        "duration_minutes": duration,
+        "duration_source": (
+            DURATION_SOURCE_STAGE_0 if duration is not None else None
+        ),
         "start_temperature_c": record.start_temperature_c,
         "end_temperature_c": record.end_temperature_c,
         "max_temperature_c": record.max_temperature_c,
