@@ -1,6 +1,6 @@
 # Entwicklungsrichtlinien
 
-Dokumentversion: 1.2.0
+Dokumentversion: 1.3.0
 
 Diese Regeln gelten für die WiFire-Kamin Home Assistant Bridge.
 
@@ -83,6 +83,14 @@ lesende Archivabfrage transportiert.
 - JSON-Dateien werden atomisch geschrieben.
 - Bereits vorhandene Abbrände werden nicht überschrieben.
 - Änderungen am JSON-Format erfordern eine neue Historien-Schema-Version.
+- `measurement_count` darf nicht als Abbrenndauer verwendet werden.
+- Die Dauer wird zentral in `protocol/duration.py` berechnet.
+- Qualitätsregeln gehören ausschließlich nach `protocol/quality.py`.
+- Reguläre Schema-2-Dateien benötigen einen geprüften `quality`-Block.
+- Ungültige und unvollständige Datensätze gehören ausschließlich nach
+  `data/history-incomplete/` und dürfen nicht in Statistiken einfließen.
+- Beobachtete Ringpuffergrenzen dürfen nicht als gesicherte Protokollgrenzen
+  dokumentiert oder als fachliche Validierungsgrenze verwendet werden.
 
 ## Netzwerk und Fehlerbehandlung
 
