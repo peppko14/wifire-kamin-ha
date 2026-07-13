@@ -15,9 +15,12 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
   - 5 Minuten nach Kommunikationsfehlern
 - lesender Zugriff auf archivierte Abbrände
 - automatische lokale Historisierung unter `data/history/`
-- schonende Synchronisation des vollständigen Ringpuffers mit 23 Plätzen
+- schonende Synchronisation der bekannten Ringpufferplätze 1 bis 23
 - stabile SHA-256-ID und Duplikaterkennung
 - atomisches Speichern der JSON-Dateien
+- Historien-Schema 2 mit zentraler Dauer- und Qualitätsdefinition
+- getrennte Diagnoseablage für unvollständige Datensätze
+- rein lesendes Audit für Historie und Diagnoseablage
 - Import bereits vorhandener Archive
 - lokale Abbrandstatistik mit optionalem Datumsfilter
 - sechs automatisch erkannte Statistikentitäten in Home Assistant
@@ -155,6 +158,9 @@ Identität. Dadurch wird derselbe Abbrand nicht mehrfach gespeichert.
 
 `data/` enthält persönliche Laufzeitdaten und wird nicht versioniert.
 
+Das vollständige Schema, die Dauerdefinition und alle Qualitätsregeln sind in
+[`docs/history-schema.md`](docs/history-schema.md) dokumentiert.
+
 ### Bestehende Archive importieren
 
 Da die WiFire-Schnittstelle empfindlich auf schnelle Folgeanfragen
@@ -225,7 +231,22 @@ ohne Abbrand besitzen Anzahl und Dauer `0`; nicht berechenbare Mittel- oder
 Höchsttemperaturen bleiben unbekannt.
 
 Die Abbrenndauer wird aus den Phasenzeitpunkten rekonstruiert. Dabei werden
-Überläufe der als Byte gespeicherten Minutenwerte berücksichtigt.
+Überläufe der als Byte gespeicherten Minutenwerte berücksichtigt. Maßgeblich
+ist der entrollte Zeitpunkt der Klappenstellung 0 %. Die Anzahl der
+Temperaturmesspunkte ist ausdrücklich keine Dauerangabe.
+
+## Historien-Audit
+
+Historie und Diagnoseablage können vollständig und ohne Kaminzugriff geprüft
+werden:
+
+```bash
+python3 tools/history_audit_v1_0_0.py
+```
+
+Mit `--json` entsteht eine maschinenlesbare Ausgabe. Dateien mit unsicheren
+Zeitstempeln bleiben verwendbar und werden als Warnung ausgewiesen;
+strukturell beschädigte Dateien führen zu einem Fehlerstatus.
 
 ## Projektstruktur
 
@@ -253,12 +274,13 @@ wifire-kamin-ha/
 python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Version 0.8.0 umfasst 173 automatisierte Tests.
+Der Entwicklungsstand für Version 0.9.0 umfasst 215 automatisierte Tests.
 
 ## Werkzeuge
 
 - `tools/history_importer_v1_0_1.py`: lokale Historie importieren
 - `tools/history_statistics_v1_2_0.py`: Gesamt-, Monats- und Saisonstatistik
+- `tools/history_audit_v1_0_0.py`: Historie und Diagnoseablage prüfen
 - `tools/archive_importer_v1.0.0.py`: Archivdaten untersuchen
 - `tools/archive_mapper_v1.0.0.py`: Archivfelder zuordnen
 - `tools/endpoint_scanner_v1.0.0.py`: bekannte Endpunkte prüfen
