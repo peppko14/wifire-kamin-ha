@@ -8,6 +8,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from protocol.duration import (
+    DURATION_SOURCE_STAGE_0,
+    calculate_duration_minutes,
+)
+
 
 @dataclass(frozen=True, slots=True)
 class LiveStatus:
@@ -69,14 +74,22 @@ class BurnRecord:
         return len(self.temperatures_c)
 
     @property
-    def duration_minutes(self) -> int:
-        """
-        Vorläufige Dauerdefinition.
+    def duration_minutes(self) -> int | None:
+        """Dauer bis zur Klappenstellung 0 %, inklusive Byte-Überläufen."""
+        return calculate_duration_minutes(
+            stage_90_minute=self.stage_90_minute,
+            stage_75_minute=self.stage_75_minute,
+            stage_50_minute=self.stage_50_minute,
+            stage_25_minute=self.stage_25_minute,
+            stage_0_minute=self.stage_0_minute,
+        )
 
-        Bis zur endgültigen fachlichen Festlegung entspricht die Dauer der
-        Anzahl der Messpunkte.
-        """
-        return self.measurement_count
+    @property
+    def duration_source(self) -> str | None:
+        """Kennzeichnet die fachliche Quelle der berechneten Dauer."""
+        if self.duration_minutes is None:
+            return None
+        return DURATION_SOURCE_STAGE_0
 
     @property
     def start_temperature_c(self) -> int | None:
@@ -127,6 +140,7 @@ class BurnRecord:
             "source_archive_number": self.source_archive_number,
             "measurement_count": self.measurement_count,
             "duration_minutes": self.duration_minutes,
+            "duration_source": self.duration_source,
             "start_temperature_c": self.start_temperature_c,
             "end_temperature_c": self.end_temperature_c,
             "max_temperature_c": self.max_temperature_c,

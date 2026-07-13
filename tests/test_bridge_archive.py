@@ -149,7 +149,11 @@ class ArchiveReaderTests(unittest.TestCase):
         self.assertEqual(attributes["archive_number"], 3)
         self.assertEqual(attributes["start"], "2026-04-11T02:21")
         self.assertEqual(attributes["max_temperature_c"], 620)
-        self.assertEqual(attributes["duration_minutes"], 121)
+        self.assertEqual(attributes["duration_minutes"], 164)
+        self.assertEqual(
+            attributes["duration_source"],
+            "stage_0_unwrapped",
+        )
         self.assertEqual(
             attributes["temperatures_c"],
             [48, 69, 119],
