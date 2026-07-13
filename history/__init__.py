@@ -3,6 +3,17 @@
 
 """Historienverwaltung für WiFire-Abbrände."""
 
+from .diagnostics import (
+    DIAGNOSTIC_SCHEMA_VERSION,
+    HistoryDiagnosticError,
+    HistoryDiagnosticStorage,
+)
 from .identifiers import build_burn_id, build_canonical_burn_text
 
-__all__ = ["build_burn_id", "build_canonical_burn_text"]
+__all__ = [
+    "DIAGNOSTIC_SCHEMA_VERSION",
+    "HistoryDiagnosticError",
+    "HistoryDiagnosticStorage",
+    "build_burn_id",
+    "build_canonical_burn_text",
+]

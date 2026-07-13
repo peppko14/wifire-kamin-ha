@@ -178,6 +178,13 @@ Speicherort:
 data/history/<startzeit>_<erste-12-Zeichen-der-burn-id>.json
 ```
 
+### `history/diagnostics.py`
+
+Speichert unvollständige oder fachlich ungültige, aber bereits dekodierbare
+Datensätze getrennt und atomisch unter `data/history-incomplete/`. Diese
+Diagnose-Dateien besitzen eine eigene stabile ID, werden nicht von der
+Statistik gelesen und verändern die reguläre Historie nicht.
+
 ### `history/manager.py`
 
 Validiert Datensätze, erkennt vorhandene IDs und speichert nur neue,
