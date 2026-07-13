@@ -18,6 +18,7 @@ import paho.mqtt.client as mqtt
 import config
 from bridge.discovery import build_discovery_payload
 from bridge.polling import (
+    LivePoller,
     PollingSettings,
     get_next_poll_interval,
 )
@@ -38,6 +39,7 @@ TOPICS = MqttTopics(
 )
 
 POLLING_SETTINGS = PollingSettings.from_config(config)
+LIVE_POLLER = LivePoller(read_live_data, decode_live_data)
 OFFLINE_AFTER_FAILURES = getattr(
     config,
     "OFFLINE_AFTER_FAILURES",
@@ -422,8 +424,7 @@ def main() -> None:
             read_failed = False
 
             try:
-                raw = read_live_data()
-                data = decode_live_data(raw)
+                data = LIVE_POLLER.poll()
 
                 latest_state = data
                 consecutive_failures = 0
