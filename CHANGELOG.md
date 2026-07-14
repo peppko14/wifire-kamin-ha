@@ -7,7 +7,9 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Dashboard-Datenmodell
+## [0.12.0] - 2026-07-14
+
+### Brennkurven-Dashboard
 
 - Kompakte Brennkurven-Momentaufnahme für Home Assistant
 - Genau drei Temperaturreihen: Durchschnitt, repräsentativer Abbrand und
@@ -20,6 +22,14 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Automatische Aktualisierung nach der seltenen Ringpuffer-Synchronisation
 - Optionaler, vom Statistikzeitraum unabhängiger Kurvenfilter
 - Dokumentiertes Plotly-Dashboard für den interaktiven Vergleich
+
+### Getestet
+
+- 292 automatisierte Tests ohne Kamin, MQTT-Broker oder Home Assistant
+- Reale Momentaufnahme aus 16 gefilterten Abbränden mit 121 Messpunkten
+- Home-Assistant-Entität mit Schema 1 sowie den Reihen `average`,
+  `representative` und `hottest`
+- Alle drei Temperaturarrays mit jeweils 121 Werten praktisch verifiziert
 
 ## [0.11.0] - 2026-07-14
 

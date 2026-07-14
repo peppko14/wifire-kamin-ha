@@ -111,6 +111,10 @@ lesende Archivabfrage transportiert.
 - Jede Entität besitzt eine stabile `unique_id`.
 - Alle Entitäten gehören zum Gerät `WiFire-Kamin`.
 - Ein MQTT-Ausfall darf vorhandene lokale Historien nicht beschädigen.
+- Historische Einzelkurven dürfen nicht als wachsende Anzahl eigener
+  Entitäten veröffentlicht werden.
+- Brennkurvenattribute sind auf drei Referenzreihen und höchstens 16 KiB je
+  retained Nachricht begrenzt.
 
 ## Tests
 
