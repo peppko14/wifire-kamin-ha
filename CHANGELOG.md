@@ -7,6 +7,13 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Brennkurven
+
+- Unveränderliche Modelle für Messpunkte und historische Brennkurven
+- Explizite `sample_index`-Achse ohne unbestätigte Zeitannahme
+- Streng validierter Loader für Historien-Schema 2
+- Konsistenzprüfung von SHA-256-ID, Messpunkten und abgeleiteten Kennzahlen
+
 ## [0.10.0] - 2026-07-14
 
 ### Entwicklungsqualität
