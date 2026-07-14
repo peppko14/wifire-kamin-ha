@@ -7,6 +7,13 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Entwicklungsqualität
+
+- `slots=True` ist für alle Dataclasses verbindlich
+- Repositoryweiter AST-Konventionstest verhindert neue Dataclasses ohne
+  `slots=True`
+- Bestehende Protokollmodelle auf speichersparende Slots umgestellt
+
 ## [0.9.0] - 2026-07-14
 
 ### Hinzugefügt
