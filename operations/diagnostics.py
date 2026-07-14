@@ -21,7 +21,7 @@ from urllib.request import Request, urlopen
 
 from history.audit import audit_history
 from history.backup import HistoryBackupError, verify_backup
-from wifire_protocol import decode_live_status
+from protocol.live import decode_live_status
 
 
 __version__ = "1.0.0"

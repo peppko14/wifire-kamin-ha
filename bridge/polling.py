@@ -7,10 +7,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping
+from typing import Callable
+
+from protocol.models import LiveStatus
 
 
-__version__ = "1.1.0"
+__version__ = "2.0.0"
 
 
 NORMAL_UPDATE_INTERVAL = 60
@@ -19,9 +21,8 @@ ERROR_RETRY_INTERVAL = 300
 ACTIVE_FIRE_TEMPERATURE_C = 40
 
 
-LiveState = dict[str, Any]
 LiveReader = Callable[[], str]
-LiveDecoder = Callable[[str], LiveState]
+LiveDecoder = Callable[[str], LiveStatus]
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,7 +32,7 @@ class LivePoller:
     reader: LiveReader
     decoder: LiveDecoder
 
-    def poll(self) -> LiveState:
+    def poll(self) -> LiveStatus:
         """Gibt den dekodierten Live-Zustand zurück."""
         return self.decoder(self.reader())
 
@@ -80,7 +81,7 @@ class PollingSettings:
 
 
 def get_next_poll_interval(
-    current_state: Mapping[str, Any] | None,
+    current_state: LiveStatus | None,
     read_failed: bool,
     settings: PollingSettings,
 ) -> tuple[int, str]:
@@ -89,7 +90,7 @@ def get_next_poll_interval(
         return settings.error_retry_interval, "Lesefehler"
 
     if (
-        current_state["temperature_c"]
+        current_state.temperature_c
         >= settings.active_fire_temperature_c
     ):
         return (
