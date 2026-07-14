@@ -85,6 +85,26 @@ class DiscoveryTests(unittest.TestCase):
             payload["components"],
         )
 
+    def test_payload_contains_dashboard_curve_component(self) -> None:
+        components = build_discovery_payload(
+            FakeConfig,
+            self.topics,
+            app_name="Bridge",
+            app_version="0.12.0",
+        )["components"]
+
+        component = components["wifire_kamin_dashboard_curves"]
+        self.assertEqual(
+            component["state_topic"],
+            "wifire_kamin/wifire_kamin/dashboard_curves",
+        )
+        self.assertEqual(
+            component["json_attributes_topic"],
+            "wifire_kamin/wifire_kamin/dashboard_curves",
+        )
+        self.assertEqual(component["device_class"], "timestamp")
+        self.assertEqual(component["entity_category"], "diagnostic")
+
     def test_payload_contains_six_statistics_components(self) -> None:
         payload = build_discovery_payload(
             FakeConfig,

@@ -297,6 +297,12 @@ Abbrand mit der höchsten Einzeltemperatur. Die Achse bleibt bewusst ein
 `sample_index` und wird nicht ohne Protokollnachweis als Minute bezeichnet.
 Details stehen in [`docs/burn-curves.md`](docs/burn-curves.md).
 
+Für Home Assistant verdichtet die Bridge die Historie auf genau drei Reihen:
+Durchschnitt, repräsentativer Abbrand und heißester Abbrand. MQTT Discovery
+stellt sie als eine gemeinsame Diagnoseentität bereit. Ein Beispiel für ein
+interaktives Diagramm steht in
+[`docs/home-assistant-dashboard.md`](docs/home-assistant-dashboard.md).
+
 ## Projektstruktur
 
 ```text
