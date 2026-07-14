@@ -7,7 +7,11 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-07-15
+
 ### Code-Hardening
+
+- Optionale MQTT-TLS-Unterstützung als offener Backlog-Punkt dokumentiert
 
 - Threadübergreifenden Zugriff auf den letzten MQTT-Live-Status durch
   einen expliziten Lock und stabile Snapshots abgesichert
