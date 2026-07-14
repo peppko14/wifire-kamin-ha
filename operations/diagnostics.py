@@ -153,11 +153,14 @@ def check_configuration(config: object) -> DiagnosticCheck:
             status=CheckStatus.ERROR,
             message="; ".join(errors) + ".",
         )
+    assert isinstance(mqtt_port, int)
+    assert not isinstance(mqtt_port, bool)
+    validated_mqtt_port = mqtt_port
     return DiagnosticCheck(
         name="configuration",
         status=CheckStatus.OK,
         message="Öffentliche Verbindungsparameter sind plausibel.",
-        details=(("mqtt_port", mqtt_port),),
+        details=(("mqtt_port", validated_mqtt_port),),
     )
 
 

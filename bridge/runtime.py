@@ -40,7 +40,7 @@ class PublisherLike(Protocol):
 
 
 class ArchiveSynchronizerLike(Protocol):
-    def synchronize(self) -> None:
+    def synchronize(self) -> object:
         ...
 
 

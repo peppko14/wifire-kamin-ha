@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Mapping, Protocol
+from typing import Callable, Protocol
 
 from history.period_statistics import (
     CurrentPeriodStatistics,
@@ -73,7 +73,7 @@ class HistoryStatisticsReporter:
 
     def refresh(self) -> HistoryStatistics:
         """Liest die Historie neu ein und veröffentlicht eine Momentaufnahme."""
-        records: list[Mapping[str, object]] = self.history_provider.list_history()
+        records = self.history_provider.list_history()
         statistics = calculate_history_statistics(
             records,
             since=self.since,

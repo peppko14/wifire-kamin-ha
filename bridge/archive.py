@@ -40,6 +40,15 @@ class UrlOpener(Protocol):
         ...
 
 
+def open_url(
+    request: Request,
+    *,
+    timeout: int,
+) -> ContextManager[HttpResponse]:
+    """Ruft den Standard-URL-Opener mit klarer Testschnittstelle auf."""
+    return urlopen(request, timeout=timeout)
+
+
 ArchiveDecoder = Callable[[str], Any]
 Sleeper = Callable[[int | float], None]
 Logger = Callable[[str], None]
@@ -54,7 +63,7 @@ class ArchiveReader:
     retry_count: int = 3
     retry_delay: int | float = 5
     sleeper: Sleeper = time.sleep
-    opener: UrlOpener = urlopen
+    opener: UrlOpener = open_url
     decoder: ArchiveDecoder = decode_archive_record
     logger: Logger = print
 

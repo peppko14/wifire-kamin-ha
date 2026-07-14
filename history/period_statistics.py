@@ -174,6 +174,17 @@ def calculate_current_period_statistics(
         )
     }
 
+    season_values = tuple(
+        seasons.get(
+            season,
+            HeatingSeasonStatistics(
+                season=season,
+                statistics=calculate_history_statistics([]),
+            ),
+        )
+        for season in target_seasons
+    )
+
     return CurrentPeriodStatistics(
         month=monthly.get(
             current_month,
@@ -182,14 +193,9 @@ def calculate_current_period_statistics(
                 statistics=calculate_history_statistics([]),
             ),
         ),
-        seasons=tuple(
-            seasons.get(
-                season,
-                HeatingSeasonStatistics(
-                    season=season,
-                    statistics=calculate_history_statistics([]),
-                ),
-            )
-            for season in target_seasons
+        seasons=(
+            season_values[0],
+            season_values[1],
+            season_values[2],
         ),
     )

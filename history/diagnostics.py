@@ -33,6 +33,7 @@ class HistoryDiagnosticStorage:
 
     def build_diagnostic_id(self, record: BurnRecord) -> str:
         """Erzeugt eine stabile ID ohne Anforderungen der regulären Burn-ID."""
+        identity: dict[str, object]
         if record.start is not None:
             identity = {
                 "start": record.start.isoformat(timespec="seconds"),

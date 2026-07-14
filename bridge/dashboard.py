@@ -123,6 +123,7 @@ class DashboardCurveSeries:
             "temperatures_c": list(self.temperatures_c),
         }
         if self.burn_id is not None:
+            assert self.start is not None
             result.update(
                 {
                     "burn_id": self.burn_id,

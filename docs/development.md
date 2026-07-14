@@ -152,6 +152,24 @@ Der Konventionstest prüft repositoryweit automatisch, dass jede Dataclass
 - nur die vorgesehenen Dateien mit `git add <dateien>` aufnehmen,
 - temporäre Downloads und Sicherungskopien nicht committen.
 
+## Automatisierte Qualitätssicherung
+
+GitHub Actions prüft jeden Push und Pull Request mit Python 3.11 und 3.13.
+Die Pipeline führt die vollständigen Unit-Tests, Ruff und Mypy aus. Die lokal
+reproduzierbaren Befehle lauten:
+
+```bash
+python3 -m pip install -r requirements.txt -r requirements-dev.txt
+python3 -m unittest discover -s tests -p "test_*.py" -v
+python3 -m ruff check .
+python3 -m mypy
+```
+
+Ruff startet mit seinen fehlerorientierten Pyflakes- und Pycodestyle-Regeln.
+Mypy prüft den produktiven Code unter `bridge/`, `history/`, `operations/` und
+`protocol/`. Der Prüfumfang darf nur in einem begründeten Hardening-Commit
+verändert werden.
+
 ## Versionsverwaltung
 
 Die Projektversion steht zentral in `VERSION`; `version.py` liest sie zur

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 
 from protocol.models import BurnRecord
@@ -16,7 +17,7 @@ class ArchiveRecordLike(Protocol):
     """Benötigte Schnittstelle des bestehenden Archivdatensatzes."""
 
     archive_number: int
-    timestamp: object
+    timestamp: datetime | None
     stage_90_minute: int | None
     stage_75_minute: int | None
     stage_50_minute: int | None
