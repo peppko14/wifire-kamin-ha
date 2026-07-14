@@ -40,3 +40,8 @@ ARCHIVE_RETRY_DELAY = 10
 # Statistikfilter; None berücksichtigt alle gespeicherten Datensätze.
 # Beispiel zum Ausschließen falsch datierter Altbestände: "2026-01-01"
 STATISTICS_SINCE = None
+
+# Kurvenfilter; ohne eigenen Wert wird STATISTICS_SINCE verwendet.
+# Warnungen bleiben standardmäßig sichtbar, aber ungültige Datensätze nie.
+DASHBOARD_CURVES_SINCE = STATISTICS_SINCE
+DASHBOARD_INCLUDE_WARNINGS = True

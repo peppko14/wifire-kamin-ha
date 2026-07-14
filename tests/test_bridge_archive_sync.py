@@ -427,7 +427,7 @@ class RingBufferArchiveSynchronizerTests(unittest.TestCase):
         self.assertEqual(result.sync_result.imported_count, 1)
         self.assertTrue(
             any(
-                "Historienstatistik konnte nicht aktualisiert" in message
+                "Historienausgaben konnten nicht aktualisiert" in message
                 for message in messages
             )
         )

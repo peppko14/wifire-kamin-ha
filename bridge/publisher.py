@@ -8,12 +8,13 @@ from __future__ import annotations
 import json
 from typing import Any, Protocol
 
+from bridge.dashboard import DashboardCurveSnapshot
 from bridge.topics import MqttTopics
 from history.period_statistics import CurrentPeriodStatistics
 from history.statistics import HistoryStatistics
 
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 
 class MqttPublisherClient(Protocol):
@@ -116,6 +117,18 @@ class MqttPublisher:
                 statistics.to_dict(),
                 ensure_ascii=False,
             ),
+            qos=1,
+            retain=True,
+        )
+
+    def publish_dashboard_snapshot(
+        self,
+        snapshot: DashboardCurveSnapshot,
+    ) -> None:
+        """Veröffentlicht den kompakten Kurvenvergleich retained."""
+        self.client.publish(
+            self.topics.dashboard_curves,
+            payload=snapshot.to_json(),
             qos=1,
             retain=True,
         )

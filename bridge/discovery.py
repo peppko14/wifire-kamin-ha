@@ -10,7 +10,7 @@ from typing import Protocol
 from bridge.topics import MqttTopics
 
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 
 class DiscoveryConfig(Protocol):
@@ -106,6 +106,18 @@ def build_discovery_payload(
             "entity_category": "diagnostic",
             "icon": "mdi:fan",
         }
+
+    components[f"{config.DEVICE_ID}_dashboard_curves"] = {
+        "platform": "sensor",
+        "name": "Brennkurven-Vergleich",
+        "unique_id": f"{config.DEVICE_ID}_dashboard_curves",
+        "state_topic": topics.dashboard_curves,
+        "value_template": "{{ value_json.generated_at }}",
+        "json_attributes_topic": topics.dashboard_curves,
+        "device_class": "timestamp",
+        "entity_category": "diagnostic",
+        "icon": "mdi:chart-multiple",
+    }
 
     for number in archive_numbers:
         components[f"{config.DEVICE_ID}_archive_{number}"] = {
