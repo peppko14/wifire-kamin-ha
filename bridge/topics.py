@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +37,10 @@ class MqttTopics:
     @property
     def period_statistics(self) -> str:
         return f"{self.base}/period_statistics"
+
+    @property
+    def dashboard_curves(self) -> str:
+        return f"{self.base}/dashboard_curves"
 
     @property
     def home_assistant_status(self) -> str:

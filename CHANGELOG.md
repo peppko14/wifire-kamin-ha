@@ -15,6 +15,11 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Explizite `sample_index`-Achse ohne unbestätigte Zeitannahme
 - Temperaturarrays statt einzelner Punktobjekte für kleine MQTT-Payloads
 - Feste Größengrenze von 16 KiB mit automatischer Validierung
+- Eigenes retained MQTT-Topic für den kompakten Kurvenvergleich
+- Eine feste Home-Assistant-Diagnoseentität statt einzelner Kurvensensoren
+- Automatische Aktualisierung nach der seltenen Ringpuffer-Synchronisation
+- Optionaler, vom Statistikzeitraum unabhängiger Kurvenfilter
+- Dokumentiertes Plotly-Dashboard für den interaktiven Vergleich
 
 ## [0.11.0] - 2026-07-14
 

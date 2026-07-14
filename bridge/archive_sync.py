@@ -23,7 +23,7 @@ from protocol.adapters import archive_record_to_burn_record
 from wifire_protocol import decode_archive_record
 
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 
 Sleeper = Callable[[int | float], None]
@@ -117,7 +117,7 @@ class RingBufferArchiveSynchronizer:
                 self.on_complete()
             except Exception as error:  # optionale nachgelagerte Integration
                 self.logger(
-                    "Historienstatistik konnte nicht aktualisiert werden: "
+                    "Historienausgaben konnten nicht aktualisiert werden: "
                     f"{error}"
                 )
 

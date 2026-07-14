@@ -12,6 +12,10 @@ from pathlib import Path
 from typing import Any, Callable, Protocol
 
 from bridge.archive_sync import RingBufferArchiveSynchronizer
+from bridge.dashboard_reporter import (
+    DashboardCurveReporter,
+    parse_dashboard_since,
+)
 from bridge.mqtt_client import MqttConnection
 from bridge.polling import LivePoller, PollingSettings
 from bridge.runtime import BridgeRuntime
@@ -26,7 +30,7 @@ from history.manager import create_default_history_manager
 from history.sync import ArchiveSyncSettings
 
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 
 Logger = Callable[[str], None]
@@ -156,6 +160,28 @@ def create_application(
             getattr(config_module, "STATISTICS_SINCE", None)
         ),
     )
+    dashboard_since = parse_dashboard_since(
+        getattr(
+            config_module,
+            "DASHBOARD_CURVES_SINCE",
+            getattr(config_module, "STATISTICS_SINCE", None),
+        )
+    )
+    dashboard_reporter = DashboardCurveReporter(
+        history_directory=history_manager.storage.directory,
+        publisher=connection.publisher,
+        since=dashboard_since,
+        include_warnings=getattr(
+            config_module,
+            "DASHBOARD_INCLUDE_WARNINGS",
+            True,
+        ),
+    )
+
+    def refresh_history_outputs() -> None:
+        statistics_reporter.refresh()
+        dashboard_reporter.refresh()
+
     archive_settings = build_archive_sync_settings(config_module)
     archive_synchronizer = RingBufferArchiveSynchronizer(
         settings=archive_settings,
@@ -163,7 +189,7 @@ def create_application(
         history_manager=history_manager,
         sleeper=sleeper,
         is_running=running_state,
-        on_complete=statistics_reporter.refresh,
+        on_complete=refresh_history_outputs,
     )
     runtime = BridgeRuntime(
         live_poller=live_poller,
