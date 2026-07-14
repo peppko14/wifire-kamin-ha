@@ -15,6 +15,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Doppelte Live-Status-Dataclass und parallelen dict-basierten Decoder
   entfernt
 - MQTT-Payload und Laufzeitverhalten durch direkte Vertragstests abgesichert
+- Direkte Regressionstests für vollständige 506-Byte-Archivtelegramme,
+  Feld-Offsets, Zeitstempel, Temperaturreihen und Phasenüberläufe
 
 ## [0.12.0] - 2026-07-14
 
