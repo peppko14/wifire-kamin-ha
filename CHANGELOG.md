@@ -13,6 +13,10 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Explizite `sample_index`-Achse ohne unbestätigte Zeitannahme
 - Streng validierter Loader für Historien-Schema 2
 - Konsistenzprüfung von SHA-256-ID, Messpunkten und abgeleiteten Kennzahlen
+- Durchschnittskurve über eine explizite Messpunktachse
+- Repräsentativer realer Abbrand über kleinsten RMSE zur Durchschnittskurve
+- Getrennte Kennzeichnung der heißesten Kurve ohne qualitative Bewertung
+- Atomischer, portabler JSON-Export aller Kurven und Referenzen
 
 ## [0.10.0] - 2026-07-14
 
