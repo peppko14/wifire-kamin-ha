@@ -1,8 +1,8 @@
 # Architektur
 
-Dokumentversion: 1.5.0
+Dokumentversion: 1.6.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.10.0
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.11.0
 
 ## Ziele
 
@@ -45,7 +45,10 @@ wifire-kamin-ha/
 │   ├── ring_buffer.py
 │   ├── statistics.py
 │   ├── periods.py
-│   └── period_statistics.py
+│   ├── period_statistics.py
+│   ├── curves.py
+│   ├── curve_analysis.py
+│   └── curve_export.py
 ├── operations/
 │   └── diagnostics.py
 ├── protocol/
@@ -253,6 +256,24 @@ jede Gruppe die bestehende, getestete Statistikberechnung. Für MQTT wird eine
 feste Momentaufnahme aus aktuellem Monat und drei aufeinanderfolgenden
 Heizsaisons erzeugt. Fehlende Perioden erhalten neutrale Statistiken.
 
+### `history/curves.py`
+
+Überführt streng validierte Schema-2-Datensätze in unveränderliche
+Brennkurven. Die Achse heißt `sample_index`, da das tatsächliche
+Messintervall nicht als gesicherte Protokolleigenschaft dokumentiert ist.
+
+### `history/curve_analysis.py`
+
+Berechnet die Durchschnittskurve, den realen Abbrand mit dem kleinsten RMSE
+zur Durchschnittskurve und getrennt die Kurve mit der höchsten gemessenen
+Temperatur. Alle verglichenen Kurven benötigen dieselbe Messpunktanzahl.
+
+### `history/curve_export.py`
+
+Erzeugt und speichert atomisch ein portables JSON-Dokument mit allen
+Einzelkurven, Durchschnittskurve, repräsentativer Kurve, heißester Kurve,
+Filterinformationen und stabilen Abbrand-IDs.
+
 ## Betriebsdiagnose
 
 ### `operations/diagnostics.py`
@@ -340,7 +361,7 @@ werden nicht in der regulären Historie gespeichert.
 
 ## Tests
 
-Version 0.10.0 umfasst 239 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
+Version 0.11.0 umfasst 273 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
 für diese Tests nicht erforderlich.
 
 ```bash
@@ -349,9 +370,8 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 
 ## Bewusst verschoben
 
-Noch nicht Bestandteil von v0.10.0 sind:
+Noch nicht Bestandteil von v0.11.0 sind:
 
-- digitale Brennkurven und historische Referenzkurven,
 - ein Home-Assistant-Dashboard für Kurvenvergleiche,
 - Vergleiche der laufenden Kurve mit historischen Abbränden,
 - die vollständige Ablösung der bestehenden Decoder-Einstiegspunkte.
