@@ -7,6 +7,15 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Dashboard-Datenmodell
+
+- Kompakte Brennkurven-Momentaufnahme für Home Assistant
+- Genau drei Temperaturreihen: Durchschnitt, repräsentativer Abbrand und
+  heißester Abbrand
+- Explizite `sample_index`-Achse ohne unbestätigte Zeitannahme
+- Temperaturarrays statt einzelner Punktobjekte für kleine MQTT-Payloads
+- Feste Größengrenze von 16 KiB mit automatischer Validierung
+
 ## [0.11.0] - 2026-07-14
 
 ### Brennkurven
