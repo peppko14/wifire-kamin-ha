@@ -21,6 +21,13 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Sichere Wiederherstellung ausschließlich in ein neues Zielverzeichnis
 - Versioniertes Werkzeug zum Erstellen, Prüfen und testweisen Restaurieren
 
+### Betriebsdiagnose
+
+- Zusammengefasster, nur lesender Zustandsbericht für Konfiguration,
+  Speicherplatz, Historie, Backup, WiFire, MQTT und systemd-Dienst
+- Offline-Modus und maschinenlesbare JSON-Ausgabe
+- Keine Ausgabe oder Übertragung privater MQTT-Zugangsdaten
+
 ## [0.9.0] - 2026-07-14
 
 ### Hinzugefügt

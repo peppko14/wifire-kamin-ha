@@ -263,6 +263,20 @@ ein neues Zielverzeichnis testweise wiederhergestellt werden. Der Kamin und
 der MQTT-Broker werden dafür nicht benötigt. Der vollständige Ablauf ist in
 [`docs/history-backup.md`](docs/history-backup.md) beschrieben.
 
+## Betriebsdiagnose
+
+Eine zusammengefasste, nur lesende Prüfung steht als versioniertes Werkzeug
+bereit:
+
+```bash
+python3 tools/system_diagnostics_v1_0_0.py
+```
+
+Mit `--offline --skip-service` werden Netzwerk und Dienststatus bewusst
+übersprungen. Der Bericht enthält niemals MQTT-Zugangsdaten. Details sind in
+[`docs/operations-diagnostics.md`](docs/operations-diagnostics.md)
+dokumentiert.
+
 ## Projektstruktur
 
 ```text
@@ -298,6 +312,7 @@ Assistant ausführbar.
 - `tools/history_statistics_v1_2_0.py`: Gesamt-, Monats- und Saisonstatistik
 - `tools/history_audit_v1_0_0.py`: Historie und Diagnoseablage prüfen
 - `tools/history_backup_v1_0_0.py`: Historie sichern, prüfen und restaurieren
+- `tools/system_diagnostics_v1_0_0.py`: Betriebszustand zusammengefasst prüfen
 - `tools/archive_importer_v1.0.0.py`: Archivdaten untersuchen
 - `tools/archive_mapper_v1.0.0.py`: Archivfelder zuordnen
 - `tools/endpoint_scanner_v1.0.0.py`: bekannte Endpunkte prüfen
