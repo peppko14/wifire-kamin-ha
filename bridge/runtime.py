@@ -17,7 +17,6 @@ from bridge.polling import (
 from protocol.models import LiveStatus
 
 
-__version__ = "2.0.0"
 
 
 RunningCheck = Callable[[], bool]

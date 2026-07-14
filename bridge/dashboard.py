@@ -15,7 +15,6 @@ from history.curves import SAMPLE_AXIS, BurnCurve
 from protocol.quality import MAX_TEMPERATURE_C, MIN_TEMPERATURE_C
 
 
-__version__ = "1.0.0"
 
 DASHBOARD_SCHEMA_VERSION = 1
 MAX_DASHBOARD_PAYLOAD_BYTES = 16 * 1024

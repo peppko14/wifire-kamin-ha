@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from typing import Callable
 
 
-__version__ = "1.0.0"
 
 
 RunningCheck = Callable[[], bool]

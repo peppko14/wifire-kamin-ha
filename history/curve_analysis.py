@@ -14,7 +14,6 @@ from typing import Iterable
 from history.curves import BurnCurve, SAMPLE_AXIS
 
 
-__version__ = "1.0.0"
 
 
 class CurveAnalysisError(ValueError):

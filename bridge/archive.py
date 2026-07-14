@@ -19,7 +19,6 @@ from protocol.duration import (
 from wifire_protocol import decode_archive_record
 
 
-__version__ = "1.1.0"
 
 
 class HttpResponse(Protocol):

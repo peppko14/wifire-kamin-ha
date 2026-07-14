@@ -12,7 +12,6 @@ from typing import Callable
 from protocol.models import LiveStatus
 
 
-__version__ = "2.0.0"
 
 
 NORMAL_UPDATE_INTERVAL = 60

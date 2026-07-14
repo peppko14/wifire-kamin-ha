@@ -10,7 +10,6 @@ from typing import Protocol
 from protocol.models import BurnRecord
 
 
-__version__ = "1.0.0"
 
 
 class ArchiveRecordLike(Protocol):

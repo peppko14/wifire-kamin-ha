@@ -153,6 +153,11 @@ Der Konventionstest prüft repositoryweit automatisch, dass jede Dataclass
 Die Projektversion steht zentral in `VERSION`; `version.py` liest sie zur
 Laufzeit ein. Es gilt Semantic Versioning:
 
+Anwendungs-, Bridge-, Historien- und Protokollmodule definieren keine eigenen
+`__version__`-Konstanten. Sie gehören immer zur gemeinsam veröffentlichten
+Projektversion. Eine automatisierte Konventionsprüfung verhindert lokale
+Modulversionen.
+
 - `PATCH`: kompatible Fehlerbehebungen,
 - `MINOR`: kompatible neue Funktionen,
 - `MAJOR`: inkompatible Änderungen.
@@ -164,6 +169,11 @@ Vor jedem Release müssen diese drei Angaben synchron sein:
 3. Der Git-Tag lautet `vX.Y.Z`.
 
 ## Versionierte Werkzeuge
+
+Die Werkzeugversion beschreibt das Ausgabe- und Aufrufformat des einzelnen
+Werkzeugs und ist ausdrücklich nicht die Projektversion. Eine automatisierte
+Konventionsprüfung stellt sicher, dass Werkzeugversion und Dateiname
+übereinstimmen.
 
 Eigenständige Werkzeuge unter `tools/` tragen ihre Version im Dateinamen
 und zusätzlich als `__version__` im Quellcode. Beide Angaben müssen

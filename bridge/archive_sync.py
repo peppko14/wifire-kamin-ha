@@ -23,7 +23,6 @@ from protocol.adapters import archive_record_to_burn_record
 from wifire_protocol import decode_archive_record
 
 
-__version__ = "1.3.0"
 
 
 Sleeper = Callable[[int | float], None]

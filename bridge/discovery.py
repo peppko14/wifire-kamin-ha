@@ -10,7 +10,6 @@ from typing import Protocol
 from bridge.topics import MqttTopics
 
 
-__version__ = "1.3.0"
 
 
 class DiscoveryConfig(Protocol):

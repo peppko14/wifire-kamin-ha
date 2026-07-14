@@ -17,7 +17,6 @@ from protocol.duration import (
 )
 
 
-__version__ = "1.2.0"
 
 PHASE_FIELDS = (
     "stage_90_minute",

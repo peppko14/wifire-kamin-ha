@@ -15,7 +15,6 @@ from history.statistics import HistoryStatistics
 from protocol.models import LiveStatus
 
 
-__version__ = "2.0.0"
 
 
 class MqttPublisherClient(Protocol):

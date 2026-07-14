@@ -13,7 +13,6 @@ from config import REQUEST_TIMEOUT, WIFIRE_URL
 from protocol.live import decode_live_status
 
 
-__version__ = "2.0.0"
 
 
 def read_live_data() -> str:

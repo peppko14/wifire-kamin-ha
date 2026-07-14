@@ -24,7 +24,6 @@ from history.backup import HistoryBackupError, verify_backup
 from protocol.live import decode_live_status
 
 
-__version__ = "1.0.0"
 MINIMUM_PYTHON = (3, 11)
 DEFAULT_MINIMUM_FREE_MIB = 100
 DEFAULT_MAXIMUM_BACKUP_AGE_DAYS = 30

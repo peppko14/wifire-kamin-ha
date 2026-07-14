@@ -11,7 +11,6 @@ from enum import StrEnum
 from protocol.models import BurnRecord
 
 
-__version__ = "1.0.0"
 
 MIN_TEMPERATURE_C = -40
 MAX_TEMPERATURE_C = 1200

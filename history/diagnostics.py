@@ -15,7 +15,6 @@ from protocol.models import BurnRecord
 from protocol.quality import QualityReport
 
 
-__version__ = "1.0.0"
 DIAGNOSTIC_SCHEMA_VERSION = 1
 
 

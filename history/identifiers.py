@@ -10,7 +10,6 @@ import hashlib
 from protocol.models import BurnRecord
 
 
-__version__ = "1.0.0"
 
 
 def build_canonical_burn_text(record: BurnRecord) -> str:

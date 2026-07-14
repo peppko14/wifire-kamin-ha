@@ -16,7 +16,6 @@ from protocol.models import BurnRecord
 from protocol.quality import validate_burn_record
 
 
-__version__ = "1.1.0"
 
 
 @dataclass(frozen=True, slots=True)

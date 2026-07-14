@@ -18,7 +18,6 @@ from history.statistics import (
 )
 
 
-__version__ = "1.2.0"
 
 
 @dataclass(frozen=True, slots=True)
