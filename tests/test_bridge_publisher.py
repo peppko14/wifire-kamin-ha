@@ -11,9 +11,14 @@ from datetime import datetime
 from typing import Any
 
 from bridge.publisher import MqttPublisher
+from bridge.dashboard import build_dashboard_snapshot
 from bridge.topics import MqttTopics
+from history.curve_analysis import analyze_curves
+from history.curves import BurnCurve, CurvePoint
+from history.identifiers import build_burn_id
 from history.period_statistics import calculate_current_period_statistics
 from history.statistics import HistoryStatistics
+from protocol.models import BurnRecord
 
 
 class FakeClient:
@@ -189,6 +194,39 @@ class MqttPublisherTests(unittest.TestCase):
             ["2026/2027", "2025/2026", "2024/2025"],
         )
         self.assertEqual(payload["current_month"]["burn_count"], 0)
+
+    def test_publish_dashboard_snapshot_uses_retained_compact_json(self) -> None:
+        temperatures = (20, 100, 453)
+        start = datetime(2026, 4, 22, 21, 23)
+        burn_id = build_burn_id(
+            BurnRecord(start=start, temperatures_c=temperatures)
+        )
+        curve = BurnCurve(
+            burn_id=burn_id,
+            start=start,
+            points=tuple(
+                CurvePoint(index, temperature)
+                for index, temperature in enumerate(temperatures)
+            ),
+            quality_status="valid",
+        )
+        snapshot = build_dashboard_snapshot(analyze_curves((curve,)))
+
+        self.publisher.publish_dashboard_snapshot(snapshot)
+
+        message = self.client.messages[0]
+        self.assertEqual(
+            message["topic"],
+            "wifire_kamin/wifire_kamin/dashboard_curves",
+        )
+        self.assertEqual(message["qos"], 1)
+        self.assertTrue(message["retain"])
+        payload = json.loads(message["payload"])
+        self.assertEqual(payload["source_curve_count"], 1)
+        self.assertEqual(
+            tuple(payload["series"]),
+            ("average", "representative", "hottest"),
+        )
 
 
 if __name__ == "__main__":

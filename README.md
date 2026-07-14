@@ -297,6 +297,12 @@ Abbrand mit der höchsten Einzeltemperatur. Die Achse bleibt bewusst ein
 `sample_index` und wird nicht ohne Protokollnachweis als Minute bezeichnet.
 Details stehen in [`docs/burn-curves.md`](docs/burn-curves.md).
 
+Für Home Assistant verdichtet die Bridge die Historie auf genau drei Reihen:
+Durchschnitt, repräsentativer Abbrand und heißester Abbrand. MQTT Discovery
+stellt sie als eine gemeinsame Diagnoseentität bereit. Ein Beispiel für ein
+interaktives Diagramm steht in
+[`docs/home-assistant-dashboard.md`](docs/home-assistant-dashboard.md).
+
 ## Projektstruktur
 
 ```text
@@ -324,7 +330,7 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Version 0.11.0 umfasst 273 automatisierte Tests.
+Assistant ausführbar. Version 0.12.0 umfasst 292 automatisierte Tests.
 
 ## Werkzeuge
 
@@ -341,9 +347,8 @@ Assistant ausführbar. Version 0.11.0 umfasst 273 automatisierte Tests.
 
 ## Roadmap
 
-Für eine spätere Version vorgesehen:
+Für spätere Versionen vorgesehen:
 
-- v0.12: Home-Assistant-Dashboard für Kurvenvergleiche
 - v0.13: laufende Brennkurve mit historischen Abbränden vergleichen
 - v0.14: weiter vereinheitlichte Protokollschnittstelle
 
