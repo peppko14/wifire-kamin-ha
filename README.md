@@ -28,6 +28,9 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
 - sechs automatisch erkannte Statistikentitäten in Home Assistant
 - Monatsstatistiken und Heizsaisonberichte von Juli bis Juni
 - drei rollierende Heizsaisons zum direkten Vergleich in Home Assistant
+- digitale historische Brennkurven mit expliziter Messpunktachse
+- Durchschnittskurve sowie repräsentativer und heißester Referenzabbrand
+- portabler JSON-Export als Grundlage für spätere Diagramme
 - begrenzte Wiederholungsversuche für die instabile Geräteschnittstelle
 - portabler systemd-Installer
 
@@ -279,6 +282,21 @@ Mit `--offline --skip-service` werden Netzwerk und Dienststatus bewusst
 [`docs/operations-diagnostics.md`](docs/operations-diagnostics.md)
 dokumentiert.
 
+## Digitale Brennkurven
+
+Die vollständigen Temperaturverläufe der lokalen Historie können gemeinsam
+analysiert und als portables JSON exportiert werden:
+
+```bash
+python3 tools/burn_curve_export_v1_0_0.py
+```
+
+Der Export enthält alle Einzelkurven, die Durchschnittskurve, den realen
+Abbrand mit dem kleinsten RMSE zur Durchschnittskurve und getrennt den
+Abbrand mit der höchsten Einzeltemperatur. Die Achse bleibt bewusst ein
+`sample_index` und wird nicht ohne Protokollnachweis als Minute bezeichnet.
+Details stehen in [`docs/burn-curves.md`](docs/burn-curves.md).
+
 ## Projektstruktur
 
 ```text
@@ -315,6 +333,7 @@ Assistant ausführbar. Version 0.10.0 umfasst 239 automatisierte Tests.
 - `tools/history_audit_v1_0_0.py`: Historie und Diagnoseablage prüfen
 - `tools/history_backup_v1_0_0.py`: Historie sichern, prüfen und restaurieren
 - `tools/system_diagnostics_v1_0_0.py`: Betriebszustand zusammengefasst prüfen
+- `tools/burn_curve_export_v1_0_0.py`: Brennkurven und Referenzen exportieren
 - `tools/archive_importer_v1.0.0.py`: Archivdaten untersuchen
 - `tools/archive_mapper_v1.0.0.py`: Archivfelder zuordnen
 - `tools/endpoint_scanner_v1.0.0.py`: bekannte Endpunkte prüfen
