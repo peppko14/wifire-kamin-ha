@@ -9,6 +9,10 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Code-Hardening
 
+- Einheitliche LF-Zeilenenden über `.gitattributes` und `.editorconfig`
+  festgelegt
+- Bestehende gemischte CRLF-/LF-Dateien für eine einmalige Normalisierung
+  vorbereitet
 - Ungenutzte lokale Modulversionen entfernt; `VERSION` und `version.py`
   bleiben die einzige Quelle der Projektversion
 - Konventionsprüfung für zentrale Projektversion und bewusst separat

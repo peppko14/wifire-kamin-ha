@@ -237,5 +237,14 @@ class VersionConventionTests(unittest.TestCase):
         )
 
 
+class RepositoryTextConventionTests(unittest.TestCase):
+    def test_git_enforces_lf_for_text_files(self) -> None:
+        attributes = (PROJECT_ROOT / ".gitattributes").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("* text=auto eol=lf", attributes.splitlines())
+
+
 if __name__ == "__main__":
     unittest.main()
