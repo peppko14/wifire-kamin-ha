@@ -14,6 +14,22 @@ from bridge.polling import (
     PollingSettings,
     get_next_poll_interval,
 )
+from protocol.models import LiveStatus
+
+
+def live_status(temperature_c: int = 24) -> LiveStatus:
+    return LiveStatus(
+        temperature_c=temperature_c,
+        flap_percent=100,
+        flap_moving=False,
+        burn_hours=0,
+        burn_minutes=12,
+        burn_total_minutes=12,
+        door_open=False,
+        fan_raw=1,
+        status_raw=1,
+        raw="raw-live-data",
+    )
 
 
 class LivePollerTests(unittest.TestCase):
@@ -24,15 +40,17 @@ class LivePollerTests(unittest.TestCase):
             calls.append("read")
             return "raw-live-data"
 
-        def decoder(raw: str) -> dict[str, object]:
+        expected = live_status()
+
+        def decoder(raw: str) -> LiveStatus:
             calls.append(("decode", raw))
-            return {"temperature_c": 24}
+            return expected
 
         poller = LivePoller(reader, decoder)
 
         self.assertEqual(
             poller.poll(),
-            {"temperature_c": 24},
+            expected,
         )
         self.assertEqual(
             calls,
@@ -45,7 +63,7 @@ class LivePollerTests(unittest.TestCase):
         def reader() -> str:
             raise expected
 
-        poller = LivePoller(reader, lambda raw: {})
+        poller = LivePoller(reader, lambda raw: live_status())
 
         with self.assertRaises(OSError) as context:
             poller.poll()
@@ -58,7 +76,7 @@ class LivePollerTests(unittest.TestCase):
         def reader() -> str:
             raise expected
 
-        poller = LivePoller(reader, lambda raw: {})
+        poller = LivePoller(reader, lambda raw: live_status())
 
         with self.assertRaises(ValueError) as context:
             poller.poll()
@@ -68,7 +86,7 @@ class LivePollerTests(unittest.TestCase):
     def test_decoder_value_error_is_not_changed(self) -> None:
         expected = ValueError("ungültige Nutzdaten")
 
-        def decoder(raw: str) -> dict[str, object]:
+        def decoder(raw: str) -> LiveStatus:
             raise expected
 
         poller = LivePoller(lambda: "raw", decoder)
@@ -129,7 +147,7 @@ class GetNextPollIntervalTests(unittest.TestCase):
 
     def test_read_error_uses_error_interval(self) -> None:
         result = get_next_poll_interval(
-            {"temperature_c": 500},
+            live_status(temperature_c=500),
             True,
             self.settings,
         )
@@ -147,7 +165,7 @@ class GetNextPollIntervalTests(unittest.TestCase):
 
     def test_threshold_temperature_is_active_fire(self) -> None:
         result = get_next_poll_interval(
-            {"temperature_c": 40},
+            live_status(temperature_c=40),
             False,
             self.settings,
         )
@@ -156,7 +174,7 @@ class GetNextPollIntervalTests(unittest.TestCase):
 
     def test_temperature_below_threshold_is_normal(self) -> None:
         result = get_next_poll_interval(
-            {"temperature_c": 39},
+            live_status(temperature_c=39),
             False,
             self.settings,
         )

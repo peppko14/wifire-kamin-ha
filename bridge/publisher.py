@@ -12,9 +12,9 @@ from bridge.dashboard import DashboardCurveSnapshot
 from bridge.topics import MqttTopics
 from history.period_statistics import CurrentPeriodStatistics
 from history.statistics import HistoryStatistics
+from protocol.models import LiveStatus
 
 
-__version__ = "1.3.0"
 
 
 class MqttPublisherClient(Protocol):
@@ -50,22 +50,14 @@ class MqttPublisher:
             retain=True,
         )
 
-    def publish_state(self, data: dict[str, object]) -> None:
+    def publish_state(self, data: LiveStatus) -> None:
         """Veröffentlicht die aktuellen Live-Daten."""
-        payload = {
-            "temperature_c": data["temperature_c"],
-            "flap_percent": data["flap_percent"],
-            "flap_moving": data["flap_moving"],
-            "burn_time": data["burn_time"],
-            "burn_total_minutes": data["burn_total_minutes"],
-            "door_open": data["door_open"],
-            "door_state": data["door_state"],
-            "fan_raw": data["fan_raw"],
-        }
-
         self.client.publish(
             self.topics.state,
-            payload=json.dumps(payload, ensure_ascii=False),
+            payload=json.dumps(
+                data.to_mqtt_dict(),
+                ensure_ascii=False,
+            ),
             qos=1,
             retain=False,
         )

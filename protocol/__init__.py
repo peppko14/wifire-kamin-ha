@@ -9,6 +9,7 @@ from .duration import (
     calculate_duration_minutes,
     unwrap_phase_minutes,
 )
+from .live import decode_live_status
 from .models import BurnRecord, LiveStatus
 from .quality import (
     EXPECTED_MEASUREMENT_COUNT,
@@ -36,6 +37,7 @@ __all__ = [
     "QualityReport",
     "QualitySeverity",
     "calculate_duration_minutes",
+    "decode_live_status",
     "unwrap_phase_minutes",
     "validate_burn_record",
 ]

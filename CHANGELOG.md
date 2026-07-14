@@ -7,6 +7,41 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-07-15
+
+### Code-Hardening
+
+- Optionale MQTT-TLS-Unterstützung als offener Backlog-Punkt dokumentiert
+
+- Threadübergreifenden Zugriff auf den letzten MQTT-Live-Status durch
+  einen expliziten Lock und stabile Snapshots abgesichert
+- GitHub-Actions-Pipeline für Tests mit Python 3.11 und 3.13 sowie verbindliche
+  Ruff- und Mypy-Prüfungen ergänzt
+- Veralteten und unreferenzierten Top-Level-Archivleser entfernt; produktive
+  Archivzugriffe verwenden die getesteten Bridge- und Historienmodule
+- Fehlerbehandlung des manuellen History-Importers auf erwartete Netzwerk-
+  und Nutzdatenfehler begrenzt; Programmierfehler werden nicht mehr maskiert
+- Reproduzierbare, fest versionierte Entwicklungsabhängigkeiten und zentrale
+  Werkzeugkonfiguration in `pyproject.toml` aufgenommen
+- Bestehende Typverträge für Discovery, Archive, Historie, Diagnose und
+  Laufzeitsteuerung an die tatsächlichen Datenflüsse angepasst
+- Einheitliche LF-Zeilenenden über `.gitattributes` und `.editorconfig`
+  festgelegt
+- Bestehende gemischte CRLF-/LF-Dateien für eine einmalige Normalisierung
+  vorbereitet
+- Ungenutzte lokale Modulversionen entfernt; `VERSION` und `version.py`
+  bleiben die einzige Quelle der Projektversion
+- Konventionsprüfung für zentrale Projektversion und bewusst separat
+  versionierte Werkzeuge ergänzt
+- Ein einziges unveränderliches `LiveStatus`-Modell für Bridge, MQTT und
+  Betriebsdiagnose
+- Zentraler Live-Decoder unter `protocol/live.py`
+- Doppelte Live-Status-Dataclass und parallelen dict-basierten Decoder
+  entfernt
+- MQTT-Payload und Laufzeitverhalten durch direkte Vertragstests abgesichert
+- Direkte Regressionstests für vollständige 506-Byte-Archivtelegramme,
+  Feld-Offsets, Zeitstempel, Temperaturreihen und Phasenüberläufe
+
 ## [0.12.0] - 2026-07-14
 
 ### Brennkurven-Dashboard

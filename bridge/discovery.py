@@ -10,7 +10,6 @@ from typing import Protocol
 from bridge.topics import MqttTopics
 
 
-__version__ = "1.3.0"
 
 
 class DiscoveryConfig(Protocol):
@@ -135,7 +134,7 @@ def build_discovery_payload(
             "entity_category": "diagnostic",
         }
 
-    statistics_components = {
+    statistics_components: dict[str, dict[str, object]] = {
         "burn_count": {
             "name": "Historische Abbrände",
             "icon": "mdi:counter",
@@ -191,7 +190,7 @@ def build_discovery_payload(
             **component,
         }
 
-    period_components = {
+    period_components: dict[str, dict[str, object]] = {
         "month_period": {
             "name": "Aktueller Statistikmonat",
             "icon": "mdi:calendar-month",
@@ -240,7 +239,7 @@ def build_discovery_payload(
     )
     for index, season_name in enumerate(season_names):
         number = index + 1
-        season_components = {
+        season_components: dict[str, dict[str, object]] = {
             "period": {
                 "name": season_name.capitalize(),
                 "icon": "mdi:calendar-range",

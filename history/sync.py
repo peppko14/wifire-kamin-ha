@@ -14,20 +14,19 @@ from urllib.request import Request, urlopen
 
 from history.manager import HistoryManager, HistorySyncResult
 from history.ring_buffer import ArchiveOutcome, RingBufferStrategy
-from protocol.adapters import archive_record_to_burn_record
+from protocol.adapters import ArchiveRecordLike, archive_record_to_burn_record
 from protocol.models import BurnRecord
 from wifire_protocol import decode_archive_record
 
 
-__version__ = "1.2.0"
 
 
 RawReader = Callable[[str, int], str]
-Decoder = Callable[[str], object]
-RecordAdapter = Callable[[object], BurnRecord]
+Decoder = Callable[[str], ArchiveRecordLike]
+RecordAdapter = Callable[[ArchiveRecordLike], BurnRecord]
 Sleeper = Callable[[float], None]
 Logger = Callable[[str], None]
-RecordCallback = Callable[[int, object, HistorySyncResult], None]
+RecordCallback = Callable[[int, ArchiveRecordLike, HistorySyncResult], None]
 RunningCheck = Callable[[], bool]
 
 

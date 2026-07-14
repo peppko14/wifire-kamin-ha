@@ -1,8 +1,8 @@
 # Architektur
 
-Dokumentversion: 1.6.0
+Dokumentversion: 1.6.1
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.12.0
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.12.1
 
 ## Ziele
 
@@ -52,6 +52,7 @@ wifire-kamin-ha/
 ├── operations/
 │   └── diagnostics.py
 ├── protocol/
+│   ├── live.py
 │   ├── models.py
 │   ├── adapters.py
 │   ├── duration.py
@@ -90,7 +91,9 @@ Archivattribute sowie retained Gesamt- und Periodenstatistiken.
 
 Kapselt den vollständigen MQTT-Lebenszyklus: Client-Erzeugung, Anmeldung,
 Last Will, Reconnect-Einstellungen, Callbacks, Discovery bei einer
-Neuverbindung sowie kontrollierten Start und Stopp.
+Neuverbindung sowie kontrollierten Start und Stopp. Der zwischen Haupt- und
+MQTT-Thread geteilte unveränderliche Live-Status wird unter einem Lock als
+stabiler Snapshot ausgetauscht.
 
 ### `bridge/polling.py`
 
@@ -146,8 +149,12 @@ erzeugt über `create_application()` den Application Runner und startet ihn.
 
 ### `decoder.py`
 
-Liest `/direct/00` und dekodiert Temperatur, Luftklappe, Türstatus,
-Abbrenndauer sowie Diagnosewerte.
+Liest den rohen Live-Datensatz ausschließlich lesend über `/direct/00`.
+
+### `protocol/live.py`
+
+Dekodiert den rohen Live-Datensatz zentral in das unveränderliche
+`LiveStatus`-Modell.
 
 ### `wifire_protocol.py`
 

@@ -8,7 +8,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 
-__version__ = "1.0.0"
 
 DURATION_SOURCE_STAGE_0 = "stage_0_unwrapped"
 

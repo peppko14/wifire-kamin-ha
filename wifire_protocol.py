@@ -10,27 +10,9 @@ from datetime import datetime
 
 PACKET_HEADER = bytes.fromhex("aacc3355")
 
-LIVE_MIN_LENGTH = 19
-
 ARCHIVE_LENGTH = 506
 ARCHIVE_DATA_START = 22
 ARCHIVE_DATA_END = 504
-
-
-@dataclass(slots=True)
-class LiveStatus:
-    temperature_c: int
-    flap_percent: int
-    flap_moving: bool
-    burn_hours: int
-    burn_minutes: int
-    burn_total_minutes: int
-    burn_time: str
-    door_open: bool
-    door_state: str
-    fan_raw: int
-    status_raw: int
-    raw: str
 
 
 @dataclass(slots=True)
@@ -90,53 +72,6 @@ def _decode_hex(raw: str) -> bytes:
 def _validate_header(data: bytes) -> None:
     if data[:4] != PACKET_HEADER:
         raise ValueError("Unbekannter Paketkopf.")
-
-
-def decode_live_status(raw: str) -> LiveStatus:
-    data = _decode_hex(raw)
-
-    if len(data) < LIVE_MIN_LENGTH:
-        raise ValueError(
-            f"Live-Datensatz zu kurz: {len(data)} Bytes."
-        )
-
-    _validate_header(data)
-
-    door_open = bool(data[6] & 0x10)
-
-    temperature_c = int.from_bytes(
-        data[7:9],
-        byteorder="big",
-        signed=False,
-    )
-
-    flap_raw = data[9]
-
-    if flap_raw > 100:
-        flap_percent = max(0, min(100, flap_raw - 150))
-        flap_moving = True
-    else:
-        flap_percent = flap_raw
-        flap_moving = False
-
-    burn_hours = data[10]
-    burn_minutes = data[11]
-    burn_total_minutes = burn_hours * 60 + burn_minutes
-
-    return LiveStatus(
-        temperature_c=temperature_c,
-        flap_percent=flap_percent,
-        flap_moving=flap_moving,
-        burn_hours=burn_hours,
-        burn_minutes=burn_minutes,
-        burn_total_minutes=burn_total_minutes,
-        burn_time=f"{burn_hours}:{burn_minutes:02d}",
-        door_open=door_open,
-        door_state="offen" if door_open else "geschlossen",
-        fan_raw=data[18],
-        status_raw=data[6],
-        raw=raw,
-    )
 
 
 def _decode_archive_timestamp(data: bytes) -> datetime | None:

@@ -8,22 +8,22 @@ from __future__ import annotations
 
 import unittest
 from itertools import chain, repeat
-from typing import Any
 
 from bridge.polling import PollingSettings
 from bridge.runtime import BridgeRuntime
 from bridge.scheduler import IntervalSchedule
+from protocol.models import LiveStatus
 
 
 class FakePoller:
     def __init__(
         self,
-        result: dict[str, Any] | Exception,
+        result: LiveStatus | Exception,
     ) -> None:
         self.result = result
         self.calls = 0
 
-    def poll(self) -> dict[str, Any]:
+    def poll(self) -> LiveStatus:
         self.calls += 1
         if isinstance(self.result, Exception):
             raise self.result
@@ -33,12 +33,12 @@ class FakePoller:
 class FakePublisher:
     def __init__(self) -> None:
         self.availability: list[bool] = []
-        self.states: list[dict[str, Any]] = []
+        self.states: list[LiveStatus] = []
 
     def publish_availability(self, online: bool) -> None:
         self.availability.append(online)
 
-    def publish_state(self, data: dict[str, Any]) -> None:
+    def publish_state(self, data: LiveStatus) -> None:
         self.states.append(data)
 
 
@@ -50,19 +50,25 @@ class FakeArchiveSynchronizer:
         self.calls += 1
 
 
-def live_state(temperature_c: int = 24) -> dict[str, Any]:
-    return {
-        "temperature_c": temperature_c,
-        "flap_percent": 100,
-        "burn_time": "0:12",
-        "door_state": "geschlossen",
-    }
+def live_state(temperature_c: int = 24) -> LiveStatus:
+    return LiveStatus(
+        temperature_c=temperature_c,
+        flap_percent=100,
+        flap_moving=False,
+        burn_hours=0,
+        burn_minutes=12,
+        burn_total_minutes=12,
+        door_open=False,
+        fan_raw=1,
+        status_raw=1,
+        raw="raw-live-data",
+    )
 
 
 class BridgeRuntimeTests(unittest.TestCase):
     def create_runtime(
         self,
-        poll_result: dict[str, Any] | Exception,
+        poll_result: LiveStatus | Exception,
         *,
         schedule: IntervalSchedule | None = None,
         clock_values: tuple[float, ...] = (1.0,),
@@ -71,13 +77,13 @@ class BridgeRuntimeTests(unittest.TestCase):
         FakePublisher,
         FakeArchiveSynchronizer,
         list[int | float],
-        list[dict[str, Any]],
+        list[LiveStatus],
         list[str],
     ]:
         publisher = FakePublisher()
         archive = FakeArchiveSynchronizer()
         sleeps: list[int | float] = []
-        states: list[dict[str, Any]] = []
+        states: list[LiveStatus] = []
         messages: list[str] = []
         clock = chain(
             clock_values,
