@@ -8,7 +8,6 @@ from __future__ import annotations
 from protocol.models import LiveStatus
 
 
-__version__ = "1.0.0"
 
 
 PACKET_HEADER = bytes.fromhex("aacc3355")

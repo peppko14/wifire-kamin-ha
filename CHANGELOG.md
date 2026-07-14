@@ -9,6 +9,10 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Code-Hardening
 
+- Ungenutzte lokale Modulversionen entfernt; `VERSION` und `version.py`
+  bleiben die einzige Quelle der Projektversion
+- Konventionsprüfung für zentrale Projektversion und bewusst separat
+  versionierte Werkzeuge ergänzt
 - Ein einziges unveränderliches `LiveStatus`-Modell für Bridge, MQTT und
   Betriebsdiagnose
 - Zentraler Live-Decoder unter `protocol/live.py`

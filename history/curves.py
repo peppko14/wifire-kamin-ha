@@ -24,7 +24,6 @@ from protocol.quality import (
 )
 
 
-__version__ = "1.0.0"
 SAMPLE_AXIS = "sample_index"
 QUALITY_STATUSES = {"valid", "warning"}
 HEX_DIGITS = frozenset("0123456789abcdef")

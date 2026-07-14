@@ -17,7 +17,6 @@ from typing import Any
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 
 
-__version__ = "1.0.0"
 BACKUP_SCHEMA_VERSION = 1
 MANIFEST_NAME = "manifest.json"
 HISTORY_CATEGORY = "history"

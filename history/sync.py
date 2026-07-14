@@ -19,7 +19,6 @@ from protocol.models import BurnRecord
 from wifire_protocol import decode_archive_record
 
 
-__version__ = "1.2.0"
 
 
 RawReader = Callable[[str, int], str]

@@ -20,7 +20,6 @@ from history.statistics import (
 )
 
 
-__version__ = "1.1.0"
 
 
 Logger = Callable[[str], None]

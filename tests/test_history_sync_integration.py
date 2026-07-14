@@ -18,7 +18,6 @@ from history.sync import ArchiveSyncSettings, synchronize_archives
 from protocol.models import BurnRecord
 
 
-__version__ = "1.0.0"
 
 
 def simulated_burn(archive_number: int) -> BurnRecord:

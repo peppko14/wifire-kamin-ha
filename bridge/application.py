@@ -31,7 +31,6 @@ from history.sync import ArchiveSyncSettings
 from protocol.live import decode_live_status
 
 
-__version__ = "1.3.0"
 
 
 Logger = Callable[[str], None]

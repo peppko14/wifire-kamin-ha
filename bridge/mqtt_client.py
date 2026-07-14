@@ -18,7 +18,6 @@ from bridge.topics import MqttTopics
 from protocol.models import LiveStatus
 
 
-__version__ = "2.0.0"
 
 
 Logger = Callable[[str], None]
