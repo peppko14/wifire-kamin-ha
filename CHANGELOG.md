@@ -14,6 +14,13 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   `slots=True`
 - Bestehende Protokollmodelle auf speichersparende Slots umgestellt
 
+### Datensicherung
+
+- Verifiziertes ZIP-Backup für reguläre Historie und Diagnoseablage
+- Manifest mit Dateigrößen und SHA-256-Prüfsummen
+- Sichere Wiederherstellung ausschließlich in ein neues Zielverzeichnis
+- Versioniertes Werkzeug zum Erstellen, Prüfen und testweisen Restaurieren
+
 ## [0.9.0] - 2026-07-14
 
 ### Hinzugefügt
