@@ -7,6 +7,26 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-07-14
+
+### Brennkurven
+
+- Unveränderliche Modelle für Messpunkte und historische Brennkurven
+- Explizite `sample_index`-Achse ohne unbestätigte Zeitannahme
+- Streng validierter Loader für Historien-Schema 2
+- Konsistenzprüfung von SHA-256-ID, Messpunkten und abgeleiteten Kennzahlen
+- Durchschnittskurve über eine explizite Messpunktachse
+- Repräsentativer realer Abbrand über kleinsten RMSE zur Durchschnittskurve
+- Getrennte Kennzeichnung der heißesten Kurve ohne qualitative Bewertung
+- Atomischer, portabler JSON-Export aller Kurven und Referenzen
+
+### Getestet
+
+- 273 automatisierte Tests ohne Kamin, MQTT-Broker oder Home Assistant
+- Strenges Laden aller 22 vorhandenen Schema-2-Brennkurven
+- JSON-Export mit 22 Einzelkurven und jeweils 121 Messpunkten
+- Separater Zeitraumexport der 16 Abbrände ab 2026
+
 ## [0.10.0] - 2026-07-14
 
 ### Entwicklungsqualität
