@@ -9,6 +9,12 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Code-Hardening
 
+- GitHub-Actions-Pipeline für Tests mit Python 3.11 und 3.13 sowie verbindliche
+  Ruff- und Mypy-Prüfungen ergänzt
+- Reproduzierbare, fest versionierte Entwicklungsabhängigkeiten und zentrale
+  Werkzeugkonfiguration in `pyproject.toml` aufgenommen
+- Bestehende Typverträge für Discovery, Archive, Historie, Diagnose und
+  Laufzeitsteuerung an die tatsächlichen Datenflüsse angepasst
 - Einheitliche LF-Zeilenenden über `.gitattributes` und `.editorconfig`
   festgelegt
 - Bestehende gemischte CRLF-/LF-Dateien für eine einmalige Normalisierung

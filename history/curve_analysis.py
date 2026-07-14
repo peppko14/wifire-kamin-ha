@@ -11,7 +11,7 @@ from math import sqrt
 from statistics import fmean
 from typing import Iterable
 
-from history.curves import BurnCurve, SAMPLE_AXIS
+from history.curves import BurnCurve
 
 
 

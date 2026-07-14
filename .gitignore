@@ -5,6 +5,8 @@ config.py
 venv/
 __pycache__/
 *.pyc
+.mypy_cache/
+.ruff_cache/
 
 # Mess- und Laufzeitdaten
 archive/
