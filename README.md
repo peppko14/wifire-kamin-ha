@@ -248,6 +248,21 @@ Mit `--json` entsteht eine maschinenlesbare Ausgabe. Dateien mit unsicheren
 Zeitstempeln bleiben verwendbar und werden als Warnung ausgewiesen;
 strukturell beschädigte Dateien führen zu einem Fehlerstatus.
 
+## Historien-Backup
+
+Die reguläre Historie und die Diagnoseablage können gemeinsam in einer
+verifizierten ZIP-Datei gesichert werden:
+
+```bash
+python3 tools/history_backup_v1_0_0.py create
+```
+
+Das enthaltene Manifest dokumentiert jede Datei mit Größe und vollständiger
+SHA-256-Prüfsumme. Backups können später erneut geprüft und ausschließlich in
+ein neues Zielverzeichnis testweise wiederhergestellt werden. Der Kamin und
+der MQTT-Broker werden dafür nicht benötigt. Der vollständige Ablauf ist in
+[`docs/history-backup.md`](docs/history-backup.md) beschrieben.
+
 ## Projektstruktur
 
 ```text
@@ -274,13 +289,15 @@ wifire-kamin-ha/
 python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Version 0.9.0 umfasst 215 automatisierte Tests.
+Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
+Assistant ausführbar.
 
 ## Werkzeuge
 
 - `tools/history_importer_v1_0_1.py`: lokale Historie importieren
 - `tools/history_statistics_v1_2_0.py`: Gesamt-, Monats- und Saisonstatistik
 - `tools/history_audit_v1_0_0.py`: Historie und Diagnoseablage prüfen
+- `tools/history_backup_v1_0_0.py`: Historie sichern, prüfen und restaurieren
 - `tools/archive_importer_v1.0.0.py`: Archivdaten untersuchen
 - `tools/archive_mapper_v1.0.0.py`: Archivfelder zuordnen
 - `tools/endpoint_scanner_v1.0.0.py`: bekannte Endpunkte prüfen
