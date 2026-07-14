@@ -11,6 +11,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 - GitHub-Actions-Pipeline für Tests mit Python 3.11 und 3.13 sowie verbindliche
   Ruff- und Mypy-Prüfungen ergänzt
+- Veralteten und unreferenzierten Top-Level-Archivleser entfernt; produktive
+  Archivzugriffe verwenden die getesteten Bridge- und Historienmodule
 - Reproduzierbare, fest versionierte Entwicklungsabhängigkeiten und zentrale
   Werkzeugkonfiguration in `pyproject.toml` aufgenommen
 - Bestehende Typverträge für Discovery, Archive, Historie, Diagnose und
