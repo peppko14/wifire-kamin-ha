@@ -9,6 +9,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Code-Hardening
 
+- Threadübergreifenden Zugriff auf den letzten MQTT-Live-Status durch
+  einen expliziten Lock und stabile Snapshots abgesichert
 - GitHub-Actions-Pipeline für Tests mit Python 3.11 und 3.13 sowie verbindliche
   Ruff- und Mypy-Prüfungen ergänzt
 - Veralteten und unreferenzierten Top-Level-Archivleser entfernt; produktive
