@@ -1,6 +1,6 @@
 # Entwicklungsrichtlinien
 
-Dokumentversion: 1.3.0
+Dokumentversion: 1.4.0
 
 Diese Regeln gelten für die WiFire-Kamin Home Assistant Bridge.
 
@@ -24,7 +24,11 @@ Das Projekt steht unter GNU GPL v3.0 only.
 - `PascalCase` für Klassen
 - `UPPER_CASE` für Konstanten
 - kleine Funktionen und klar getrennte Verantwortlichkeiten
-- für zentrale Datenstrukturen bevorzugt `@dataclass(slots=True)`
+- neue Dataclasses müssen mit `@dataclass(slots=True)` definiert werden
+- unveränderliche Domänenmodelle verwenden
+  `@dataclass(frozen=True, slots=True)`
+- Enums, Protocols und einfache Zuordnungen müssen nicht künstlich in
+  Dataclasses umgewandelt werden
 - neue Abhängigkeiten in `requirements.txt` dokumentieren
 
 ## Dateien und Pfade
@@ -128,6 +132,9 @@ python3 -m unittest discover \
 Neue Logik benötigt passende Unit-Tests. Tests müssen ohne echten Kamin,
 MQTT-Broker und Home Assistant ausführbar sein. Ein Hardware-Praxistest
 ergänzt die Unit-Tests vor einem Release, ersetzt sie aber nicht.
+
+Der Konventionstest prüft repositoryweit automatisch, dass jede Dataclass
+`slots=True` verwendet. Neue Ausnahmen sind nicht zulässig.
 
 ## Git-Workflow
 
