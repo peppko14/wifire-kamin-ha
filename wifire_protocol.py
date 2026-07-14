@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 peppko14
+# SPDX-License-Identifier: GPL-3.0-only
 
 from __future__ import annotations
 
@@ -15,7 +17,7 @@ ARCHIVE_DATA_START = 22
 ARCHIVE_DATA_END = 504
 
 
-@dataclass
+@dataclass(slots=True)
 class LiveStatus:
     temperature_c: int
     flap_percent: int
@@ -31,7 +33,7 @@ class LiveStatus:
     raw: str
 
 
-@dataclass
+@dataclass(slots=True)
 class ArchiveRecord:
     archive_number: int
     timestamp: datetime | None

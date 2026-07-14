@@ -21,6 +21,8 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
 - Historien-Schema 2 mit zentraler Dauer- und Qualitätsdefinition
 - getrennte Diagnoseablage für unvollständige Datensätze
 - rein lesendes Audit für Historie und Diagnoseablage
+- verifiziertes Historien-Backup mit sicherem Wiederherstellungstest
+- zusammengefasste Offline- und Netzwerk-Betriebsdiagnose
 - Import bereits vorhandener Archive
 - lokale Abbrandstatistik mit optionalem Datumsfilter
 - sechs automatisch erkannte Statistikentitäten in Home Assistant
@@ -248,6 +250,35 @@ Mit `--json` entsteht eine maschinenlesbare Ausgabe. Dateien mit unsicheren
 Zeitstempeln bleiben verwendbar und werden als Warnung ausgewiesen;
 strukturell beschädigte Dateien führen zu einem Fehlerstatus.
 
+## Historien-Backup
+
+Die reguläre Historie und die Diagnoseablage können gemeinsam in einer
+verifizierten ZIP-Datei gesichert werden:
+
+```bash
+python3 tools/history_backup_v1_0_0.py create
+```
+
+Das enthaltene Manifest dokumentiert jede Datei mit Größe und vollständiger
+SHA-256-Prüfsumme. Backups können später erneut geprüft und ausschließlich in
+ein neues Zielverzeichnis testweise wiederhergestellt werden. Der Kamin und
+der MQTT-Broker werden dafür nicht benötigt. Der vollständige Ablauf ist in
+[`docs/history-backup.md`](docs/history-backup.md) beschrieben.
+
+## Betriebsdiagnose
+
+Eine zusammengefasste, nur lesende Prüfung steht als versioniertes Werkzeug
+bereit:
+
+```bash
+python3 tools/system_diagnostics_v1_0_0.py
+```
+
+Mit `--offline --skip-service` werden Netzwerk und Dienststatus bewusst
+übersprungen. Der Bericht enthält niemals MQTT-Zugangsdaten. Details sind in
+[`docs/operations-diagnostics.md`](docs/operations-diagnostics.md)
+dokumentiert.
+
 ## Projektstruktur
 
 ```text
@@ -274,13 +305,16 @@ wifire-kamin-ha/
 python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Version 0.9.0 umfasst 215 automatisierte Tests.
+Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
+Assistant ausführbar. Version 0.10.0 umfasst 239 automatisierte Tests.
 
 ## Werkzeuge
 
 - `tools/history_importer_v1_0_1.py`: lokale Historie importieren
 - `tools/history_statistics_v1_2_0.py`: Gesamt-, Monats- und Saisonstatistik
 - `tools/history_audit_v1_0_0.py`: Historie und Diagnoseablage prüfen
+- `tools/history_backup_v1_0_0.py`: Historie sichern, prüfen und restaurieren
+- `tools/system_diagnostics_v1_0_0.py`: Betriebszustand zusammengefasst prüfen
 - `tools/archive_importer_v1.0.0.py`: Archivdaten untersuchen
 - `tools/archive_mapper_v1.0.0.py`: Archivfelder zuordnen
 - `tools/endpoint_scanner_v1.0.0.py`: bekannte Endpunkte prüfen
@@ -290,8 +324,10 @@ Version 0.9.0 umfasst 215 automatisierte Tests.
 
 Für eine spätere Version vorgesehen:
 
-- Home-Assistant-Dashboard
-- weiter vereinheitlichte Protokollschnittstelle
+- v0.11: digitale Brennkurven und historische Referenzkurven
+- v0.12: Home-Assistant-Dashboard für Kurvenvergleiche
+- v0.13: laufende Brennkurve mit historischen Abbränden vergleichen
+- v0.14: weiter vereinheitlichte Protokollschnittstelle
 
 ## Lizenz
 

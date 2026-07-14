@@ -7,6 +7,36 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-07-14
+
+### Entwicklungsqualität
+
+- `slots=True` ist für alle Dataclasses verbindlich
+- Repositoryweiter AST-Konventionstest verhindert neue Dataclasses ohne
+  `slots=True`
+- Bestehende Protokollmodelle auf speichersparende Slots umgestellt
+
+### Datensicherung
+
+- Verifiziertes ZIP-Backup für reguläre Historie und Diagnoseablage
+- Manifest mit Dateigrößen und SHA-256-Prüfsummen
+- Sichere Wiederherstellung ausschließlich in ein neues Zielverzeichnis
+- Versioniertes Werkzeug zum Erstellen, Prüfen und testweisen Restaurieren
+
+### Betriebsdiagnose
+
+- Zusammengefasster, nur lesender Zustandsbericht für Konfiguration,
+  Speicherplatz, Historie, Backup, WiFire, MQTT und systemd-Dienst
+- Offline-Modus und maschinenlesbare JSON-Ausgabe
+- Keine Ausgabe oder Übertragung privater MQTT-Zugangsdaten
+
+### Getestet
+
+- 239 automatisierte Tests ohne Kamin, MQTT-Broker oder Home Assistant
+- Backup und Wiederherstellung von 22 Historien- und einer Diagnosedatei
+- Offline- und vollständige Betriebsdiagnose auf dem Raspberry Pi
+- Erfolgreicher WiFire-HTTP-Lesetest und MQTT-TCP-Verbindungstest
+
 ## [0.9.0] - 2026-07-14
 
 ### Hinzugefügt
