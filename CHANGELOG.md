@@ -13,6 +13,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Ruff- und Mypy-Prüfungen ergänzt
 - Veralteten und unreferenzierten Top-Level-Archivleser entfernt; produktive
   Archivzugriffe verwenden die getesteten Bridge- und Historienmodule
+- Fehlerbehandlung des manuellen History-Importers auf erwartete Netzwerk-
+  und Nutzdatenfehler begrenzt; Programmierfehler werden nicht mehr maskiert
 - Reproduzierbare, fest versionierte Entwicklungsabhängigkeiten und zentrale
   Werkzeugkonfiguration in `pyproject.toml` aufgenommen
 - Bestehende Typverträge für Discovery, Archive, Historie, Diagnose und

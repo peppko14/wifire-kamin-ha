@@ -172,7 +172,7 @@ Da die WiFire-Schnittstelle empfindlich auf schnelle Folgeanfragen
 reagiert, sollten konservative Pausen verwendet werden:
 
 ```bash
-python3 -u tools/history_importer_v1_0_1.py \
+python3 -u tools/history_importer_v1_0_2.py \
   --first 1 \
   --last 23 \
   --delay 10 \
@@ -334,7 +334,7 @@ Assistant ausführbar. Version 0.12.0 umfasst 292 automatisierte Tests.
 
 ## Werkzeuge
 
-- `tools/history_importer_v1_0_1.py`: lokale Historie importieren
+- `tools/history_importer_v1_0_2.py`: lokale Historie importieren
 - `tools/history_statistics_v1_2_0.py`: Gesamt-, Monats- und Saisonstatistik
 - `tools/history_audit_v1_0_0.py`: Historie und Diagnoseablage prüfen
 - `tools/history_backup_v1_0_0.py`: Historie sichern, prüfen und restaurieren
