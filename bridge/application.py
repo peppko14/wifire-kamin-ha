@@ -25,12 +25,12 @@ from bridge.statistics import (
     parse_statistics_since,
 )
 from bridge.topics import MqttTopics
-from decoder import decode_live_data, read_live_data
+from decoder import read_live_data
 from history.manager import create_default_history_manager
 from history.sync import ArchiveSyncSettings
+from protocol.live import decode_live_status
 
 
-__version__ = "1.3.0"
 
 
 Logger = Callable[[str], None]
@@ -140,7 +140,7 @@ def create_application(
     )
     live_poller = LivePoller(
         read_live_data,
-        decode_live_data,
+        decode_live_status,
     )
     connection = MqttConnection(
         config_module,

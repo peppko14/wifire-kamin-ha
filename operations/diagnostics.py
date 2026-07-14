@@ -21,10 +21,9 @@ from urllib.request import Request, urlopen
 
 from history.audit import audit_history
 from history.backup import HistoryBackupError, verify_backup
-from wifire_protocol import decode_live_status
+from protocol.live import decode_live_status
 
 
-__version__ = "1.0.0"
 MINIMUM_PYTHON = (3, 11)
 DEFAULT_MINIMUM_FREE_MIB = 100
 DEFAULT_MAXIMUM_BACKUP_AGE_DAYS = 30
@@ -154,11 +153,14 @@ def check_configuration(config: object) -> DiagnosticCheck:
             status=CheckStatus.ERROR,
             message="; ".join(errors) + ".",
         )
+    assert isinstance(mqtt_port, int)
+    assert not isinstance(mqtt_port, bool)
+    validated_mqtt_port = mqtt_port
     return DiagnosticCheck(
         name="configuration",
         status=CheckStatus.OK,
         message="Öffentliche Verbindungsparameter sind plausibel.",
-        details=(("mqtt_port", mqtt_port),),
+        details=(("mqtt_port", validated_mqtt_port),),
     )
 
 

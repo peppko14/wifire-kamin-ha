@@ -15,7 +15,6 @@ from history.curves import SAMPLE_AXIS, BurnCurve
 from protocol.quality import MAX_TEMPERATURE_C, MIN_TEMPERATURE_C
 
 
-__version__ = "1.0.0"
 
 DASHBOARD_SCHEMA_VERSION = 1
 MAX_DASHBOARD_PAYLOAD_BYTES = 16 * 1024
@@ -124,6 +123,7 @@ class DashboardCurveSeries:
             "temperatures_c": list(self.temperatures_c),
         }
         if self.burn_id is not None:
+            assert self.start is not None
             result.update(
                 {
                     "burn_id": self.burn_id,

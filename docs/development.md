@@ -142,16 +142,43 @@ Der Konventionstest prüft repositoryweit automatisch, dass jede Dataclass
 
 ## Git-Workflow
 
+- Alle versionierten Textdateien verwenden LF-Zeilenenden. Git erzwingt diese
+  Regel über `.gitattributes`; `.editorconfig` überträgt sie auf unterstützte
+  Editoren.
+
 - größere Änderungen in einem eigenen Branch durchführen,
 - Commits klein und thematisch zusammenhängend halten,
 - vor jedem Commit `git status` und `git diff` prüfen,
 - nur die vorgesehenen Dateien mit `git add <dateien>` aufnehmen,
 - temporäre Downloads und Sicherungskopien nicht committen.
 
+## Automatisierte Qualitätssicherung
+
+GitHub Actions prüft jeden Push und Pull Request mit Python 3.11 und 3.13.
+Die Pipeline führt die vollständigen Unit-Tests, Ruff und Mypy aus. Die lokal
+reproduzierbaren Befehle lauten:
+
+```bash
+python3 -m pip install -r requirements.txt -r requirements-dev.txt
+python3 -m unittest discover -s tests -p "test_*.py" -v
+python3 -m ruff check .
+python3 -m mypy
+```
+
+Ruff startet mit seinen fehlerorientierten Pyflakes- und Pycodestyle-Regeln.
+Mypy prüft den produktiven Code unter `bridge/`, `history/`, `operations/` und
+`protocol/`. Der Prüfumfang darf nur in einem begründeten Hardening-Commit
+verändert werden.
+
 ## Versionsverwaltung
 
 Die Projektversion steht zentral in `VERSION`; `version.py` liest sie zur
 Laufzeit ein. Es gilt Semantic Versioning:
+
+Anwendungs-, Bridge-, Historien- und Protokollmodule definieren keine eigenen
+`__version__`-Konstanten. Sie gehören immer zur gemeinsam veröffentlichten
+Projektversion. Eine automatisierte Konventionsprüfung verhindert lokale
+Modulversionen.
 
 - `PATCH`: kompatible Fehlerbehebungen,
 - `MINOR`: kompatible neue Funktionen,
@@ -164,6 +191,11 @@ Vor jedem Release müssen diese drei Angaben synchron sein:
 3. Der Git-Tag lautet `vX.Y.Z`.
 
 ## Versionierte Werkzeuge
+
+Die Werkzeugversion beschreibt das Ausgabe- und Aufrufformat des einzelnen
+Werkzeugs und ist ausdrücklich nicht die Projektversion. Eine automatisierte
+Konventionsprüfung stellt sicher, dass Werkzeugversion und Dateiname
+übereinstimmen.
 
 Eigenständige Werkzeuge unter `tools/` tragen ihre Version im Dateinamen
 und zusätzlich als `__version__` im Quellcode. Beide Angaben müssen

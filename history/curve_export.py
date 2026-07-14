@@ -14,7 +14,6 @@ from history.curve_analysis import CurveAnalysis
 from history.curves import SAMPLE_AXIS
 
 
-__version__ = "1.0.0"
 CURVE_EXPORT_SCHEMA_VERSION = 1
 
 

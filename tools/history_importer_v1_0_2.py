@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 # Das Werkzeug liegt unter tools/. Deshalb muss das Repository-Hauptverzeichnis
 # vor den projektinternen Imports in sys.path aufgenommen werden.
@@ -88,7 +88,7 @@ def read_archive(
             bytes.fromhex(raw)
             return raw
 
-        except Exception as error:
+        except (OSError, ValueError) as error:
             last_error = error
             print(
                 f"  Versuch {attempt}/{retries} fehlgeschlagen: "
@@ -179,7 +179,7 @@ def main() -> None:
             else:
                 print("gelesen | unvollständig")
 
-        except Exception as error:
+        except (RuntimeError, ValueError) as error:
             read_failures += 1
             print(f"FEHLER | {error}")
 

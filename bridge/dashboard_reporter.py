@@ -18,7 +18,6 @@ from history.curve_analysis import analyze_curves
 from history.curves import BurnCurve, load_burn_curves
 
 
-__version__ = "1.0.0"
 
 Logger = Callable[[str], None]
 Clock = Callable[[], datetime]

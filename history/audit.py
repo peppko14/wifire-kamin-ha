@@ -16,7 +16,6 @@ from history.diagnostics import (
 from history.storage import HistoryStorage, HistoryStorageError
 
 
-__version__ = "1.0.0"
 
 
 def _counter_tuple(counter: Counter[object]) -> tuple[tuple[str, int], ...]:

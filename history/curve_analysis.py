@@ -11,10 +11,9 @@ from math import sqrt
 from statistics import fmean
 from typing import Iterable
 
-from history.curves import BurnCurve, SAMPLE_AXIS
+from history.curves import BurnCurve
 
 
-__version__ = "1.0.0"
 
 
 class CurveAnalysisError(ValueError):

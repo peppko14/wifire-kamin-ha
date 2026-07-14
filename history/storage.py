@@ -16,7 +16,6 @@ from protocol.models import BurnRecord
 from protocol.quality import QualityReport, validate_burn_record
 
 
-__version__ = "2.1.0"
 HISTORY_SCHEMA_VERSION = 2
 
 

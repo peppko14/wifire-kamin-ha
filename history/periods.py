@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from datetime import datetime
 
 
-__version__ = "1.0.0"
 
 
 @dataclass(frozen=True, order=True, slots=True)

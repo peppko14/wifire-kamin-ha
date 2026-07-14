@@ -18,7 +18,7 @@ from history.curves import BurnCurve, CurvePoint
 from history.identifiers import build_burn_id
 from history.period_statistics import calculate_current_period_statistics
 from history.statistics import HistoryStatistics
-from protocol.models import BurnRecord
+from protocol.models import BurnRecord, LiveStatus
 
 
 class FakeClient:
@@ -78,16 +78,18 @@ class MqttPublisherTests(unittest.TestCase):
 
     def test_publish_state_uses_expected_payload(self) -> None:
         self.publisher.publish_state(
-            {
-                "temperature_c": 24,
-                "flap_percent": 0,
-                "flap_moving": False,
-                "burn_time": "1:01",
-                "burn_total_minutes": 61,
-                "door_open": False,
-                "door_state": "geschlossen",
-                "fan_raw": 1,
-            }
+            LiveStatus(
+                temperature_c=24,
+                flap_percent=0,
+                flap_moving=False,
+                burn_hours=1,
+                burn_minutes=1,
+                burn_total_minutes=61,
+                door_open=False,
+                fan_raw=1,
+                status_raw=32,
+                raw="raw-live-data",
+            )
         )
 
         self.assertEqual(len(self.client.messages), 1)
