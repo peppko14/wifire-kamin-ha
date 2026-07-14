@@ -142,6 +142,10 @@ Der Konventionstest prüft repositoryweit automatisch, dass jede Dataclass
 
 ## Git-Workflow
 
+- Alle versionierten Textdateien verwenden LF-Zeilenenden. Git erzwingt diese
+  Regel über `.gitattributes`; `.editorconfig` überträgt sie auf unterstützte
+  Editoren.
+
 - größere Änderungen in einem eigenen Branch durchführen,
 - Commits klein und thematisch zusammenhängend halten,
 - vor jedem Commit `git status` und `git diff` prüfen,
