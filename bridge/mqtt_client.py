@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import time
+from threading import Lock
 from typing import Any, Callable, Protocol
 
 import paho.mqtt.client as mqtt
@@ -60,7 +61,11 @@ class MqttConnection:
         self.is_running = is_running
         self.logger = logger
         self.sleep = sleep
-        self.latest_state: LiveStatus | None = None
+        # loop_start() führt MQTT-Callbacks in einem eigenen Thread aus.
+        # Der unveränderliche LiveStatus wird deshalb als kompletter Snapshot
+        # unter einem Lock zwischen Haupt- und MQTT-Thread ausgetauscht.
+        self._latest_state_lock = Lock()
+        self._latest_state: LiveStatus | None = None
 
         self.client = client_factory(
             mqtt.CallbackAPIVersion.VERSION2,
@@ -95,7 +100,13 @@ class MqttConnection:
 
     def remember_state(self, data: LiveStatus) -> None:
         """Merkt den letzten Live-Zustand für Neuverbindungen."""
-        self.latest_state = data
+        with self._latest_state_lock:
+            self._latest_state = data
+
+    def latest_state_snapshot(self) -> LiveStatus | None:
+        """Liest einen stabilen Snapshot für den aufrufenden Thread."""
+        with self._latest_state_lock:
+            return self._latest_state
 
     def publish_discovery(self) -> None:
         """Veröffentlicht die Home-Assistant-Device-Discovery."""
@@ -145,8 +156,9 @@ class MqttConnection:
         self.publish_discovery()
         self.publisher.publish_availability(True)
 
-        if self.latest_state is not None:
-            self.publisher.publish_state(self.latest_state)
+        latest_state = self.latest_state_snapshot()
+        if latest_state is not None:
+            self.publisher.publish_state(latest_state)
 
     def on_message(
         self,
@@ -177,8 +189,9 @@ class MqttConnection:
         self.publish_discovery()
         self.publisher.publish_availability(True)
 
-        if self.latest_state is not None:
-            self.publisher.publish_state(self.latest_state)
+        latest_state = self.latest_state_snapshot()
+        if latest_state is not None:
+            self.publisher.publish_state(latest_state)
 
     def on_disconnect(
         self,

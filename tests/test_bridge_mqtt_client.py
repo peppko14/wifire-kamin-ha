@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 import sys
 import types
@@ -248,6 +249,29 @@ class MqttConnectionTests(unittest.TestCase):
         discovery = json.loads(client.published[0][1])
         self.assertEqual(discovery["device"]["sw_version"], "0.6.1")
         self.assertIn("Mit MQTT verbunden.", messages)
+
+    def test_remember_state_uses_stable_snapshot(self) -> None:
+        connection, _, _, _ = self.create_connection()
+        first = LiveStatus(
+            temperature_c=24,
+            flap_percent=100,
+            flap_moving=False,
+            burn_hours=0,
+            burn_minutes=12,
+            burn_total_minutes=12,
+            door_open=False,
+            fan_raw=1,
+            status_raw=1,
+            raw="first",
+        )
+        second = replace(first, temperature_c=25, raw="second")
+
+        connection.remember_state(first)
+        snapshot = connection.latest_state_snapshot()
+        connection.remember_state(second)
+
+        self.assertIs(snapshot, first)
+        self.assertIs(connection.latest_state_snapshot(), second)
 
     def test_failed_connect_does_not_publish(self) -> None:
         connection, client, messages, _ = self.create_connection()
