@@ -7,6 +7,15 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Code-Hardening
+
+- Ein einziges unveränderliches `LiveStatus`-Modell für Bridge, MQTT und
+  Betriebsdiagnose
+- Zentraler Live-Decoder unter `protocol/live.py`
+- Doppelte Live-Status-Dataclass und parallelen dict-basierten Decoder
+  entfernt
+- MQTT-Payload und Laufzeitverhalten durch direkte Vertragstests abgesichert
+
 ## [0.12.0] - 2026-07-14
 
 ### Brennkurven-Dashboard

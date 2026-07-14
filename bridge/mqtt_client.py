@@ -13,12 +13,12 @@ from typing import Any, Callable, Protocol
 import paho.mqtt.client as mqtt
 
 from bridge.discovery import build_discovery_payload
-from bridge.polling import LiveState
 from bridge.publisher import MqttPublisher
 from bridge.topics import MqttTopics
+from protocol.models import LiveStatus
 
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 
 Logger = Callable[[str], None]
@@ -61,7 +61,7 @@ class MqttConnection:
         self.is_running = is_running
         self.logger = logger
         self.sleep = sleep
-        self.latest_state: LiveState | None = None
+        self.latest_state: LiveStatus | None = None
 
         self.client = client_factory(
             mqtt.CallbackAPIVersion.VERSION2,
@@ -94,7 +94,7 @@ class MqttConnection:
             max_delay=60,
         )
 
-    def remember_state(self, data: LiveState) -> None:
+    def remember_state(self, data: LiveStatus) -> None:
         """Merkt den letzten Live-Zustand für Neuverbindungen."""
         self.latest_state = data
 

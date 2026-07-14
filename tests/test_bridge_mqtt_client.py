@@ -36,6 +36,7 @@ except ModuleNotFoundError:
 
 from bridge.mqtt_client import MqttConnection
 from bridge.topics import MqttTopics
+from protocol.models import LiveStatus
 
 
 class FakeReasonCode:
@@ -209,16 +210,18 @@ class MqttConnectionTests(unittest.TestCase):
 
     def test_successful_connect_publishes_discovery_and_state(self) -> None:
         connection, client, messages, _ = self.create_connection()
-        state = {
-            "temperature_c": 24,
-            "flap_percent": 100,
-            "flap_moving": False,
-            "burn_time": "0:12",
-            "burn_total_minutes": 12,
-            "door_open": False,
-            "door_state": "geschlossen",
-            "fan_raw": 1,
-        }
+        state = LiveStatus(
+            temperature_c=24,
+            flap_percent=100,
+            flap_moving=False,
+            burn_hours=0,
+            burn_minutes=12,
+            burn_total_minutes=12,
+            door_open=False,
+            fan_raw=1,
+            status_raw=1,
+            raw="raw-live-data",
+        )
         connection.remember_state(state)
 
         connection.on_connect(

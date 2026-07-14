@@ -8,27 +8,27 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Protocol
+from typing import Callable, Protocol
 
 from bridge.polling import (
     PollingSettings,
     get_next_poll_interval,
 )
+from protocol.models import LiveStatus
 
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 
-LiveState = dict[str, Any]
 RunningCheck = Callable[[], bool]
 Sleeper = Callable[[int | float], None]
 Clock = Callable[[], float]
 Logger = Callable[[str], None]
-StateCallback = Callable[[LiveState], None]
+StateCallback = Callable[[LiveStatus], None]
 
 
 class LivePollerLike(Protocol):
-    def poll(self) -> LiveState:
+    def poll(self) -> LiveStatus:
         ...
 
 
@@ -36,7 +36,7 @@ class PublisherLike(Protocol):
     def publish_availability(self, online: bool) -> None:
         ...
 
-    def publish_state(self, data: LiveState) -> None:
+    def publish_state(self, data: LiveStatus) -> None:
         ...
 
 
@@ -68,7 +68,7 @@ class BridgeRuntime:
     on_state: StateCallback
     monotonic: Clock = time.monotonic
     logger: Logger = print
-    latest_state: LiveState | None = field(
+    latest_state: LiveStatus | None = field(
         default=None,
         init=False,
     )
@@ -104,10 +104,10 @@ class BridgeRuntime:
             self.publisher.publish_state(data)
 
             self.logger(
-                f"{data['temperature_c']} °C | "
-                f"{data['flap_percent']} % | "
-                f"{data['burn_time']} | "
-                f"Tür {data['door_state']}"
+                f"{data.temperature_c} °C | "
+                f"{data.flap_percent} % | "
+                f"{data.burn_time} | "
+                f"Tür {data.door_state}"
             )
 
         except (OSError, ValueError) as error:
