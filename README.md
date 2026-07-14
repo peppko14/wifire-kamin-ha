@@ -21,6 +21,8 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
 - Historien-Schema 2 mit zentraler Dauer- und Qualitätsdefinition
 - getrennte Diagnoseablage für unvollständige Datensätze
 - rein lesendes Audit für Historie und Diagnoseablage
+- verifiziertes Historien-Backup mit sicherem Wiederherstellungstest
+- zusammengefasste Offline- und Netzwerk-Betriebsdiagnose
 - Import bereits vorhandener Archive
 - lokale Abbrandstatistik mit optionalem Datumsfilter
 - sechs automatisch erkannte Statistikentitäten in Home Assistant
@@ -304,7 +306,7 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar.
+Assistant ausführbar. Version 0.10.0 umfasst 239 automatisierte Tests.
 
 ## Werkzeuge
 
@@ -322,8 +324,10 @@ Assistant ausführbar.
 
 Für eine spätere Version vorgesehen:
 
-- Home-Assistant-Dashboard
-- weiter vereinheitlichte Protokollschnittstelle
+- v0.11: digitale Brennkurven und historische Referenzkurven
+- v0.12: Home-Assistant-Dashboard für Kurvenvergleiche
+- v0.13: laufende Brennkurve mit historischen Abbränden vergleichen
+- v0.14: weiter vereinheitlichte Protokollschnittstelle
 
 ## Lizenz
 

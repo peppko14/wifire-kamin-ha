@@ -1,8 +1,8 @@
 # Architektur
 
-Dokumentversion: 1.4.0
+Dokumentversion: 1.5.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.8.0
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.10.0
 
 ## Ziele
 
@@ -35,6 +35,9 @@ wifire-kamin-ha/
 │   ├── statistics.py
 │   └── application.py
 ├── history/
+│   ├── backup.py
+│   ├── diagnostics.py
+│   ├── audit.py
 │   ├── identifiers.py
 │   ├── storage.py
 │   ├── manager.py
@@ -43,9 +46,13 @@ wifire-kamin-ha/
 │   ├── statistics.py
 │   ├── periods.py
 │   └── period_statistics.py
+├── operations/
+│   └── diagnostics.py
 ├── protocol/
 │   ├── models.py
-│   └── adapters.py
+│   ├── adapters.py
+│   ├── duration.py
+│   └── quality.py
 ├── tests/
 ├── tools/
 ├── docs/
@@ -154,6 +161,17 @@ Definiert unveränderliche Datenmodelle:
 
 Überführt die bestehende Archivstruktur in das zentrale `BurnRecord`-Modell.
 
+### `protocol/duration.py`
+
+Rekonstruiert die fachliche Abbrenndauer zentral aus dem entrollten
+Zeitpunkt der Klappenstellung 0 %. Die Messpunktanzahl ist keine Dauer.
+
+### `protocol/quality.py`
+
+Prüft Temperaturgrenzen, Vollständigkeit, Zeitstempel und weitere fachliche
+Plausibilitätsregeln. Warnungen bleiben auswertbar; fehlerhafte Datensätze
+gelangen ausschließlich in die getrennte Diagnoseablage.
+
 ## Historie
 
 ### `history/identifiers.py`
@@ -192,6 +210,13 @@ lesend. Das Audit zählt Schema-Versionen, Qualitätsstatus, Warnungs- und
 Diagnosegründe sowie strukturell nicht lesbare Dateien. Das zugehörige Werkzeug
 `tools/history_audit_v1_0_0.py` unterstützt Text- und JSON-Ausgabe.
 
+### `history/backup.py`
+
+Sichert reguläre Historie und Diagnoseablage unverändert in einer ZIP-Datei.
+Ein Manifest enthält Dateigrößen und vollständige SHA-256-Prüfsummen. Jedes
+Backup wird vor der Freigabe geprüft; eine Wiederherstellung ist nur in ein
+neues Zielverzeichnis zulässig.
+
 ### `history/manager.py`
 
 Validiert Datensätze, erkennt vorhandene IDs und speichert nur neue,
@@ -227,6 +252,15 @@ Gruppiert Datensätze nach Kalendermonat oder Heizsaison und verwendet für
 jede Gruppe die bestehende, getestete Statistikberechnung. Für MQTT wird eine
 feste Momentaufnahme aus aktuellem Monat und drei aufeinanderfolgenden
 Heizsaisons erzeugt. Fehlende Perioden erhalten neutrale Statistiken.
+
+## Betriebsdiagnose
+
+### `operations/diagnostics.py`
+
+Erzeugt einen zusammengefassten, nur lesenden Bericht zu Python-Version,
+Konfiguration, Speicherplatz, Historie, Backup, WiFire-Erreichbarkeit,
+MQTT-TCP-Port und systemd-Dienst. Netzwerk- und Dienstprüfungen können
+übersprungen werden. Private Zugangsdaten sind kein Bestandteil des Berichts.
 
 ## Datenfluss
 
@@ -306,7 +340,7 @@ werden nicht in der regulären Historie gespeichert.
 
 ## Tests
 
-Version 0.8.0 umfasst 173 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
+Version 0.10.0 umfasst 239 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
 für diese Tests nicht erforderlich.
 
 ```bash
@@ -315,9 +349,11 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 
 ## Bewusst verschoben
 
-Noch nicht Bestandteil von v0.8.0 sind:
+Noch nicht Bestandteil von v0.10.0 sind:
 
-- ein Home-Assistant-Dashboard,
+- digitale Brennkurven und historische Referenzkurven,
+- ein Home-Assistant-Dashboard für Kurvenvergleiche,
+- Vergleiche der laufenden Kurve mit historischen Abbränden,
 - die vollständige Ablösung der bestehenden Decoder-Einstiegspunkte.
 
 Diese Punkte können auf der stabilen Historien- und Bridge-Architektur in
