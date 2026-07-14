@@ -330,7 +330,7 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Version 0.11.0 umfasst 273 automatisierte Tests.
+Assistant ausführbar. Version 0.12.0 umfasst 292 automatisierte Tests.
 
 ## Werkzeuge
 
@@ -347,9 +347,8 @@ Assistant ausführbar. Version 0.11.0 umfasst 273 automatisierte Tests.
 
 ## Roadmap
 
-Für eine spätere Version vorgesehen:
+Für spätere Versionen vorgesehen:
 
-- v0.12: Home-Assistant-Dashboard für Kurvenvergleiche
 - v0.13: laufende Brennkurve mit historischen Abbränden vergleichen
 - v0.14: weiter vereinheitlichte Protokollschnittstelle
 

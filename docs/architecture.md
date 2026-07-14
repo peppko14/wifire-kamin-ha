@@ -2,7 +2,7 @@
 
 Dokumentversion: 1.6.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.11.0
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.12.0
 
 ## Ziele
 
@@ -274,6 +274,21 @@ Erzeugt und speichert atomisch ein portables JSON-Dokument mit allen
 Einzelkurven, Durchschnittskurve, repräsentativer Kurve, heißester Kurve,
 Filterinformationen und stabilen Abbrand-IDs.
 
+### `bridge/dashboard.py`
+
+Verdichtet eine Kurvenanalyse auf genau drei Temperaturarrays: Durchschnitt,
+repräsentativer realer Abbrand und heißester realer Abbrand. Die retained
+MQTT-Nachricht verwendet ein eigenes Schema und darf 16 KiB nicht
+überschreiten. Vollständige historische Einzelkurven werden nicht in
+Home-Assistant-Attribute kopiert.
+
+### `bridge/dashboard_reporter.py`
+
+Lädt die streng validierten Brennkurven nach einer seltenen
+Ringpuffer-Synchronisation, wendet den konfigurierten Zeitraumfilter an und
+veröffentlicht die kompakte Momentaufnahme. Bei leerer Historie wird keine
+unvollständige Entität erzeugt.
+
 ## Betriebsdiagnose
 
 ### `operations/diagnostics.py`
@@ -361,7 +376,7 @@ werden nicht in der regulären Historie gespeichert.
 
 ## Tests
 
-Version 0.11.0 umfasst 273 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
+Version 0.12.0 umfasst 292 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
 für diese Tests nicht erforderlich.
 
 ```bash
@@ -370,9 +385,8 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 
 ## Bewusst verschoben
 
-Noch nicht Bestandteil von v0.11.0 sind:
+Noch nicht Bestandteil von v0.12.0 sind:
 
-- ein Home-Assistant-Dashboard für Kurvenvergleiche,
 - Vergleiche der laufenden Kurve mit historischen Abbränden,
 - die vollständige Ablösung der bestehenden Decoder-Einstiegspunkte.
 
