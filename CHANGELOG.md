@@ -7,6 +7,16 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Sicherheit
+
+- Optionale TLS-Verschlüsselung und Broker-Zertifikatsprüfung für MQTT ergänzt
+- Systemvertrauensspeicher, eigene CA und optionale gegenseitige
+  TLS-Authentifizierung werden unterstützt
+- Bestehende Installationen bleiben standardmäßig beim bisherigen
+  unverschlüsselten MQTT-Transport
+- Unvollständige TLS-Konfigurationen werden vor dem Verbindungsaufbau
+  abgewiesen; deaktivierte Hostnamenprüfung erzeugt eine deutliche Warnung
+
 ## [0.12.3] - 2026-07-16
 
 ### Resilienz

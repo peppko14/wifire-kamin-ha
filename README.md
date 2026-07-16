@@ -97,6 +97,31 @@ STATISTICS_SINCE = "2026-01-01"
 Mit `None` wird die gesamte lokale Historie berücksichtigt. `config.py` ist
 von Git ausgeschlossen.
 
+### Optionale MQTT-Verschlüsselung
+
+Im vertrauten Heimnetz bleibt die bisherige unverschlüsselte Verbindung
+standardmäßig aktiv. Für einen TLS-fähigen Broker kann die private
+`config.py` beispielsweise so ergänzt werden:
+
+```python
+MQTT_PORT = 8883
+MQTT_TLS_ENABLED = True
+MQTT_TLS_CA_CERT = "/etc/mosquitto/certs/ca.crt"
+MQTT_TLS_CLIENT_CERT = None
+MQTT_TLS_CLIENT_KEY = None
+MQTT_TLS_INSECURE = False
+```
+
+Ohne eigenen CA-Pfad verwendet Python die vertrauenswürdigen
+Systemzertifikate. Ein Client-Zertifikat und sein Schlüssel müssen immer
+gemeinsam gesetzt werden. Der Brokername in `MQTT_HOST` muss zum Zertifikat
+passen; bei einer IP-Adresse muss das Zertifikat diese IP als alternativen
+Namen enthalten.
+
+`MQTT_TLS_INSECURE = True` deaktiviert die Prüfung der Brokeridentität. Diese
+Option ist ausschließlich für eine kurze Fehlersuche gedacht und erzeugt
+beim Start eine Warnung.
+
 ## Manueller Start
 
 ```bash
@@ -382,8 +407,6 @@ Für spätere Versionen vorgesehen:
 
 - v0.13: laufende Brennkurve mit historischen Abbränden vergleichen
 - v0.14: weiter vereinheitlichte Protokollschnittstelle
-- Backlog: optionale MQTT-TLS-Konfiguration; ohne TLS werden die Broker-
-  Zugangsdaten auch im Heimnetz unverschlüsselt übertragen
 - Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
   Beendigungssignal unmittelbar abbrechen
 
