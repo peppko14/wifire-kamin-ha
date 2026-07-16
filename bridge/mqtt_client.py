@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import time
+from dataclasses import dataclass
+from pathlib import Path
 from threading import Lock
 from typing import Any, Callable, Protocol
 
@@ -18,13 +20,82 @@ from bridge.publisher import MqttPublisher
 from bridge.topics import MqttTopics
 from protocol.models import LiveStatus
 
-
-
-
 Logger = Callable[[str], None]
 RunningCheck = Callable[[], bool]
 SleepFunction = Callable[[float], None]
 ClientFactory = Callable[..., mqtt.Client]
+
+
+@dataclass(frozen=True, slots=True)
+class MqttTlsSettings:
+    """Validierte optionale TLS-Einstellungen der MQTT-Verbindung."""
+
+    enabled: bool = False
+    ca_cert: Path | None = None
+    client_cert: Path | None = None
+    client_key: Path | None = None
+    insecure: bool = False
+
+    @classmethod
+    def from_config(cls, config: object) -> MqttTlsSettings:
+        """Liest TLS-Werte rückwärtskompatibel aus der Konfiguration."""
+        settings = cls(
+            enabled=bool(getattr(config, "MQTT_TLS_ENABLED", False)),
+            ca_cert=_optional_path(
+                getattr(config, "MQTT_TLS_CA_CERT", None),
+                "MQTT_TLS_CA_CERT",
+            ),
+            client_cert=_optional_path(
+                getattr(config, "MQTT_TLS_CLIENT_CERT", None),
+                "MQTT_TLS_CLIENT_CERT",
+            ),
+            client_key=_optional_path(
+                getattr(config, "MQTT_TLS_CLIENT_KEY", None),
+                "MQTT_TLS_CLIENT_KEY",
+            ),
+            insecure=bool(getattr(config, "MQTT_TLS_INSECURE", False)),
+        )
+        settings.validate()
+        return settings
+
+    def validate(self) -> None:
+        """Verhindert widersprüchliche oder unsichere Teilkonfigurationen."""
+        configured_paths = (
+            self.ca_cert,
+            self.client_cert,
+            self.client_key,
+        )
+        if not self.enabled and (
+            any(path is not None for path in configured_paths)
+            or self.insecure
+        ):
+            raise ValueError(
+                "MQTT-TLS-Optionen erfordern MQTT_TLS_ENABLED = True."
+            )
+
+        if (self.client_cert is None) != (self.client_key is None):
+            raise ValueError(
+                "MQTT_TLS_CLIENT_CERT und MQTT_TLS_CLIENT_KEY müssen "
+                "gemeinsam gesetzt werden."
+            )
+
+
+def _optional_path(value: object, setting_name: str) -> Path | None:
+    """Konvertiert einen optionalen Konfigurationswert in einen Pfad."""
+    if value is None or value == "":
+        return None
+    if not isinstance(value, (str, Path)):
+        raise ValueError(
+            f"{setting_name} muss ein Dateipfad oder None sein."
+        )
+    return Path(value).expanduser()
+
+
+def _path_text(path: Path | None) -> str | None:
+    """Gibt einen optionalen pathlib-Pfad für Paho als Text zurück."""
+    if path is None:
+        return None
+    return str(path)
 
 
 class MqttConfig(Protocol):
@@ -61,6 +132,7 @@ class MqttConnection:
         self.is_running = is_running
         self.logger = logger
         self.sleep = sleep
+        self.tls_settings = MqttTlsSettings.from_config(config)
         # loop_start() führt MQTT-Callbacks in einem eigenen Thread aus.
         # Der unveränderliche LiveStatus wird deshalb als kompletter Snapshot
         # unter einem Lock zwischen Haupt- und MQTT-Thread ausgetauscht.
@@ -87,6 +159,8 @@ class MqttConnection:
                 config.MQTT_PASSWORD,
             )
 
+        self._configure_tls()
+
         self.client.will_set(
             topics.availability,
             payload="offline",
@@ -97,6 +171,24 @@ class MqttConnection:
             min_delay=2,
             max_delay=60,
         )
+
+    def _configure_tls(self) -> None:
+        """Aktiviert TLS vor dem ersten Verbindungsaufbau."""
+        if not self.tls_settings.enabled:
+            return
+
+        self.client.tls_set(
+            ca_certs=_path_text(self.tls_settings.ca_cert),
+            certfile=_path_text(self.tls_settings.client_cert),
+            keyfile=_path_text(self.tls_settings.client_key),
+        )
+
+        if self.tls_settings.insecure:
+            self.client.tls_insecure_set(True)
+            self.logger(
+                "WARNUNG: MQTT-TLS-Hostnameprüfung ist deaktiviert. "
+                "MQTT_TLS_INSECURE nur vorübergehend zum Testen verwenden."
+            )
 
     def remember_state(self, data: LiveStatus) -> None:
         """Merkt den letzten Live-Zustand für Neuverbindungen."""
