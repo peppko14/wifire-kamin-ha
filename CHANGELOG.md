@@ -7,6 +7,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.12.4] - 2026-07-16
+
 ### Sicherheit
 
 - Optionale TLS-Verschlüsselung und Broker-Zertifikatsprüfung für MQTT ergänzt
@@ -28,6 +30,17 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   festgelegt
 - Produktive Installation und CI erzwingen Hash-Prüfung und lehnen
   Quellpakete sowie nicht freigegebene Paketdateien ab
+
+### Getestet
+
+- 344 automatisierte Tests ohne Kamin, MQTT-Broker oder Home Assistant
+- MQTT-Verbindungen ohne TLS, mit Systemvertrauensspeicher, eigener CA und
+  optionalem Client-Zertifikat
+- Ablehnung widersprüchlicher TLS-Konfigurationen vor dem Verbindungsaufbau
+- systemd-Unit mit `systemd-analyze verify` geprüft und mit einem
+  Gesamtexpositionswert von 2,9 als `OK` bewertet
+- Hash-verifizierter Download des freigegebenen Paho-MQTT-Wheels
+- Ruff-, Mypy-, Shell-Syntax- und Whitespace-Prüfungen ohne Befund
 
 ## [0.12.3] - 2026-07-16
 
