@@ -84,6 +84,7 @@ Private Konfiguration anlegen:
 
 ```bash
 cp config.example.py config.py
+chmod 600 config.py
 nano config.py
 ```
 
@@ -136,16 +137,36 @@ Ende des aktuellen Synchronisationslaufs weiterlaufen.
 ## systemd-Dienst
 
 ```bash
-chmod +x systemd/install_service_v0.5.1.sh
-sudo systemd/install_service_v0.5.1.sh
+chmod +x systemd/install_service_v0.12.4.sh
+chmod +x systemd/uninstall_service_v0.12.4.sh
+sudo systemd/install_service_v0.12.4.sh
 ```
 
-Der Installer erkennt Benutzer, Projektpfad und Python-Umgebung. Status
-prüfen:
+Der Installer erkennt Benutzer, Projektpfad und Python-Umgebung, setzt
+`config.py` auf Modus `600`, legt den privaten Schreibpfad `data/` an und
+prüft die gerenderte Unit vor der Installation. Das Betriebssystem und das
+Projekt bleiben für den Dienst schreibgeschützt; nur `data/` ist beschreibbar.
+
+Status und Sandbox prüfen:
 
 ```bash
 sudo systemctl status wifire-kamin.service --no-pager -l
+sudo systemd-analyze verify \
+  /etc/systemd/system/wifire-kamin.service
+sudo systemd-analyze security wifire-kamin.service
 ```
+
+Bei einem Startfehler zeigt das Journal die Ursache:
+
+```bash
+sudo journalctl \
+  -u wifire-kamin.service \
+  --no-pager \
+  -n 100
+```
+
+Weitere Hinweise einschließlich Rückfall- und Deinstallationsweg stehen in
+[`systemd/README_service_v0.12.4.md`](systemd/README_service_v0.12.4.md).
 
 ## Home Assistant
 
