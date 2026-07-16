@@ -3,6 +3,7 @@ set -euo pipefail
 
 SERVICE_NAME="wifire-kamin.service"
 TARGET="/etc/systemd/system/${SERVICE_NAME}"
+BACKUP="${TARGET}.backup"
 
 if [[ "${EUID}" -ne 0 ]]; then
   echo "Bitte mit sudo ausführen:"
@@ -11,8 +12,8 @@ if [[ "${EUID}" -ne 0 ]]; then
 fi
 
 systemctl disable --now "${SERVICE_NAME}" 2>/dev/null || true
-rm -f "${TARGET}"
+rm -f "${TARGET}" "${BACKUP}"
 systemctl daemon-reload
 
 echo "Der systemd-Service wurde entfernt."
-echo "Projektdateien und config.py bleiben erhalten."
+echo "Projektdateien, config.py und Historie bleiben erhalten."

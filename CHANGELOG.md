@@ -16,6 +16,13 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   unverschlüsselten MQTT-Transport
 - Unvollständige TLS-Konfigurationen werden vor dem Verbindungsaufbau
   abgewiesen; deaktivierte Hostnamenprüfung erzeugt eine deutliche Warnung
+- systemd-Dienst durch eingeschränkte Dateisystem-, Geräte-, Prozess-,
+  Capability- und Netzwerkadressfamilien-Rechte gehärtet
+- Projektdateien werden im Dienst nur noch gelesen; ausschließlich `data/`
+  bleibt als privater Laufzeitpfad beschreibbar
+- Installer prüft die gerenderte Unit vor der Installation und sichert eine
+  vorhandene Dienstdatei als Rückfallmöglichkeit
+- Private `config.py` wird bei der Installation auf Dateimodus `600` gesetzt
 
 ## [0.12.3] - 2026-07-16
 
