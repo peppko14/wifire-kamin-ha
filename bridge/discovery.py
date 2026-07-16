@@ -10,8 +10,6 @@ from typing import Protocol
 from bridge.topics import MqttTopics
 
 
-
-
 class DiscoveryConfig(Protocol):
     """Benötigte öffentliche Konfigurationswerte."""
 
@@ -96,15 +94,34 @@ def build_discovery_payload(
         },
     }
 
+    live_component_ids = [
+        f"{config.DEVICE_ID}_temperature",
+        f"{config.DEVICE_ID}_flap",
+        f"{config.DEVICE_ID}_burn_time",
+        f"{config.DEVICE_ID}_burn_minutes",
+        f"{config.DEVICE_ID}_door",
+        f"{config.DEVICE_ID}_flap_moving",
+    ]
+
     if config.ENABLE_FAN_ENTITY:
-        components[f"{config.DEVICE_ID}_fan_raw"] = {
+        fan_component_id = f"{config.DEVICE_ID}_fan_raw"
+        components[fan_component_id] = {
             "platform": "sensor",
             "name": "Lüfter Rohwert",
-            "unique_id": f"{config.DEVICE_ID}_fan_raw",
+            "unique_id": fan_component_id,
             "value_template": "{{ value_json.fan_raw }}",
             "entity_category": "diagnostic",
             "icon": "mdi:fan",
         }
+        live_component_ids.append(fan_component_id)
+
+    live_availability: dict[str, object] = {
+        "availability_topic": topics.availability,
+        "payload_available": "online",
+        "payload_not_available": "offline",
+    }
+    for component_id in live_component_ids:
+        components[component_id].update(live_availability)
 
     components[f"{config.DEVICE_ID}_dashboard_curves"] = {
         "platform": "sensor",
@@ -122,13 +139,9 @@ def build_discovery_payload(
         components[f"{config.DEVICE_ID}_archive_{number}"] = {
             "platform": "sensor",
             "name": f"Archivierter Abbrand {number}",
-            "unique_id": (
-                f"{config.DEVICE_ID}_archive_{number}"
-            ),
+            "unique_id": f"{config.DEVICE_ID}_archive_{number}",
             "state_topic": topics.archive_state(number),
-            "json_attributes_topic": (
-                topics.archive_attributes(number)
-            ),
+            "json_attributes_topic": topics.archive_attributes(number),
             "device_class": "timestamp",
             "icon": "mdi:chart-line",
             "entity_category": "diagnostic",
@@ -334,8 +347,5 @@ def build_discovery_payload(
         },
         "components": components,
         "state_topic": topics.state,
-        "availability_topic": topics.availability,
-        "payload_available": "online",
-        "payload_not_available": "offline",
         "qos": 1,
     }
