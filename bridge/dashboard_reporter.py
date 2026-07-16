@@ -15,7 +15,7 @@ from bridge.dashboard import (
     build_dashboard_snapshot,
 )
 from history.curve_analysis import analyze_curves
-from history.curves import BurnCurve, load_burn_curves
+from history.curves import BurnCurveLoadResult, read_burn_curves
 
 
 
@@ -34,7 +34,7 @@ class CurveLoader(Protocol):
         *,
         since: datetime | None,
         include_warnings: bool,
-    ) -> tuple[BurnCurve, ...]:
+    ) -> BurnCurveLoadResult:
         ...
 
 
@@ -75,7 +75,7 @@ class DashboardCurveReporter:
     include_warnings: bool = True
     logger: Logger = print
     now: Clock = _utc_now
-    curve_loader: CurveLoader = load_burn_curves
+    curve_loader: CurveLoader = read_burn_curves
 
     def __post_init__(self) -> None:
         if not isinstance(self.history_directory, Path):
@@ -87,12 +87,25 @@ class DashboardCurveReporter:
 
     def refresh(self) -> DashboardCurveSnapshot | None:
         """Veröffentlicht eine neue retained Momentaufnahme der Historie."""
-        curves = self.curve_loader(
+        result = self.curve_loader(
             self.history_directory,
             since=self.since,
             include_warnings=self.include_warnings,
         )
-        if not curves:
+        for issue in result.issues:
+            self.logger(
+                "Historien-Datei für Brennkurven übersprungen: "
+                f"{issue.path.name}: {issue.message}"
+            )
+
+        if not result.curves:
+            if result.issues:
+                self.logger(
+                    "Brennkurven-Vergleich nicht veröffentlicht: keine "
+                    "lesbare Historien-Datei; retained Werte bleiben "
+                    "unverändert."
+                )
+                return None
             self.logger(
                 "Brennkurven-Vergleich nicht veröffentlicht: "
                 "keine passenden Abbrände."
@@ -100,7 +113,7 @@ class DashboardCurveReporter:
             return None
 
         analysis = analyze_curves(
-            curves,
+            result.curves,
             since=self.since,
             include_warnings=self.include_warnings,
         )

@@ -194,13 +194,24 @@ class HistoryCurvesTests(unittest.TestCase):
 
         self.assertEqual(curves, ())
 
-    def test_load_curves_reports_corrupt_file(self) -> None:
+    def test_load_curves_skips_and_reports_corrupt_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
+            storage = HistoryStorage(Path(directory))
+            storage.save(self.build_record())
             path = Path(directory) / "corrupt.json"
             path.write_text(json.dumps({"schema_version": 2}), encoding="utf-8")
+            messages: list[str] = []
 
-            with self.assertRaisesRegex(BurnCurveError, "corrupt.json"):
-                load_burn_curves(Path(directory))
+            curves = load_burn_curves(
+                Path(directory),
+                logger=messages.append,
+            )
+
+            self.assertEqual(len(curves), 1)
+            self.assertTrue(path.exists())
+            self.assertTrue(
+                any("corrupt.json" in message for message in messages)
+            )
 
 
 if __name__ == "__main__":

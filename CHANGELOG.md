@@ -7,6 +7,35 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-07-16
+
+### Resilienz
+
+- Beschädigte Historien-Dateien werden bei Sammelauswertungen einzeln
+  protokolliert und übersprungen
+- Lesbare Datensätze liefern weiterhin Statistiken und Brennkurven, ohne
+  beschädigte Dateien zu löschen oder zu verändern
+- Ausschließlich beschädigte Bestände überschreiben retained MQTT-Werte
+  nicht mit leeren Auswertungen
+- Statistik und Brennkurven-Vergleich werden unabhängig voneinander
+  aktualisiert
+- Live-Abfragen werden bei kurzen WLAN- oder Nutzdatenfehlern standardmäßig
+  einmal nach einer kontrollierten Pause wiederholt
+- Anzahl und Abstand der Live-Leseversuche sind konfigurierbar; ein einzelner
+  Versuch stellt das bisherige Verhalten wieder her
+- Veralteten, ausschließlich von eigenen Tests referenzierten
+  `ArchiveSynchronizer` entfernt; die produktive Ringpuffer-Synchronisation
+  bleibt die einzige Archivkoordination der Bridge
+
+### Getestet
+
+- 329 automatisierte Tests ohne Kamin, MQTT-Broker oder Home Assistant
+- Mischbestand aus lesbarer und beschädigter Historien-Datei
+- Schutz retained Auswertungen bei ausschließlich beschädigten Dateien
+- Erfolgreicher zweiter Live-Leseversuch nach simuliertem WLAN-Aussetzer
+- Begrenzung, Abbruchverhalten und enge Exception-Auswahl der Live-Retries
+- Ruff-, Mypy- und Whitespace-Prüfungen ohne Befund
+
 ## [0.12.2] - 2026-07-16
 
 ### Home Assistant
@@ -404,4 +433,3 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Auslesen von `/direct/00`
 - Dekodierung von Temperatur, Luftklappe, Türstatus und Abbrenndauer
 - Erste MQTT-Anbindung
-

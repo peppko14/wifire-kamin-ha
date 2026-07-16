@@ -44,6 +44,7 @@ from bridge.application import (
     BridgeApplication,
     RunningState,
     build_archive_sync_settings,
+    refresh_history_outputs,
 )
 
 
@@ -68,6 +69,18 @@ class FakeRuntime:
         self.calls += 1
         if self.error is not None:
             raise self.error
+
+
+class FakeReporter:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.calls = 0
+        self.error = error
+
+    def refresh(self) -> object:
+        self.calls += 1
+        if self.error is not None:
+            raise self.error
+        return None
 
 
 class RunningStateTests(unittest.TestCase):
@@ -191,6 +204,25 @@ class ArchiveSettingsTests(unittest.TestCase):
         self.assertEqual(settings.retry_count, 4)
         self.assertEqual(settings.retry_delay_seconds, 12)
         self.assertEqual(settings.archive_delay_seconds, 15)
+
+
+class HistoryOutputRefreshTests(unittest.TestCase):
+    def test_reporters_are_refreshed_independently(self) -> None:
+        statistics = FakeReporter(RuntimeError("Statistik defekt"))
+        dashboard = FakeReporter()
+        messages: list[str] = []
+
+        refresh_history_outputs(
+            statistics,
+            dashboard,
+            logger=messages.append,
+        )
+
+        self.assertEqual(statistics.calls, 1)
+        self.assertEqual(dashboard.calls, 1)
+        self.assertTrue(
+            any("Statistik defekt" in message for message in messages)
+        )
 
 
 if __name__ == "__main__":

@@ -50,6 +50,11 @@ class RuntimeLike(Protocol):
         ...
 
 
+class HistoryReporterLike(Protocol):
+    def refresh(self) -> object:
+        ...
+
+
 @dataclass(slots=True)
 class RunningState:
     """Gemeinsamer, kontrolliert veränderbarer Laufzustand."""
@@ -122,6 +127,24 @@ def build_archive_sync_settings(config_module: Any) -> ArchiveSyncSettings:
     )
 
 
+def refresh_history_outputs(
+    statistics_reporter: HistoryReporterLike,
+    dashboard_reporter: HistoryReporterLike,
+    *,
+    logger: Logger = print,
+) -> None:
+    """Aktualisiert Historienausgaben unabhängig voneinander."""
+    reporters = (
+        ("Historienstatistik", statistics_reporter),
+        ("Brennkurven-Vergleich", dashboard_reporter),
+    )
+    for name, reporter in reporters:
+        try:
+            reporter.refresh()
+        except (OSError, RuntimeError, ValueError) as error:
+            logger(f"{name} konnte nicht aktualisiert werden: {error}")
+
+
 def create_application(
     config_module: Any,
     *,
@@ -138,9 +161,16 @@ def create_application(
     polling_settings = PollingSettings.from_config(
         config_module
     )
+    sleeper = InterruptibleSleeper(running_state)
     live_poller = LivePoller(
         read_live_data,
         decode_live_status,
+        retry_count=polling_settings.live_retry_count,
+        retry_delay_seconds=(
+            polling_settings.live_retry_delay_seconds
+        ),
+        sleeper=sleeper,
+        is_running=running_state,
     )
     connection = MqttConnection(
         config_module,
@@ -149,7 +179,6 @@ def create_application(
         app_version=app_version,
         is_running=running_state,
     )
-    sleeper = InterruptibleSleeper(running_state)
     history_manager = create_default_history_manager(
         project_dir
     )
@@ -178,10 +207,6 @@ def create_application(
         ),
     )
 
-    def refresh_history_outputs() -> None:
-        statistics_reporter.refresh()
-        dashboard_reporter.refresh()
-
     archive_settings = build_archive_sync_settings(config_module)
     archive_synchronizer = RingBufferArchiveSynchronizer(
         settings=archive_settings,
@@ -189,7 +214,10 @@ def create_application(
         history_manager=history_manager,
         sleeper=sleeper,
         is_running=running_state,
-        on_complete=refresh_history_outputs,
+        on_complete=lambda: refresh_history_outputs(
+            statistics_reporter,
+            dashboard_reporter,
+        ),
     )
     runtime = BridgeRuntime(
         live_poller=live_poller,

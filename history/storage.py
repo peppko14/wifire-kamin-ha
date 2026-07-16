@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from history.identifiers import build_burn_id
 from protocol.models import BurnRecord
@@ -17,10 +18,27 @@ from protocol.quality import QualityReport, validate_burn_record
 
 
 HISTORY_SCHEMA_VERSION = 2
+Logger = Callable[[str], None]
 
 
 class HistoryStorageError(RuntimeError):
     """Fehler beim Lesen oder Schreiben der lokalen Historie."""
+
+
+@dataclass(frozen=True, slots=True)
+class HistoryReadIssue:
+    """Beschreibt genau eine nicht lesbare Historien-Datei."""
+
+    path: Path
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class HistoryReadResult:
+    """Enthält alle lesbaren Datensätze und isolierte Dateifehler."""
+
+    records: tuple[dict[str, Any], ...]
+    issues: tuple[HistoryReadIssue, ...]
 
 
 class HistoryStorage:
@@ -180,16 +198,42 @@ class HistoryStorage:
                 f"Qualitätsstatus passt nicht zu den Merkmalen in {path}"
             )
 
-    def list_records(self) -> list[dict[str, Any]]:
-        """Lädt alle gültigen Historien-Datensätze sortiert nach Startzeit."""
+    def read_records(self) -> HistoryReadResult:
+        """Lädt lesbare Datensätze und sammelt Fehler pro Datei."""
         self.ensure_directory()
         records: list[dict[str, Any]] = []
+        issues: list[HistoryReadIssue] = []
 
         for path in sorted(self.directory.glob("*.json")):
-            records.append(self.load_file(path))
+            try:
+                records.append(self.load_file(path))
+            except HistoryStorageError as error:
+                issues.append(
+                    HistoryReadIssue(
+                        path=path,
+                        message=str(error),
+                    )
+                )
 
         records.sort(
             key=lambda item: str(item.get("start") or ""),
             reverse=True,
         )
-        return records
+        return HistoryReadResult(
+            records=tuple(records),
+            issues=tuple(issues),
+        )
+
+    def list_records(
+        self,
+        *,
+        logger: Logger = print,
+    ) -> list[dict[str, Any]]:
+        """Lädt alle lesbaren Datensätze und protokolliert Dateifehler."""
+        result = self.read_records()
+        for issue in result.issues:
+            logger(
+                "Historien-Datei übersprungen: "
+                f"{issue.path.name}: {issue.message}"
+            )
+        return list(result.records)
