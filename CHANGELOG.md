@@ -7,6 +7,41 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.12.4] - 2026-07-16
+
+### Sicherheit
+
+- Optionale TLS-Verschlüsselung und Broker-Zertifikatsprüfung für MQTT ergänzt
+- Systemvertrauensspeicher, eigene CA und optionale gegenseitige
+  TLS-Authentifizierung werden unterstützt
+- Bestehende Installationen bleiben standardmäßig beim bisherigen
+  unverschlüsselten MQTT-Transport
+- Unvollständige TLS-Konfigurationen werden vor dem Verbindungsaufbau
+  abgewiesen; deaktivierte Hostnamenprüfung erzeugt eine deutliche Warnung
+- systemd-Dienst durch eingeschränkte Dateisystem-, Geräte-, Prozess-,
+  Capability- und Netzwerkadressfamilien-Rechte gehärtet
+- Projektdateien werden im Dienst nur noch gelesen; ausschließlich `data/`
+  bleibt als privater Laufzeitpfad beschreibbar
+- Installer prüft die gerenderte Unit vor der Installation und sichert eine
+  vorhandene Dienstdatei als Rückfallmöglichkeit
+- Private `config.py` wird bei der Installation auf Dateimodus `600` gesetzt
+- Direkte Laufzeitabhängigkeiten und reproduzierbares Lockfile getrennt
+- Paho-MQTT auf eine geprüfte Version und dessen SHA-256-Wheel-Prüfsumme
+  festgelegt
+- Produktive Installation und CI erzwingen Hash-Prüfung und lehnen
+  Quellpakete sowie nicht freigegebene Paketdateien ab
+
+### Getestet
+
+- 344 automatisierte Tests ohne Kamin, MQTT-Broker oder Home Assistant
+- MQTT-Verbindungen ohne TLS, mit Systemvertrauensspeicher, eigener CA und
+  optionalem Client-Zertifikat
+- Ablehnung widersprüchlicher TLS-Konfigurationen vor dem Verbindungsaufbau
+- systemd-Unit mit `systemd-analyze verify` geprüft und mit einem
+  Gesamtexpositionswert von 2,9 als `OK` bewertet
+- Hash-verifizierter Download des freigegebenen Paho-MQTT-Wheels
+- Ruff-, Mypy-, Shell-Syntax- und Whitespace-Prüfungen ohne Befund
+
 ## [0.12.3] - 2026-07-16
 
 ### Resilienz

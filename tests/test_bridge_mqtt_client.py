@@ -65,6 +65,9 @@ class FakeClient:
         self.loop_stopped = False
         self.disconnected = False
         self.connect_error: Exception | None = None
+        self.tls: tuple[str | None, str | None, str | None] | None = None
+        self.tls_insecure: bool | None = None
+        self.call_order: list[str] = []
 
     def username_pw_set(self, username: str, password: str) -> None:
         self.credentials = (username, password)
@@ -81,6 +84,20 @@ class FakeClient:
 
     def reconnect_delay_set(self, min_delay: int, max_delay: int) -> None:
         self.reconnect = (min_delay, max_delay)
+
+    def tls_set(
+        self,
+        *,
+        ca_certs: str | None,
+        certfile: str | None,
+        keyfile: str | None,
+    ) -> None:
+        self.tls = (ca_certs, certfile, keyfile)
+        self.call_order.append("tls_set")
+
+    def tls_insecure_set(self, value: bool) -> None:
+        self.tls_insecure = value
+        self.call_order.append("tls_insecure_set")
 
     def publish(
         self,
@@ -104,6 +121,7 @@ class FakeClient:
         if self.connect_error is not None:
             raise self.connect_error
         self.connect_calls.append((host, port, keepalive))
+        self.call_order.append("connect_async")
 
     def loop_start(self) -> None:
         self.loop_started = True
@@ -129,12 +147,29 @@ def create_config(username: str = "mqtt-user") -> SimpleNamespace:
     )
 
 
+def create_tls_config(
+    *,
+    ca_cert: object = None,
+    client_cert: object = None,
+    client_key: object = None,
+    insecure: bool = False,
+) -> SimpleNamespace:
+    config = create_config()
+    config.MQTT_TLS_ENABLED = True
+    config.MQTT_TLS_CA_CERT = ca_cert
+    config.MQTT_TLS_CLIENT_CERT = client_cert
+    config.MQTT_TLS_CLIENT_KEY = client_key
+    config.MQTT_TLS_INSECURE = insecure
+    return config
+
+
 class MqttConnectionTests(unittest.TestCase):
     def create_connection(
         self,
         *,
         username: str = "mqtt-user",
         running: bool = True,
+        config: SimpleNamespace | None = None,
     ) -> tuple[MqttConnection, FakeClient, list[str], list[float]]:
         client = FakeClient()
         messages: list[str] = []
@@ -146,7 +181,7 @@ class MqttConnectionTests(unittest.TestCase):
             return client
 
         connection = MqttConnection(
-            create_config(username),
+            config if config is not None else create_config(username),
             MqttTopics("wifire_kamin"),
             app_name="WiFire Bridge",
             app_version="0.6.1",
@@ -179,6 +214,84 @@ class MqttConnectionTests(unittest.TestCase):
         _, client, _, _ = self.create_connection(username="")
 
         self.assertIsNone(client.credentials)
+
+    def test_existing_config_without_tls_settings_keeps_plain_connection(
+        self,
+    ) -> None:
+        connection, client, _, _ = self.create_connection()
+
+        self.assertFalse(connection.tls_settings.enabled)
+        self.assertIsNone(client.tls)
+        self.assertIsNone(client.tls_insecure)
+
+    def test_tls_uses_system_trust_by_default(self) -> None:
+        connection, client, _, _ = self.create_connection(
+            config=create_tls_config()
+        )
+
+        self.assertTrue(connection.tls_settings.enabled)
+        self.assertEqual(client.tls, (None, None, None))
+        self.assertIsNone(client.tls_insecure)
+
+    def test_tls_uses_configured_ca_and_client_identity(self) -> None:
+        _, client, _, _ = self.create_connection(
+            config=create_tls_config(
+                ca_cert="certificates/ca.pem",
+                client_cert="certificates/client.pem",
+                client_key="certificates/client.key",
+            )
+        )
+
+        self.assertEqual(
+            client.tls,
+            (
+                "certificates/ca.pem",
+                "certificates/client.pem",
+                "certificates/client.key",
+            ),
+        )
+
+    def test_partial_client_identity_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "gemeinsam"):
+            self.create_connection(
+                config=create_tls_config(
+                    client_cert="certificates/client.pem"
+                )
+            )
+
+    def test_tls_options_require_enabled_tls(self) -> None:
+        config = create_config()
+        config.MQTT_TLS_ENABLED = False
+        config.MQTT_TLS_CA_CERT = "certificates/ca.pem"
+
+        with self.assertRaisesRegex(ValueError, "MQTT_TLS_ENABLED"):
+            self.create_connection(config=config)
+
+    def test_insecure_mode_requires_enabled_tls(self) -> None:
+        config = create_config()
+        config.MQTT_TLS_ENABLED = False
+        config.MQTT_TLS_INSECURE = True
+
+        with self.assertRaisesRegex(ValueError, "MQTT_TLS_ENABLED"):
+            self.create_connection(config=config)
+
+    def test_insecure_tls_warns_and_is_configured_before_connect(
+        self,
+    ) -> None:
+        connection, client, messages, _ = self.create_connection(
+            config=create_tls_config(insecure=True)
+        )
+
+        connection.start()
+
+        self.assertTrue(client.tls_insecure)
+        self.assertEqual(
+            client.call_order,
+            ["tls_set", "tls_insecure_set", "connect_async"],
+        )
+        self.assertTrue(
+            any("WARNUNG" in message for message in messages)
+        )
 
     def test_callbacks_are_registered(self) -> None:
         connection, client, _, _ = self.create_connection()

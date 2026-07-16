@@ -29,6 +29,24 @@ class CiConfigurationTests(unittest.TestCase):
         self.assertIn("mypy==2.2.0", requirements.splitlines())
         self.assertIn("ruff==0.15.14", requirements.splitlines())
 
+    def test_runtime_dependencies_are_hash_locked(self) -> None:
+        source = (PROJECT_ROOT / "requirements.in").read_text(
+            encoding="utf-8"
+        )
+        lock = (PROJECT_ROOT / "requirements.lock").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("paho-mqtt>=2.1,<3", source.splitlines())
+        self.assertIn("--only-binary :all:", lock.splitlines())
+        self.assertIn("paho-mqtt==2.1.0 \\", lock.splitlines())
+        self.assertIn(
+            "--hash=sha256:"
+            "6db9ba9b34ed5bc6b6e3812718c7e06e2fd7444540df2455d2c51bd58808feee",
+            lock,
+        )
+        self.assertFalse((PROJECT_ROOT / "requirements.txt").exists())
+
     def test_workflow_runs_tests_lint_and_type_check(self) -> None:
         workflow = (
             PROJECT_ROOT / ".github" / "workflows" / "ci.yml"
@@ -45,6 +63,16 @@ class CiConfigurationTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("permissions:\n  contents: read", workflow)
+
+    def test_workflow_enforces_runtime_hash_verification(self) -> None:
+        workflow = (
+            PROJECT_ROOT / ".github" / "workflows" / "ci.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertEqual(workflow.count("--require-hashes"), 2)
+        self.assertEqual(workflow.count("--only-binary=:all:"), 2)
+        self.assertEqual(workflow.count("-r requirements.lock"), 2)
+        self.assertNotIn("requirements.txt", workflow)
 
 
 if __name__ == "__main__":
