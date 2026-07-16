@@ -1,6 +1,6 @@
 # Entwicklungsrichtlinien
 
-Dokumentversion: 1.5.0
+Dokumentversion: 1.6.0
 
 Diese Regeln gelten für die WiFire-Kamin Home Assistant Bridge.
 
@@ -105,6 +105,22 @@ lesende Archivabfrage transportiert.
 - Fehler werden verständlich protokolliert und nicht still ignoriert.
 - SIGINT und SIGTERM müssen die Bridge kontrolliert beenden.
 - Keine Zugangsdaten oder vollständigen privaten Payloads protokollieren.
+
+## Protokollierung
+
+- `bridge/logging_setup.py` konfiguriert genau eine Logger-Instanz für die
+  produktive Anwendung.
+- `config.LOG_LEVEL` akzeptiert ausschließlich `DEBUG`, `INFO`, `WARNING`,
+  `ERROR` und `CRITICAL`.
+- Alle produktiven Bridge-, MQTT-, Historien- und Polling-Komponenten erhalten
+  dieselbe Logger-Instanz per Dependency Injection.
+- Normale Statusmeldungen verwenden INFO; vorübergehende oder isolierte
+  Fehler WARNING; nicht herstellbare Verbindungen und ungültige
+  Startkonfigurationen ERROR.
+- Einfache Test-Callables bleiben unterstützt. Neue produktive Fehlerpfade
+  müssen jedoch die levelbasierten Hilfsfunktionen verwenden.
+- INFO und DEBUG gehen auf die Standardausgabe, WARNING und höher auf die
+  Fehlerausgabe. Dadurch kann systemd sie nach Journal-Priorität filtern.
 
 ## MQTT
 

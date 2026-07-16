@@ -6,6 +6,9 @@
 # Die private Kopie enthält MQTT-Zugangsdaten und muss nur für ihren Besitzer
 # lesbar sein: chmod 600 config.py
 
+# Zentrale Protokollierung: DEBUG, INFO, WARNING, ERROR oder CRITICAL.
+LOG_LEVEL = "INFO"
+
 # WiFire-Steuerung
 WIFIRE_URL = "http://192.168.0.1/direct/00"
 REQUEST_TIMEOUT = 5

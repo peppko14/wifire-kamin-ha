@@ -100,11 +100,13 @@ Mindestens MQTT-Adresse, Benutzername und Passwort anpassen. Der optionale
 inklusive Statistikfilter kann beispielsweise so gesetzt werden:
 
 ```python
+LOG_LEVEL = "INFO"
 STATISTICS_SINCE = "2026-01-01"
 ```
 
 Mit `None` wird die gesamte lokale Historie berücksichtigt. `config.py` ist
-von Git ausgeschlossen.
+von Git ausgeschlossen. Für `LOG_LEVEL` sind `DEBUG`, `INFO`, `WARNING`,
+`ERROR` und `CRITICAL` zulässig.
 
 ### Optionale MQTT-Verschlüsselung
 
@@ -171,6 +173,15 @@ sudo journalctl \
   -u wifire-kamin.service \
   --no-pager \
   -n 100
+```
+
+Nur Warnungen und Fehler anzeigen:
+
+```bash
+sudo journalctl \
+  -u wifire-kamin.service \
+  -p warning \
+  --no-pager
 ```
 
 Weitere Hinweise einschließlich Rückfall- und Deinstallationsweg stehen in

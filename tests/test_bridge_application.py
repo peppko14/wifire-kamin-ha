@@ -10,7 +10,9 @@ import signal
 import sys
 import types
 import unittest
+from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 
 try:
@@ -44,6 +46,7 @@ from bridge.application import (
     BridgeApplication,
     RunningState,
     build_archive_sync_settings,
+    create_application,
     refresh_history_outputs,
 )
 
@@ -223,6 +226,81 @@ class HistoryOutputRefreshTests(unittest.TestCase):
         self.assertTrue(
             any("Statistik defekt" in message for message in messages)
         )
+
+
+class ApplicationAssemblyTests(unittest.TestCase):
+    def test_one_central_logger_is_injected_into_runtime_components(
+        self,
+    ) -> None:
+        messages: list[str] = []
+        logger = messages.append
+        captured: dict[str, Any] = {}
+        publisher = types.SimpleNamespace()
+        connection = types.SimpleNamespace(
+            publisher=publisher,
+            remember_state=lambda state: None,
+            start=lambda: None,
+            stop=lambda: None,
+        )
+        history_manager = types.SimpleNamespace(
+            storage=types.SimpleNamespace(directory=Path("data/history")),
+        )
+
+        def connection_factory(*args: Any, **kwargs: Any) -> Any:
+            captured["connection_logger"] = kwargs["logger"]
+            return connection
+
+        def manager_factory(*args: Any, **kwargs: Any) -> Any:
+            captured["storage_logger"] = kwargs["logger"]
+            return history_manager
+
+        def statistics_factory(*args: Any, **kwargs: Any) -> FakeReporter:
+            captured["statistics_logger"] = kwargs["logger"]
+            return FakeReporter()
+
+        def dashboard_factory(*args: Any, **kwargs: Any) -> FakeReporter:
+            captured["dashboard_logger"] = kwargs["logger"]
+            return FakeReporter()
+
+        config = types.SimpleNamespace(
+            LOG_LEVEL="DEBUG",
+            DEVICE_ID="wifire_kamin",
+            MQTT_DISCOVERY_PREFIX="homeassistant",
+            WIFIRE_URL="http://192.0.2.1/direct/00",
+        )
+
+        with patch(
+            "bridge.application.configure_logging",
+            return_value=logger,
+        ), patch(
+            "bridge.application.MqttConnection",
+            side_effect=connection_factory,
+        ), patch(
+            "bridge.application.create_default_history_manager",
+            side_effect=manager_factory,
+        ), patch(
+            "bridge.application.HistoryStatisticsReporter",
+            side_effect=statistics_factory,
+        ), patch(
+            "bridge.application.DashboardCurveReporter",
+            side_effect=dashboard_factory,
+        ):
+            application = create_application(
+                config,
+                project_dir=Path("."),
+                app_name="WiFire Bridge",
+                app_version="0.12.5",
+            )
+
+        runtime = application.runtime
+        self.assertIs(application.logger, logger)
+        self.assertIs(runtime.logger, logger)
+        self.assertIs(runtime.live_poller.logger, logger)
+        self.assertIs(runtime.archive_synchronizer.logger, logger)
+        self.assertIs(captured["connection_logger"], logger)
+        self.assertIs(captured["storage_logger"], logger)
+        self.assertIs(captured["statistics_logger"], logger)
+        self.assertIs(captured["dashboard_logger"], logger)
 
 
 if __name__ == "__main__":

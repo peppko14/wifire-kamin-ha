@@ -14,6 +14,13 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Importfehler innerhalb einer vorhandenen Konfiguration bleiben als echte
   Programmfehler sichtbar und werden nicht fälschlich als Ersteinrichtung
   behandelt
+- Zentrale, konfigurierbare Protokollierung mit Zeitstempel sowie den Stufen
+  DEBUG, INFO, WARNING, ERROR und CRITICAL ergänzt
+- Eine gemeinsame Logger-Instanz an Live-Polling, MQTT, Laufzeitsteuerung,
+  Ringpufferabgleich, Historienablage, Statistik und Brennkurvenausgabe
+  weitergegeben
+- Warnungen und Fehler getrennt von normalen Statusmeldungen ausgegeben,
+  damit systemd-Journale nach Priorität gefiltert werden können
 
 ## [0.12.4] - 2026-07-16
 

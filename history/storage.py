@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
+from bridge.logging_setup import log_warning
 from history.identifiers import build_burn_id
 from protocol.models import BurnRecord
 from protocol.quality import QualityReport, validate_burn_record
@@ -44,8 +45,14 @@ class HistoryReadResult:
 class HistoryStorage:
     """Speichert und lädt abgeschlossene Abbrände als JSON-Dateien."""
 
-    def __init__(self, directory: Path) -> None:
+    def __init__(
+        self,
+        directory: Path,
+        *,
+        logger: Logger = print,
+    ) -> None:
         self.directory = directory.resolve()
+        self.logger = logger
 
     def ensure_directory(self) -> None:
         """Erzeugt den Historienordner bei Bedarf."""
@@ -227,12 +234,14 @@ class HistoryStorage:
     def list_records(
         self,
         *,
-        logger: Logger = print,
+        logger: Logger | None = None,
     ) -> list[dict[str, Any]]:
         """Lädt alle lesbaren Datensätze und protokolliert Dateifehler."""
+        active_logger = logger if logger is not None else self.logger
         result = self.read_records()
         for issue in result.issues:
-            logger(
+            log_warning(
+                active_logger,
                 "Historien-Datei übersprungen: "
                 f"{issue.path.name}: {issue.message}"
             )
