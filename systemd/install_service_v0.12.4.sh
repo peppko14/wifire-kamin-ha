@@ -40,7 +40,8 @@ if [[ -z "${PYTHON_BIN}" || ! -x "${PYTHON_BIN}" ]]; then
   echo "Erstelle zuerst eine virtuelle Umgebung:"
   echo "  python3 -m venv venv"
   echo "  source venv/bin/activate"
-  echo "  pip install -r requirements.txt"
+  echo "  python3 -m pip install --require-hashes --only-binary=:all: \\"
+  echo "    -r requirements.lock"
   exit 1
 fi
 

@@ -1,6 +1,6 @@
 # Entwicklungsrichtlinien
 
-Dokumentversion: 1.4.0
+Dokumentversion: 1.5.0
 
 Diese Regeln gelten für die WiFire-Kamin Home Assistant Bridge.
 
@@ -29,7 +29,8 @@ Das Projekt steht unter GNU GPL v3.0 only.
   `@dataclass(frozen=True, slots=True)`
 - Enums, Protocols und einfache Zuordnungen müssen nicht künstlich in
   Dataclasses umgewandelt werden
-- neue Abhängigkeiten in `requirements.txt` dokumentieren
+- neue direkte Laufzeitabhängigkeiten in `requirements.in` dokumentieren und
+  anschließend das hash-verifizierte `requirements.lock` neu erzeugen
 
 ## Dateien und Pfade
 
@@ -159,11 +160,38 @@ Die Pipeline führt die vollständigen Unit-Tests, Ruff und Mypy aus. Die lokal
 reproduzierbaren Befehle lauten:
 
 ```bash
-python3 -m pip install -r requirements.txt -r requirements-dev.txt
+python3 -m pip install \
+  --require-hashes \
+  --only-binary=:all: \
+  -r requirements.lock
+python3 -m pip install -r requirements-dev.txt
 python3 -m unittest discover -s tests -p "test_*.py" -v
 python3 -m ruff check .
 python3 -m mypy
 ```
+
+## Laufzeitabhängigkeiten
+
+`requirements.in` beschreibt die erlaubten direkten Abhängigkeiten.
+`requirements.lock` fixiert die tatsächlich installierten Versionen und
+SHA-256-Prüfsummen. Produktive Installationen und CI müssen immer Hash-Prüfung
+und reine Binärpakete erzwingen.
+
+Das Lockfile wird mit der fest gewählten Werkzeugversion neu erzeugt:
+
+```bash
+pipx run --spec pip-tools==7.5.3 pip-compile \
+  --generate-hashes \
+  --output-file=requirements.lock \
+  --pip-args="--only-binary=:all:" \
+  requirements.in
+```
+
+Anschließend müssen Installation, vollständige Tests, Ruff und Mypy erneut
+ausgeführt werden. Ein Lockfile darf nicht mit manuell geratenen Prüfsummen
+aktualisiert werden. Da Abhängigkeiten umgebungsabhängig sein können, ist das
+Ergebnis mindestens unter der ältesten unterstützten Python-Version zu
+erzeugen und in der CI-Matrix zu validieren.
 
 Ruff startet mit seinen fehlerorientierten Pyflakes- und Pycodestyle-Regeln.
 Mypy prüft den produktiven Code unter `bridge/`, `history/`, `operations/` und

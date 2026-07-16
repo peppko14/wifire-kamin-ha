@@ -23,6 +23,11 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Installer prüft die gerenderte Unit vor der Installation und sichert eine
   vorhandene Dienstdatei als Rückfallmöglichkeit
 - Private `config.py` wird bei der Installation auf Dateimodus `600` gesetzt
+- Direkte Laufzeitabhängigkeiten und reproduzierbares Lockfile getrennt
+- Paho-MQTT auf eine geprüfte Version und dessen SHA-256-Wheel-Prüfsumme
+  festgelegt
+- Produktive Installation und CI erzwingen Hash-Prüfung und lehnen
+  Quellpakete sowie nicht freigegebene Paketdateien ab
 
 ## [0.12.3] - 2026-07-16
 

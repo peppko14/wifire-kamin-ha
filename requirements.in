@@ -1,0 +1,3 @@
+# Direkte Laufzeitabhängigkeiten der WiFire-Kamin-Bridge.
+# Nach Änderungen requirements.lock gemäß docs/development.md neu erzeugen.
+paho-mqtt>=2.1,<3
