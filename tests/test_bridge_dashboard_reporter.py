@@ -12,8 +12,9 @@ from bridge.dashboard_reporter import (
     DashboardCurveReporter,
     parse_dashboard_since,
 )
-from history.curves import BurnCurve, CurvePoint
+from history.curves import BurnCurve, BurnCurveLoadResult, CurvePoint
 from history.identifiers import build_burn_id
+from history.storage import HistoryReadIssue
 from protocol.models import BurnRecord
 
 
@@ -76,7 +77,7 @@ class DashboardCurveReporterTests(unittest.TestCase):
             *,
             since: datetime | None,
             include_warnings: bool,
-        ) -> tuple[BurnCurve, ...]:
+        ) -> BurnCurveLoadResult:
             calls.append(
                 {
                     "directory": directory,
@@ -84,7 +85,7 @@ class DashboardCurveReporterTests(unittest.TestCase):
                     "include_warnings": include_warnings,
                 }
             )
-            return curves
+            return BurnCurveLoadResult(curves=curves, issues=())
 
         publisher = FakePublisher()
         messages: list[str] = []
@@ -121,7 +122,10 @@ class DashboardCurveReporterTests(unittest.TestCase):
             history_directory=Path("data/history"),
             publisher=publisher,
             logger=messages.append,
-            curve_loader=lambda directory, **kwargs: (),
+            curve_loader=lambda directory, **kwargs: BurnCurveLoadResult(
+                curves=(),
+                issues=(),
+            ),
         )
 
         result = reporter.refresh()
@@ -129,6 +133,34 @@ class DashboardCurveReporterTests(unittest.TestCase):
         self.assertIsNone(result)
         self.assertEqual(publisher.snapshots, [])
         self.assertTrue(any("keine passenden" in item for item in messages))
+
+    def test_only_damaged_files_keep_retained_snapshot_unchanged(self) -> None:
+        issue = HistoryReadIssue(
+            path=Path("data/history/broken.json"),
+            message="ungültiges JSON",
+        )
+        publisher = FakePublisher()
+        messages: list[str] = []
+        reporter = DashboardCurveReporter(
+            history_directory=Path("data/history"),
+            publisher=publisher,
+            logger=messages.append,
+            curve_loader=lambda directory, **kwargs: BurnCurveLoadResult(
+                curves=(),
+                issues=(issue,),
+            ),
+        )
+
+        result = reporter.refresh()
+
+        self.assertIsNone(result)
+        self.assertEqual(publisher.snapshots, [])
+        self.assertTrue(
+            any("broken.json" in message for message in messages)
+        )
+        self.assertTrue(
+            any("retained Werte" in message for message in messages)
+        )
 
     def test_invalid_warning_configuration_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "boolesch"):

@@ -223,6 +223,26 @@ class HistoryStorageTests(unittest.TestCase):
                 "2026-04-22T21:23:00",
             )
 
+    def test_list_records_skips_and_reports_damaged_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            storage = HistoryStorage(Path(directory))
+            storage.save(self.build_record())
+            broken = Path(directory) / "broken.json"
+            broken.write_text("{broken", encoding="utf-8")
+            messages: list[str] = []
+
+            records = storage.list_records(logger=messages.append)
+            result = storage.read_records()
+
+            self.assertEqual(len(records), 1)
+            self.assertEqual(len(result.records), 1)
+            self.assertEqual(len(result.issues), 1)
+            self.assertEqual(result.issues[0].path, broken)
+            self.assertTrue(broken.exists())
+            self.assertTrue(
+                any("broken.json" in message for message in messages)
+            )
+
     def test_invalid_json_is_reported(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             storage = HistoryStorage(Path(directory))

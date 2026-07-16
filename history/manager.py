@@ -11,7 +11,7 @@ from typing import Iterable
 
 from history.diagnostics import HistoryDiagnosticStorage
 from history.identifiers import build_burn_id
-from history.storage import HistoryStorage
+from history.storage import HistoryReadResult, HistoryStorage
 from protocol.models import BurnRecord
 from protocol.quality import validate_burn_record
 
@@ -128,6 +128,10 @@ class HistoryManager:
     def list_history(self) -> list[dict[str, object]]:
         """Lädt alle lokal gespeicherten Historieneinträge."""
         return self.storage.list_records()
+
+    def read_history(self) -> HistoryReadResult:
+        """Lädt Historie und Dateifehler als explizites Ergebnis."""
+        return self.storage.read_records()
 
     def latest_record(self) -> dict[str, object] | None:
         """Gibt den zeitlich neuesten gespeicherten Abbrand zurück."""

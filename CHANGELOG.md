@@ -7,6 +7,17 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Resilienz
+
+- Beschädigte Historien-Dateien werden bei Sammelauswertungen einzeln
+  protokolliert und übersprungen
+- Lesbare Datensätze liefern weiterhin Statistiken und Brennkurven, ohne
+  beschädigte Dateien zu löschen oder zu verändern
+- Ausschließlich beschädigte Bestände überschreiben retained MQTT-Werte
+  nicht mit leeren Auswertungen
+- Statistik und Brennkurven-Vergleich werden unabhängig voneinander
+  aktualisiert
+
 ## [0.12.2] - 2026-07-16
 
 ### Home Assistant
@@ -404,4 +415,3 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Auslesen von `/direct/00`
 - Dekodierung von Temperatur, Luftklappe, Türstatus und Abbrenndauer
 - Erste MQTT-Anbindung
-
