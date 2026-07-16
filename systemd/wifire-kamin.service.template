@@ -8,8 +8,46 @@ Type=simple
 User=@USER@
 WorkingDirectory=@PROJECT_DIR@
 ExecStart=@PYTHON@ -u @PROJECT_DIR@/mqtt_discovery.py
+Environment=PYTHONDONTWRITEBYTECODE=1
 Restart=always
 RestartSec=10
+
+# Der Dienst benötigt Netzwerkzugriff, aber keine erhöhten Rechte.
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Projekt und System bleiben schreibgeschützt. Nur Laufzeitdaten dürfen sich
+# ändern; der Installer legt dieses Verzeichnis vor der Prüfung an.
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=@PROJECT_DIR@/data
+UMask=0077
+
+# Zusätzliche Isolation ohne eigenes Netzwerk-Namespace: Die Bridge muss
+# weiterhin WiFire über WLAN und den MQTT-Broker über LAN erreichen können.
+PrivateTmp=true
+PrivateDevices=true
+PrivateIPC=true
+ProtectControlGroups=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+
+# Bei einem Sandbox-bedingten Startfehler zuerst prüfen:
+# journalctl -u wifire-kamin.service --no-pager -n 100
+# Die dort genannte Direktive nur vorübergehend aus der installierten Unit
+# entfernen, erneut prüfen und die Ursache anschließend dokumentieren.
 
 [Install]
 WantedBy=multi-user.target

@@ -3,6 +3,9 @@
 
 """Öffentliche Beispielkonfiguration der WiFire-Kamin-Bridge."""
 
+# Die private Kopie enthält MQTT-Zugangsdaten und muss nur für ihren Besitzer
+# lesbar sein: chmod 600 config.py
+
 # WiFire-Steuerung
 WIFIRE_URL = "http://192.168.0.1/direct/00"
 REQUEST_TIMEOUT = 5
@@ -13,6 +16,18 @@ MQTT_PORT = 1883
 MQTT_USERNAME = "MQTT_NAME"
 MQTT_PASSWORD = "MQTT_PASS"
 MQTT_DISCOVERY_PREFIX = "homeassistant"
+
+# Optionale MQTT-Transportverschlüsselung. Ohne TLS bleibt Port 1883 üblich;
+# mit TLS wird häufig Port 8883 verwendet. Der Port bleibt bewusst separat
+# konfigurierbar, da der Broker auch andere Ports verwenden kann.
+MQTT_TLS_ENABLED = False
+# None verwendet bei aktiviertem TLS die vertrauenswürdigen System-CAs.
+MQTT_TLS_CA_CERT = None
+# Optionales Client-Zertifikat und Schlüssel immer gemeinsam setzen.
+MQTT_TLS_CLIENT_CERT = None
+MQTT_TLS_CLIENT_KEY = None
+# Deaktiviert die Prüfung des Broker-Namens und ist nur für kurze Tests gedacht.
+MQTT_TLS_INSECURE = False
 
 # Home-Assistant-Gerät
 DEVICE_NAME = "WiFire-Kamin"

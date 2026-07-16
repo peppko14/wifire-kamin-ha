@@ -77,13 +77,22 @@ Virtuelle Umgebung und Abhängigkeiten einrichten:
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+python3 -m pip install \
+  --require-hashes \
+  --only-binary=:all: \
+  -r requirements.lock
 ```
+
+`requirements.in` dokumentiert den erlaubten direkten Versionsbereich.
+`requirements.lock` fixiert das tatsächlich installierte Wheel einschließlich
+SHA-256-Prüfsumme. Dadurch schlägt die Installation fehl, wenn Paketversion,
+Dateiformat oder Inhalt vom geprüften Lockfile abweichen.
 
 Private Konfiguration anlegen:
 
 ```bash
 cp config.example.py config.py
+chmod 600 config.py
 nano config.py
 ```
 
@@ -96,6 +105,31 @@ STATISTICS_SINCE = "2026-01-01"
 
 Mit `None` wird die gesamte lokale Historie berücksichtigt. `config.py` ist
 von Git ausgeschlossen.
+
+### Optionale MQTT-Verschlüsselung
+
+Im vertrauten Heimnetz bleibt die bisherige unverschlüsselte Verbindung
+standardmäßig aktiv. Für einen TLS-fähigen Broker kann die private
+`config.py` beispielsweise so ergänzt werden:
+
+```python
+MQTT_PORT = 8883
+MQTT_TLS_ENABLED = True
+MQTT_TLS_CA_CERT = "/etc/mosquitto/certs/ca.crt"
+MQTT_TLS_CLIENT_CERT = None
+MQTT_TLS_CLIENT_KEY = None
+MQTT_TLS_INSECURE = False
+```
+
+Ohne eigenen CA-Pfad verwendet Python die vertrauenswürdigen
+Systemzertifikate. Ein Client-Zertifikat und sein Schlüssel müssen immer
+gemeinsam gesetzt werden. Der Brokername in `MQTT_HOST` muss zum Zertifikat
+passen; bei einer IP-Adresse muss das Zertifikat diese IP als alternativen
+Namen enthalten.
+
+`MQTT_TLS_INSECURE = True` deaktiviert die Prüfung der Brokeridentität. Diese
+Option ist ausschließlich für eine kurze Fehlersuche gedacht und erzeugt
+beim Start eine Warnung.
 
 ## Manueller Start
 
@@ -111,16 +145,36 @@ Ende des aktuellen Synchronisationslaufs weiterlaufen.
 ## systemd-Dienst
 
 ```bash
-chmod +x systemd/install_service_v0.5.1.sh
-sudo systemd/install_service_v0.5.1.sh
+chmod +x systemd/install_service_v0.12.4.sh
+chmod +x systemd/uninstall_service_v0.12.4.sh
+sudo systemd/install_service_v0.12.4.sh
 ```
 
-Der Installer erkennt Benutzer, Projektpfad und Python-Umgebung. Status
-prüfen:
+Der Installer erkennt Benutzer, Projektpfad und Python-Umgebung, setzt
+`config.py` auf Modus `600`, legt den privaten Schreibpfad `data/` an und
+prüft die gerenderte Unit vor der Installation. Das Betriebssystem und das
+Projekt bleiben für den Dienst schreibgeschützt; nur `data/` ist beschreibbar.
+
+Status und Sandbox prüfen:
 
 ```bash
 sudo systemctl status wifire-kamin.service --no-pager -l
+sudo systemd-analyze verify \
+  /etc/systemd/system/wifire-kamin.service
+sudo systemd-analyze security wifire-kamin.service
 ```
+
+Bei einem Startfehler zeigt das Journal die Ursache:
+
+```bash
+sudo journalctl \
+  -u wifire-kamin.service \
+  --no-pager \
+  -n 100
+```
+
+Weitere Hinweise einschließlich Rückfall- und Deinstallationsweg stehen in
+[`systemd/README_service_v0.12.4.md`](systemd/README_service_v0.12.4.md).
 
 ## Home Assistant
 
@@ -361,7 +415,7 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Version 0.12.3 umfasst 329 automatisierte Tests.
+Assistant ausführbar. Version 0.12.4 umfasst 344 automatisierte Tests.
 
 ## Werkzeuge
 
@@ -382,8 +436,6 @@ Für spätere Versionen vorgesehen:
 
 - v0.13: laufende Brennkurve mit historischen Abbränden vergleichen
 - v0.14: weiter vereinheitlichte Protokollschnittstelle
-- Backlog: optionale MQTT-TLS-Konfiguration; ohne TLS werden die Broker-
-  Zugangsdaten auch im Heimnetz unverschlüsselt übertragen
 - Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
   Beendigungssignal unmittelbar abbrechen
 
