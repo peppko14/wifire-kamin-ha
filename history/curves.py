@@ -8,11 +8,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Mapping
+from typing import Callable, Mapping
 
 from history.identifiers import build_burn_id
 from history.storage import (
     HISTORY_SCHEMA_VERSION,
+    HistoryReadIssue,
     HistoryStorage,
     HistoryStorageError,
 )
@@ -27,6 +28,7 @@ from protocol.quality import (
 SAMPLE_AXIS = "sample_index"
 QUALITY_STATUSES = {"valid", "warning"}
 HEX_DIGITS = frozenset("0123456789abcdef")
+Logger = Callable[[str], None]
 
 
 class BurnCurveError(ValueError):
@@ -162,6 +164,14 @@ class BurnCurve:
             ),
             "points": [point.to_dict() for point in self.points],
         }
+
+
+@dataclass(frozen=True, slots=True)
+class BurnCurveLoadResult:
+    """Enthält alle lesbaren Kurven und isolierte Dateifehler."""
+
+    curves: tuple[BurnCurve, ...]
+    issues: tuple[HistoryReadIssue, ...]
 
 
 def _required_integer(record: Mapping[str, object], field: str) -> int:
@@ -304,24 +314,29 @@ def curve_from_history_record(record: Mapping[str, object]) -> BurnCurve:
     )
 
 
-def load_burn_curves(
+def read_burn_curves(
     directory: Path,
     *,
     since: datetime | None = None,
     include_warnings: bool = True,
-) -> tuple[BurnCurve, ...]:
-    """Lädt validierte Kurven chronologisch aus der lokalen Historie."""
+) -> BurnCurveLoadResult:
+    """Lädt Kurven und sammelt Fehler getrennt pro Historien-Datei."""
     storage = HistoryStorage(directory)
     curves: list[BurnCurve] = []
+    issues: list[HistoryReadIssue] = []
 
     for path in sorted(storage.directory.glob("*.json")):
         try:
             record = storage.load_file(path)
             curve = curve_from_history_record(record)
         except (HistoryStorageError, BurnCurveError) as error:
-            raise BurnCurveError(
-                f"Historien-Datei kann nicht als Kurve gelesen werden: {path}"
-            ) from error
+            issues.append(
+                HistoryReadIssue(
+                    path=path,
+                    message=str(error),
+                )
+            )
+            continue
         if since is not None and curve.start < since:
             continue
         if not include_warnings and curve.quality_status == "warning":
@@ -329,4 +344,28 @@ def load_burn_curves(
         curves.append(curve)
 
     curves.sort(key=lambda curve: (curve.start, curve.burn_id))
-    return tuple(curves)
+    return BurnCurveLoadResult(
+        curves=tuple(curves),
+        issues=tuple(issues),
+    )
+
+
+def load_burn_curves(
+    directory: Path,
+    *,
+    since: datetime | None = None,
+    include_warnings: bool = True,
+    logger: Logger = print,
+) -> tuple[BurnCurve, ...]:
+    """Lädt Kurven und protokolliert übersprungene Historien-Dateien."""
+    result = read_burn_curves(
+        directory,
+        since=since,
+        include_warnings=include_warnings,
+    )
+    for issue in result.issues:
+        logger(
+            "Brennkurven-Datei übersprungen: "
+            f"{issue.path.name}: {issue.message}"
+        )
+    return result.curves

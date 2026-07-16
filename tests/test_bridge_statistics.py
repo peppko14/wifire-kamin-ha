@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 import unittest
 
 from bridge.statistics import (
@@ -15,6 +16,7 @@ from bridge.statistics import (
 )
 from history.statistics import HistoryStatistics
 from history.period_statistics import CurrentPeriodStatistics
+from history.storage import HistoryReadIssue, HistoryReadResult
 
 
 def record(start: str, maximum: int) -> dict[str, object]:
@@ -32,13 +34,21 @@ def record(start: str, maximum: int) -> dict[str, object]:
 
 
 class FakeHistoryProvider:
-    def __init__(self, records: list[dict[str, object]]) -> None:
+    def __init__(
+        self,
+        records: list[dict[str, object]],
+        issues: tuple[HistoryReadIssue, ...] = (),
+    ) -> None:
         self.records = records
+        self.issues = issues
         self.calls = 0
 
-    def list_history(self) -> list[dict[str, object]]:
+    def read_history(self) -> HistoryReadResult:
         self.calls += 1
-        return self.records
+        return HistoryReadResult(
+            records=tuple(self.records),
+            issues=self.issues,
+        )
 
 
 class FakePublisher:
@@ -128,6 +138,31 @@ class HistoryStatisticsReporterTests(unittest.TestCase):
         self.assertEqual(
             [item.season.label for item in periods.seasons],
             ["2026/2027", "2025/2026", "2024/2025"],
+        )
+
+    def test_only_damaged_files_keep_retained_values_unchanged(self) -> None:
+        issue = HistoryReadIssue(
+            path=Path("data/history/broken.json"),
+            message="ungültiges JSON",
+        )
+        publisher = FakePublisher()
+        messages: list[str] = []
+        reporter = HistoryStatisticsReporter(
+            history_provider=FakeHistoryProvider([], (issue,)),
+            publisher=publisher,
+            logger=messages.append,
+        )
+
+        result = reporter.refresh()
+
+        self.assertIsNone(result)
+        self.assertEqual(publisher.statistics, [])
+        self.assertEqual(publisher.period_statistics, [])
+        self.assertTrue(
+            any("broken.json" in message for message in messages)
+        )
+        self.assertTrue(
+            any("retained Werte" in message for message in messages)
         )
 
 

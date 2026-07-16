@@ -18,6 +18,7 @@ from history.statistics import (
     HistoryStatistics,
     calculate_history_statistics,
 )
+from history.storage import HistoryReadResult
 
 
 
@@ -26,7 +27,7 @@ Logger = Callable[[str], None]
 
 
 class HistoryProviderLike(Protocol):
-    def list_history(self) -> list[dict[str, object]]:
+    def read_history(self) -> HistoryReadResult:
         ...
 
 
@@ -71,9 +72,23 @@ class HistoryStatisticsReporter:
     logger: Logger = print
     now: Callable[[], datetime] = datetime.now
 
-    def refresh(self) -> HistoryStatistics:
+    def refresh(self) -> HistoryStatistics | None:
         """Liest die Historie neu ein und veröffentlicht eine Momentaufnahme."""
-        records = self.history_provider.list_history()
+        result = self.history_provider.read_history()
+        for issue in result.issues:
+            self.logger(
+                "Historien-Datei für Statistik übersprungen: "
+                f"{issue.path.name}: {issue.message}"
+            )
+
+        if not result.records and result.issues:
+            self.logger(
+                "Historienstatistik nicht veröffentlicht: keine lesbare "
+                "Historien-Datei; retained Werte bleiben unverändert."
+            )
+            return None
+
+        records = list(result.records)
         statistics = calculate_history_statistics(
             records,
             since=self.since,
