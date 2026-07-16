@@ -21,6 +21,9 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   einmal nach einer kontrollierten Pause wiederholt
 - Anzahl und Abstand der Live-Leseversuche sind konfigurierbar; ein einzelner
   Versuch stellt das bisherige Verhalten wieder her
+- Veralteten, ausschließlich von eigenen Tests referenzierten
+  `ArchiveSynchronizer` entfernt; die produktive Ringpuffer-Synchronisation
+  bleibt die einzige Archivkoordination der Bridge
 
 ## [0.12.2] - 2026-07-16
 
