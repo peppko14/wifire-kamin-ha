@@ -161,9 +161,16 @@ def create_application(
     polling_settings = PollingSettings.from_config(
         config_module
     )
+    sleeper = InterruptibleSleeper(running_state)
     live_poller = LivePoller(
         read_live_data,
         decode_live_status,
+        retry_count=polling_settings.live_retry_count,
+        retry_delay_seconds=(
+            polling_settings.live_retry_delay_seconds
+        ),
+        sleeper=sleeper,
+        is_running=running_state,
     )
     connection = MqttConnection(
         config_module,
@@ -172,7 +179,6 @@ def create_application(
         app_version=app_version,
         is_running=running_state,
     )
-    sleeper = InterruptibleSleeper(running_state)
     history_manager = create_default_history_manager(
         project_dir
     )

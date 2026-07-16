@@ -17,6 +17,10 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   nicht mit leeren Auswertungen
 - Statistik und Brennkurven-Vergleich werden unabhängig voneinander
   aktualisiert
+- Live-Abfragen werden bei kurzen WLAN- oder Nutzdatenfehlern standardmäßig
+  einmal nach einer kontrollierten Pause wiederholt
+- Anzahl und Abstand der Live-Leseversuche sind konfigurierbar; ein einzelner
+  Versuch stellt das bisherige Verhalten wieder her
 
 ## [0.12.2] - 2026-07-16
 
