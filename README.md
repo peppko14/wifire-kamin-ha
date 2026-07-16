@@ -77,8 +77,16 @@ Virtuelle Umgebung und Abhängigkeiten einrichten:
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+python3 -m pip install \
+  --require-hashes \
+  --only-binary=:all: \
+  -r requirements.lock
 ```
+
+`requirements.in` dokumentiert den erlaubten direkten Versionsbereich.
+`requirements.lock` fixiert das tatsächlich installierte Wheel einschließlich
+SHA-256-Prüfsumme. Dadurch schlägt die Installation fehl, wenn Paketversion,
+Dateiformat oder Inhalt vom geprüften Lockfile abweichen.
 
 Private Konfiguration anlegen:
 
