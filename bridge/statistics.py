@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable, Protocol
 
+from bridge.logging_setup import log_warning
 from history.period_statistics import (
     CurrentPeriodStatistics,
     calculate_current_period_statistics,
@@ -76,13 +77,15 @@ class HistoryStatisticsReporter:
         """Liest die Historie neu ein und veröffentlicht eine Momentaufnahme."""
         result = self.history_provider.read_history()
         for issue in result.issues:
-            self.logger(
+            log_warning(
+                self.logger,
                 "Historien-Datei für Statistik übersprungen: "
                 f"{issue.path.name}: {issue.message}"
             )
 
         if not result.records and result.issues:
-            self.logger(
+            log_warning(
+                self.logger,
                 "Historienstatistik nicht veröffentlicht: keine lesbare "
                 "Historien-Datei; retained Werte bleiben unverändert."
             )

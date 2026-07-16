@@ -100,11 +100,20 @@ Mindestens MQTT-Adresse, Benutzername und Passwort anpassen. Der optionale
 inklusive Statistikfilter kann beispielsweise so gesetzt werden:
 
 ```python
+LOG_LEVEL = "INFO"
+LIVE_EXPIRE_AFTER = 180
 STATISTICS_SINCE = "2026-01-01"
 ```
 
 Mit `None` wird die gesamte lokale Historie berücksichtigt. `config.py` ist
-von Git ausgeschlossen.
+von Git ausgeschlossen. Für `LOG_LEVEL` sind `DEBUG`, `INFO`, `WARNING`,
+`ERROR` und `CRITICAL` zulässig.
+
+`LIVE_EXPIRE_AFTER` gibt in Sekunden an, wann Home Assistant einen Live-Wert
+ohne neue MQTT-Nachricht als nicht verfügbar kennzeichnet. Der öffentliche
+Standard entspricht dem Dreifachen des normalen Abfrageintervalls. Mit
+`LIVE_EXPIRE_AFTER = None` lässt sich diese zusätzliche Überwachung
+deaktivieren.
 
 ### Optionale MQTT-Verschlüsselung
 
@@ -173,6 +182,15 @@ sudo journalctl \
   -n 100
 ```
 
+Nur Warnungen und Fehler anzeigen:
+
+```bash
+sudo journalctl \
+  -u wifire-kamin.service \
+  -p warning \
+  --no-pager
+```
+
 Weitere Hinweise einschließlich Rückfall- und Deinstallationsweg stehen in
 [`systemd/README_service_v0.12.4.md`](systemd/README_service_v0.12.4.md).
 
@@ -207,6 +225,12 @@ Bridge beendet oder der Raspberry ausgeschaltet, zeigt Home Assistant daher
 Temperatur, Luftklappe, Tür, Abbrenndauer und den optionalen Lüfter als
 **nicht verfügbar** an.
 
+Zusätzlich besitzen diese Live-Entitäten eine Ablaufzeit. Bleibt eine neue
+Live-Nachricht aus, markiert Home Assistant die Werte nach standardmäßig drei
+normalen Abfrageintervallen als nicht verfügbar. So werden auch festgefahrene
+Live-Werte erkannt, wenn die MQTT-Verbindung selbst noch besteht. Die Frist
+kann über `LIVE_EXPIRE_AFTER` angepasst oder mit `None` deaktiviert werden.
+
 Archive, historische Gesamt- und Periodenstatistiken sowie der
 Brennkurven-Vergleich besitzen bewusst keine Bindung an den Online-Status der
 Bridge. Ihre MQTT-Zustände werden retained veröffentlicht und bleiben deshalb
@@ -214,6 +238,11 @@ sichtbar, bis die Bridge einen neuen Wert sendet. Dadurch können insbesondere
 die zuletzt veröffentlichten Heizsaisons und Brennkurven auch während einer
 vollständig abgeschalteten Sommerpause des Raspberry angezeigt werden. Der
 MQTT-Broker und Home Assistant müssen dafür weiterlaufen.
+
+Alle Discovery-Komponenten besitzen neben ihrer stabilen `unique_id` eine
+deterministische `default_entity_id`. Damit bleiben die vorgeschlagenen
+Entity-IDs auch bei künftigen Änderungen der sichtbaren Namen stabil. Bereits
+in Home Assistant registrierte Entity-IDs werden dadurch nicht umbenannt.
 
 ## Lokale Abbrandhistorie
 
@@ -415,7 +444,7 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Version 0.12.4 umfasst 344 automatisierte Tests.
+Assistant ausführbar. Version 0.12.5 umfasst 361 automatisierte Tests.
 
 ## Werkzeuge
 
