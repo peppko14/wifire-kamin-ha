@@ -1,6 +1,6 @@
 # Home-Assistant-Dashboard für Brennkurven
 
-Dokumentversion: 1.0.0
+Dokumentversion: 1.1.0
 
 ## Datenquelle
 
@@ -24,6 +24,29 @@ Jede Reihe verwendet ein kompaktes Temperaturarray. Die Achse ist
 Der gesamte Payload ist auf 16 KiB begrenzt. Die vollständigen historischen
 Einzelkurven bleiben ausschließlich in der lokalen Historie und im portablen
 JSON-Export.
+
+## Betrieb bei ausgeschaltetem Raspberry
+
+Die Dashboard-Momentaufnahme wird retained beim MQTT-Broker gespeichert und
+ist nicht an den Online-Status der Bridge gebunden. Sie bleibt deshalb in
+Home Assistant verfügbar, bis die Bridge eine neue Momentaufnahme
+veröffentlicht. Das gilt ebenso für Archive, historische Gesamtstatistiken,
+Monatswerte und die drei Heizsaisons.
+
+Temperatur, Luftklappe, Tür, Abbrenndauer und der optionale Lüfter bleiben
+dagegen Live-Entitäten. Sie werden bei beendeter Bridge oder ausgeschaltetem
+Raspberry bewusst als nicht verfügbar angezeigt, damit alte Messwerte nicht
+als aktueller Kaminzustand erscheinen.
+
+Für eine mehrmonatige Sommerpause kann der Raspberry nach einer letzten
+erfolgreichen Veröffentlichung ausgeschaltet werden. Home Assistant und der
+MQTT-Broker müssen weiterlaufen. Nach einem Home-Assistant- oder Broker-
+Neustart werden Discovery und Zustände aus den retained MQTT-Nachrichten
+wiederhergestellt.
+
+Nach dem Upgrade auf Version 0.12.2 muss die Bridge einmal mit dem
+MQTT-Broker verbunden werden, damit sie die aktualisierte Discovery-
+Konfiguration retained veröffentlicht. Danach kann sie wieder beendet werden.
 
 ## Filter
 
@@ -125,3 +148,4 @@ config:
 
 Die Karte liest nur den aktuellen retained MQTT-Zustand. Sie erzeugt keine
 zusätzlichen WiFire-Abfragen und verändert keine Daten am Kamin.
+
