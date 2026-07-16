@@ -28,6 +28,8 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
 - sechs automatisch erkannte Statistikentitäten in Home Assistant
 - Monatsstatistiken und Heizsaisonberichte von Juli bis Juni
 - drei rollierende Heizsaisons zum direkten Vergleich in Home Assistant
+- retained Historien-, Statistik- und Brennkurvenwerte bleiben auch bei
+  ausgeschaltetem Raspberry in Home Assistant verfügbar
 - digitale historische Brennkurven mit expliziter Messpunktachse
 - Durchschnittskurve sowie repräsentativer und heißester Referenzabbrand
 - portabler JSON-Export als Grundlage für spätere Diagramme
@@ -102,7 +104,9 @@ source venv/bin/activate
 python3 -u mqtt_discovery.py
 ```
 
-Mit `Strg+C` wird die Bridge kontrolliert beendet.
+Mit `Strg+C` wird die Beendigung der Bridge angefordert. Bereits laufende
+Archivabfragen und deren Wiederholungsversuche können derzeit noch bis zum
+Ende des aktuellen Synchronisationslaufs weiterlaufen.
 
 ## systemd-Dienst
 
@@ -144,10 +148,18 @@ Entitäten für:
 
 Ein Eintrag in `configuration.yaml` ist nicht erforderlich.
 
-Alle Entitäten verwenden die gemeinsame MQTT-Verfügbarkeit der Bridge. Wird
-die Bridge beendet oder der Dienst gestoppt, zeigt Home Assistant die
-Entitäten deshalb als **nicht verfügbar** an. Beim nächsten Start werden sie
-wieder verfügbar; die Statistikwerte selbst werden retained veröffentlicht.
+Nur die Live-Entitäten verwenden die MQTT-Verfügbarkeit der Bridge. Wird die
+Bridge beendet oder der Raspberry ausgeschaltet, zeigt Home Assistant daher
+Temperatur, Luftklappe, Tür, Abbrenndauer und den optionalen Lüfter als
+**nicht verfügbar** an.
+
+Archive, historische Gesamt- und Periodenstatistiken sowie der
+Brennkurven-Vergleich besitzen bewusst keine Bindung an den Online-Status der
+Bridge. Ihre MQTT-Zustände werden retained veröffentlicht und bleiben deshalb
+sichtbar, bis die Bridge einen neuen Wert sendet. Dadurch können insbesondere
+die zuletzt veröffentlichten Heizsaisons und Brennkurven auch während einer
+vollständig abgeschalteten Sommerpause des Raspberry angezeigt werden. Der
+MQTT-Broker und Home Assistant müssen dafür weiterlaufen.
 
 ## Lokale Abbrandhistorie
 
@@ -330,7 +342,7 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Version 0.12.1 umfasst 321 automatisierte Tests.
+Assistant ausführbar. Version 0.12.2 umfasst 325 automatisierte Tests.
 
 ## Werkzeuge
 
@@ -353,6 +365,8 @@ Für spätere Versionen vorgesehen:
 - v0.14: weiter vereinheitlichte Protokollschnittstelle
 - Backlog: optionale MQTT-TLS-Konfiguration; ohne TLS werden die Broker-
   Zugangsdaten auch im Heimnetz unverschlüsselt übertragen
+- Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
+  Beendigungssignal unmittelbar abbrechen
 
 ## Lizenz
 
@@ -364,3 +378,4 @@ Details enthält die Datei `LICENSE`.
 Dieses private Hobbyprojekt steht in keiner Verbindung zu FireControls.
 Alle Marken- und Produktnamen gehören ihren jeweiligen Inhabern. Die
 Nutzung erfolgt auf eigene Verantwortung.
+

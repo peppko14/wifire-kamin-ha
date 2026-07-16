@@ -7,6 +7,33 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-07-16
+
+### Home Assistant
+
+- Gemeinsame Geräteverfügbarkeit auf die tatsächlichen Live-Entitäten
+  begrenzt
+- Temperatur, Luftklappe, Tür, Abbrenndauer und optionaler Lüfter werden bei
+  ausgeschaltetem Raspberry weiterhin als nicht verfügbar gekennzeichnet
+- Retained Archive, Gesamt- und Periodenstatistiken sowie der
+  Brennkurven-Vergleich bleiben unabhängig vom Bridge-Online-Status sichtbar
+- Anzeige der zuletzt veröffentlichten Heizsaisons und Brennkurven während
+  einer vollständig abgeschalteten Sommerpause ermöglicht
+
+### Dokumentiert
+
+- Unterschied zwischen flüchtigen Live-Werten und dauerhaft gespeicherten
+  Auswertungen erläutert
+- Verzögerte Programmbeendigung während laufender Archiv-Retries als
+  Backlog-Punkt aufgenommen
+
+### Getestet
+
+- 325 automatisierte Tests ohne Kamin, MQTT-Broker oder Home Assistant
+- Produktive Trennung der Verfügbarkeit in Home Assistant geprüft
+- Historienstatistik und Brennkurven trotz nicht erreichbarer
+  WiFire-Steuerung erfolgreich aus der lokalen Historie veröffentlicht
+
 ## [0.12.1] - 2026-07-15
 
 ### Code-Hardening
@@ -377,3 +404,4 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Auslesen von `/direct/00`
 - Dekodierung von Temperatur, Luftklappe, Türstatus und Abbrenndauer
 - Erste MQTT-Anbindung
+
