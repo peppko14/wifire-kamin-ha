@@ -315,6 +315,25 @@ stellt sie als eine gemeinsame Diagnoseentität bereit. Ein Beispiel für ein
 interaktives Diagramm steht in
 [`docs/home-assistant-dashboard.md`](docs/home-assistant-dashboard.md).
 
+## Betriebsresilienz
+
+Beschädigte JSON-Dateien blockieren die Historienauswertung nicht. Die Bridge
+protokolliert jede betroffene Datei, verarbeitet alle lesbaren Datensätze
+weiter und verändert die beschädigten Dateien nicht. Wenn keine einzige Datei
+lesbar ist, bleiben die zuletzt retained veröffentlichten Auswertungen in
+Home Assistant unverändert.
+
+Kurze Aussetzer des WiFire-WLANs werden innerhalb eines Live-Zyklus begrenzt
+wiederholt. Die optionale private Konfiguration lautet:
+
+```python
+LIVE_RETRY_COUNT = 2
+LIVE_RETRY_DELAY = 2
+```
+
+`LIVE_RETRY_COUNT` bezeichnet die Gesamtzahl der Versuche. Der Wert `1`
+stellt das Verhalten ohne Wiederholung wieder her.
+
 ## Projektstruktur
 
 ```text
@@ -342,7 +361,7 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Version 0.12.2 umfasst 325 automatisierte Tests.
+Assistant ausführbar. Version 0.12.3 umfasst 329 automatisierte Tests.
 
 ## Werkzeuge
 
@@ -378,4 +397,3 @@ Details enthält die Datei `LICENSE`.
 Dieses private Hobbyprojekt steht in keiner Verbindung zu FireControls.
 Alle Marken- und Produktnamen gehören ihren jeweiligen Inhabern. Die
 Nutzung erfolgt auf eigene Verantwortung.
-

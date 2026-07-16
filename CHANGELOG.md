@@ -7,6 +7,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-07-16
+
 ### Resilienz
 
 - Beschädigte Historien-Dateien werden bei Sammelauswertungen einzeln
@@ -24,6 +26,15 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Veralteten, ausschließlich von eigenen Tests referenzierten
   `ArchiveSynchronizer` entfernt; die produktive Ringpuffer-Synchronisation
   bleibt die einzige Archivkoordination der Bridge
+
+### Getestet
+
+- 329 automatisierte Tests ohne Kamin, MQTT-Broker oder Home Assistant
+- Mischbestand aus lesbarer und beschädigter Historien-Datei
+- Schutz retained Auswertungen bei ausschließlich beschädigten Dateien
+- Erfolgreicher zweiter Live-Leseversuch nach simuliertem WLAN-Aussetzer
+- Begrenzung, Abbruchverhalten und enge Exception-Auswahl der Live-Retries
+- Ruff-, Mypy- und Whitespace-Prüfungen ohne Befund
 
 ## [0.12.2] - 2026-07-16
 
