@@ -7,6 +7,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.12.5] - 2026-07-16
+
 ### Wartbarkeit
 
 - Fehlende private `config.py` wird beim Programmstart mit konkreten
@@ -32,6 +34,19 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   ausgenommen und damit während der Sommerabschaltung dauerhaft sichtbar
 - Aktuelles `default_entity_id` für alle MQTT-Entitäten ergänzt; bestehende
   `unique_id`-Werte und registrierte Entity-IDs bleiben unverändert
+
+### Getestet
+
+- 361 automatisierte Tests ohne Kamin, MQTT-Broker oder Home Assistant
+- Verständliche Ersteinrichtungsdiagnose bei fehlender privater `config.py`
+- Zentrale Protokollierung, gültige und ungültige Log-Level sowie Weitergabe
+  derselben Logger-Instanz an alle produktiven Komponenten
+- Standardmäßige, angepasste und deaktivierte Ablaufzeit für sämtliche
+  Live-Entitäten einschließlich optionalem Lüfter
+- Dauerhafte Verfügbarkeit retained veröffentlichter Archive, Statistiken und
+  Brennkurven ohne `expire_after`
+- Deterministische `default_entity_id` für alle Discovery-Komponenten
+- Ruff-, Mypy- und Whitespace-Prüfungen ohne Befund
 
 ## [0.12.4] - 2026-07-16
 

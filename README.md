@@ -444,7 +444,7 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Version 0.12.4 umfasst 344 automatisierte Tests.
+Assistant ausführbar. Version 0.12.5 umfasst 361 automatisierte Tests.
 
 ## Werkzeuge
 
