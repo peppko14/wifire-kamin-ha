@@ -7,6 +7,20 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Dokumentation
+
+- Fachliches Zielmodell für Medianreferenz, saisonale Kurvenvergleiche,
+  letzten Abbrand und eine getrennte laufende Brennkurve festgelegt
+- Referenzauswahl auf gültige, vergleichbare Datensätze mit expliziten Filtern
+  und Mindestgruppengröße begrenzt
+- Neutrale Bewertungstexte definiert und unbelegte Aussagen über einen
+  gesunden, optimalen oder besten Abbrand ausgeschlossen
+- Zeitgestempelte Live-Reihe ausdrücklich vom unbestätigten historischen
+  `sample_index` getrennt; Live-Bewertung bis zur realen Achsenvalidierung als
+  `noch nicht bewertbar` vorgesehen
+- Architektur-, Brennkurven- und Roadmap-Dokumentation auf den Stand v0.12.5
+  sowie die geplanten Ausbaustufen v0.13 und v0.14 aktualisiert
+
 ## [0.12.5] - 2026-07-16
 
 ### Wartbarkeit

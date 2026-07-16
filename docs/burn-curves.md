@@ -1,10 +1,11 @@
 # Digitale Brennkurven
 
-Dokumentversion: 1.0.0
+Dokumentversion: 1.1.0
 
 Die lokale Schema-2-Historie enthält den vollständigen Temperaturverlauf
-jeder abgeschlossenen Verbrennung. Version 0.11.0 stellt daraus portable,
-reproduzierbare Kurven und historische Referenzen bereit.
+jeder abgeschlossenen Verbrennung. Seit Version 0.12.0 stellt die Bridge
+daraus portable, reproduzierbare Kurven, historische Referenzen und eine
+retained Home-Assistant-Momentaufnahme bereit.
 
 ## Messpunktachse
 
@@ -22,6 +23,11 @@ Abschneiden oder eine unbestätigte zeitliche Interpolation verfälscht.
 Für jeden `sample_index` wird das arithmetische Mittel aller ausgewählten
 Kurven berechnet und auf eine Nachkommastelle gerundet. Der Export nennt
 zusätzlich die Anzahl der beitragenden Kurven.
+
+Der Durchschnitt bleibt als bestehende beschreibende Kennzahl erhalten. Für
+v0.13.0 ist zusätzlich eine punktweise Mediankurve als robustere typische
+Referenz vorgesehen. Ungewöhnliche Einzelabbrände beeinflussen den Median
+weniger stark.
 
 ## Repräsentativer Abbrand
 
@@ -78,6 +84,22 @@ Der Export enthält:
 - sämtliche berücksichtigten Einzelkurven mit vollständiger `burn_id`,
   Qualitätsstatus und Temperaturpunkten.
 
-Die Datei liegt unter `data/` und wird nicht in Git aufgenommen. Sie ist die
-Datengrundlage für ein späteres Home-Assistant-Dashboard; v0.11.0 erzeugt
-noch keine Lovelace-Karten und vergleicht keine laufende Live-Kurve.
+Die Datei liegt unter `data/` und wird nicht in Git aufgenommen.
+
+## Home Assistant
+
+Die Bridge veröffentlicht Durchschnitt, repräsentativen realen Abbrand und
+heißesten Abbrand als eine kompakte retained Diagnoseentität. Ein
+Plotly-Beispiel steht in
+[`home-assistant-dashboard.md`](home-assistant-dashboard.md). Die Werte bleiben
+auch bei ausgeschaltetem Raspberry verfügbar, solange MQTT-Broker und Home
+Assistant weiterlaufen.
+
+## Geplanter Live-Vergleich
+
+Version 0.13.0 erweitert die Analyse um Medianreferenzen, saisonale Gruppen,
+den letzten abgeschlossenen Abbrand und eine getrennte laufende Live-Kurve.
+Die Live-Reihe besitzt eigene Beobachtungszeitpunkte und darf nicht
+stillschweigend mit dem historischen `sample_index` gleichgesetzt werden.
+Details und Freigaberegeln stehen in
+[`live-curve-comparison.md`](live-curve-comparison.md).

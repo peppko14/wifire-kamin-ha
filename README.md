@@ -398,6 +398,10 @@ stellt sie als eine gemeinsame Diagnoseentität bereit. Ein Beispiel für ein
 interaktives Diagramm steht in
 [`docs/home-assistant-dashboard.md`](docs/home-assistant-dashboard.md).
 
+Die für v0.13.0 geplanten Median-, Saison- und Live-Vergleiche einschließlich
+der neutralen Bewertungsbegriffe sind in
+[`docs/live-curve-comparison.md`](docs/live-curve-comparison.md) spezifiziert.
+
 ## Betriebsresilienz
 
 Beschädigte JSON-Dateien blockieren die Historienauswertung nicht. Die Bridge
@@ -463,8 +467,10 @@ Assistant ausführbar. Version 0.12.5 umfasst 361 automatisierte Tests.
 
 Für spätere Versionen vorgesehen:
 
-- v0.13: laufende Brennkurve mit historischen Abbränden vergleichen
-- v0.14: weiter vereinheitlichte Protokollschnittstelle
+- v0.13: robuste Medianreferenz, saisonale Kurvenvergleiche, letzter Abbrand
+  und getrennte laufende Brennkurve
+- v0.14: Archivplätze oberhalb 23 lesend untersuchen, reales Golden Fixture,
+  gemeinsame Vollimportlogik und weiter vereinheitlichte Protokollschnittstelle
 - Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
   Beendigungssignal unmittelbar abbrechen
 
