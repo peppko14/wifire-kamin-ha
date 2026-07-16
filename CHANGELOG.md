@@ -22,6 +22,17 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Warnungen und Fehler getrennt von normalen Statusmeldungen ausgegeben,
   damit systemd-Journale nach Priorität gefiltert werden können
 
+### Home Assistant
+
+- Live-Entitäten werden nach einer konfigurierbaren Frist ohne neuen
+  Zustandswert als nicht verfügbar gekennzeichnet
+- Standardfrist auf das Dreifache des normalen Live-Abfrageintervalls gesetzt;
+  bestehende private Konfigurationen erhalten den sicheren Standard automatisch
+- Archive, Historienstatistiken und Brennkurven bleiben von der Ablaufzeit
+  ausgenommen und damit während der Sommerabschaltung dauerhaft sichtbar
+- Aktuelles `default_entity_id` für alle MQTT-Entitäten ergänzt; bestehende
+  `unique_id`-Werte und registrierte Entity-IDs bleiben unverändert
+
 ## [0.12.4] - 2026-07-16
 
 ### Sicherheit

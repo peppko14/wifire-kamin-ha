@@ -1,6 +1,6 @@
 # Entwicklungsrichtlinien
 
-Dokumentversion: 1.6.0
+Dokumentversion: 1.7.0
 
 Diese Regeln gelten für die WiFire-Kamin Home Assistant Bridge.
 
@@ -126,6 +126,14 @@ lesende Archivabfrage transportiert.
 
 - Discovery und Availability werden retained veröffentlicht.
 - Jede Entität besitzt eine stabile `unique_id`.
+- Jede Discovery-Komponente besitzt eine deterministische
+  `default_entity_id` aus Plattform und Komponenten-ID. Sichtbare Namen dürfen
+  diese technische Vorgabe nicht beeinflussen.
+- Nur Live-Entitäten erhalten `expire_after`; der Standard entspricht dem
+  Dreifachen von `NORMAL_UPDATE_INTERVAL`.
+- Archive, Historienstatistiken, Periodenstatistiken und Brennkurven dürfen
+  weder `expire_after` noch die Live-Availability erhalten. Ihre retained
+  Werte müssen während einer abgeschalteten Sommerpause sichtbar bleiben.
 - Alle Entitäten gehören zum Gerät `WiFire-Kamin`.
 - Ein MQTT-Ausfall darf vorhandene lokale Historien nicht beschädigen.
 - Historische Einzelkurven dürfen nicht als wachsende Anzahl eigener

@@ -45,6 +45,9 @@ ACTIVE_FIRE_UPDATE_INTERVAL = 10
 ERROR_RETRY_INTERVAL = 300
 ACTIVE_FIRE_TEMPERATURE_C = 40
 OFFLINE_AFTER_FAILURES = 3
+# Ohne neuen Live-Zustand werden nur die Live-Entitäten danach unavailable.
+# None deaktiviert diese zusätzliche Home-Assistant-Ablaufüberwachung.
+LIVE_EXPIRE_AFTER = NORMAL_UPDATE_INTERVAL * 3
 # Gesamtzahl der Versuche pro Live-Zyklus; 1 entspricht altem Verhalten.
 LIVE_RETRY_COUNT = 2
 LIVE_RETRY_DELAY = 2

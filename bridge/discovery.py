@@ -10,6 +10,11 @@ from typing import Protocol
 from bridge.topics import MqttTopics
 
 
+DEFAULT_NORMAL_UPDATE_INTERVAL = 60
+LIVE_EXPIRE_MULTIPLIER = 3
+_MISSING = object()
+
+
 class DiscoveryConfig(Protocol):
     """Benötigte öffentliche Konfigurationswerte."""
 
@@ -18,6 +23,39 @@ class DiscoveryConfig(Protocol):
     MANUFACTURER: str
     MODEL: str
     ENABLE_FAN_ENTITY: bool
+
+
+def _resolve_live_expire_after(config: object) -> int | None:
+    """Ermittelt die Ablaufzeit oder deaktiviert sie explizit mit None."""
+    configured = getattr(config, "LIVE_EXPIRE_AFTER", _MISSING)
+    if configured is None:
+        return None
+
+    if configured is _MISSING:
+        normal_interval = getattr(
+            config,
+            "NORMAL_UPDATE_INTERVAL",
+            DEFAULT_NORMAL_UPDATE_INTERVAL,
+        )
+        if (
+            isinstance(normal_interval, bool)
+            or not isinstance(normal_interval, int)
+            or normal_interval < 1
+        ):
+            raise ValueError(
+                "NORMAL_UPDATE_INTERVAL muss eine positive Ganzzahl sein."
+            )
+        return normal_interval * LIVE_EXPIRE_MULTIPLIER
+
+    if (
+        isinstance(configured, bool)
+        or not isinstance(configured, int)
+        or configured < 1
+    ):
+        raise ValueError(
+            "LIVE_EXPIRE_AFTER muss None oder eine positive Ganzzahl sein."
+        )
+    return configured
 
 
 def build_discovery_payload(
@@ -120,6 +158,9 @@ def build_discovery_payload(
         "payload_available": "online",
         "payload_not_available": "offline",
     }
+    live_expire_after = _resolve_live_expire_after(config)
+    if live_expire_after is not None:
+        live_availability["expire_after"] = live_expire_after
     for component_id in live_component_ids:
         components[component_id].update(live_availability)
 
@@ -332,6 +373,10 @@ def build_discovery_payload(
                 "state_topic": topics.period_statistics,
                 **component,
             }
+
+    for component_id, component in components.items():
+        platform = component["platform"]
+        component["default_entity_id"] = f"{platform}.{component_id}"
 
     return {
         "device": {
