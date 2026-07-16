@@ -10,6 +10,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable
 
+from bridge.logging_setup import log_warning
 from protocol.models import LiveStatus
 
 
@@ -71,7 +72,8 @@ class LivePoller:
                 if attempt >= self.retry_count or not self.is_running():
                     raise
 
-                self.logger(
+                log_warning(
+                    self.logger,
                     f"Live-Abfrage Versuch {attempt}/"
                     f"{self.retry_count} fehlgeschlagen: {error}; "
                     "neuer Versuch "

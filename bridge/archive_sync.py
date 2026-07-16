@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Protocol
 
 from bridge.archive import build_archive_attributes
+from bridge.logging_setup import log_warning
 from history.manager import HistoryManager, HistorySyncResult
 from history.sync import (
     ArchiveReadResult,
@@ -104,7 +105,8 @@ class RingBufferArchiveSynchronizer:
             try:
                 self.on_complete()
             except Exception as error:  # optionale nachgelagerte Integration
-                self.logger(
+                log_warning(
+                    self.logger,
                     "Historienausgaben konnten nicht aktualisiert werden: "
                     f"{error}"
                 )

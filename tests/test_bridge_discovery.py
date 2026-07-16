@@ -19,6 +19,18 @@ class FakeFanConfig(FakeConfig):
     ENABLE_FAN_ENTITY = True
 
 
+class SlowPollingConfig(FakeConfig):
+    NORMAL_UPDATE_INTERVAL = 120
+
+
+class ExplicitExpiryConfig(FakeConfig):
+    LIVE_EXPIRE_AFTER = 45
+
+
+class DisabledExpiryConfig(FakeConfig):
+    LIVE_EXPIRE_AFTER = None
+
+
 class DiscoveryTests(unittest.TestCase):
     def setUp(self) -> None:
         self.topics = MqttTopics(
@@ -85,12 +97,82 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(component["payload_available"], "online")
         self.assertEqual(component["payload_not_available"], "offline")
 
+    def test_live_components_expire_after_default_interval(self) -> None:
+        components = self.build_payload()["components"]
+        live_component_ids = {
+            "wifire_kamin_temperature",
+            "wifire_kamin_flap",
+            "wifire_kamin_burn_time",
+            "wifire_kamin_burn_minutes",
+            "wifire_kamin_door",
+            "wifire_kamin_flap_moving",
+        }
+
+        for component_id in live_component_ids:
+            self.assertEqual(components[component_id]["expire_after"], 180)
+
+    def test_optional_fan_uses_same_expire_after(self) -> None:
+        components = self.build_payload(FakeFanConfig)["components"]
+
+        self.assertEqual(
+            components["wifire_kamin_fan_raw"]["expire_after"],
+            180,
+        )
+
+    def test_default_expiry_follows_normal_polling_interval(self) -> None:
+        components = self.build_payload(SlowPollingConfig)["components"]
+
+        self.assertEqual(
+            components["wifire_kamin_temperature"]["expire_after"],
+            360,
+        )
+
+    def test_explicit_expiry_and_disable_are_supported(self) -> None:
+        explicit_components = self.build_payload(ExplicitExpiryConfig)[
+            "components"
+        ]
+        disabled_components = self.build_payload(DisabledExpiryConfig)[
+            "components"
+        ]
+
+        self.assertEqual(
+            explicit_components["wifire_kamin_temperature"][
+                "expire_after"
+            ],
+            45,
+        )
+        self.assertNotIn(
+            "expire_after",
+            disabled_components["wifire_kamin_temperature"],
+        )
+
+    def test_invalid_expiry_is_rejected(self) -> None:
+        for invalid_value in (True, 0, -1, "180"):
+            invalid_config = type(
+                "InvalidExpiryConfig",
+                (FakeConfig,),
+                {"LIVE_EXPIRE_AFTER": invalid_value},
+            )
+
+            with self.subTest(value=invalid_value):
+                with self.assertRaises(ValueError):
+                    self.build_payload(invalid_config)
+
     def test_payload_has_no_global_availability(self) -> None:
         payload = self.build_payload()
 
         self.assertNotIn("availability_topic", payload)
         self.assertNotIn("payload_available", payload)
         self.assertNotIn("payload_not_available", payload)
+
+    def test_all_components_have_stable_default_entity_id(self) -> None:
+        components = self.build_payload()["components"]
+
+        for component_id, component in components.items():
+            self.assertEqual(
+                component["default_entity_id"],
+                f"{component['platform']}.{component_id}",
+            )
 
     def test_payload_contains_three_archive_components(self) -> None:
         components = self.build_payload()["components"]
@@ -117,6 +199,7 @@ class DiscoveryTests(unittest.TestCase):
             self.assertNotIn("availability_topic", component)
             self.assertNotIn("payload_available", component)
             self.assertNotIn("payload_not_available", component)
+            self.assertNotIn("expire_after", component)
 
     def test_payload_contains_dashboard_curve_component(self) -> None:
         components = self.build_payload()["components"]

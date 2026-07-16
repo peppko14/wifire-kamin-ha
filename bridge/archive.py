@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, ContextManager, Protocol
 from urllib.request import Request, urlopen
 
+from bridge.logging_setup import log_warning
 from protocol.duration import (
     DURATION_SOURCE_STAGE_0,
     calculate_duration_minutes,
@@ -109,7 +110,8 @@ class ArchiveReader:
             except (OSError, ValueError) as error:
                 last_error = error
 
-                self.logger(
+                log_warning(
+                    self.logger,
                     f"Archivversuch {attempt}/{self.retry_count} "
                     f"fehlgeschlagen: {error}"
                 )

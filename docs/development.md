@@ -1,6 +1,6 @@
 # Entwicklungsrichtlinien
 
-Dokumentversion: 1.5.0
+Dokumentversion: 1.7.0
 
 Diese Regeln gelten für die WiFire-Kamin Home Assistant Bridge.
 
@@ -106,10 +106,34 @@ lesende Archivabfrage transportiert.
 - SIGINT und SIGTERM müssen die Bridge kontrolliert beenden.
 - Keine Zugangsdaten oder vollständigen privaten Payloads protokollieren.
 
+## Protokollierung
+
+- `bridge/logging_setup.py` konfiguriert genau eine Logger-Instanz für die
+  produktive Anwendung.
+- `config.LOG_LEVEL` akzeptiert ausschließlich `DEBUG`, `INFO`, `WARNING`,
+  `ERROR` und `CRITICAL`.
+- Alle produktiven Bridge-, MQTT-, Historien- und Polling-Komponenten erhalten
+  dieselbe Logger-Instanz per Dependency Injection.
+- Normale Statusmeldungen verwenden INFO; vorübergehende oder isolierte
+  Fehler WARNING; nicht herstellbare Verbindungen und ungültige
+  Startkonfigurationen ERROR.
+- Einfache Test-Callables bleiben unterstützt. Neue produktive Fehlerpfade
+  müssen jedoch die levelbasierten Hilfsfunktionen verwenden.
+- INFO und DEBUG gehen auf die Standardausgabe, WARNING und höher auf die
+  Fehlerausgabe. Dadurch kann systemd sie nach Journal-Priorität filtern.
+
 ## MQTT
 
 - Discovery und Availability werden retained veröffentlicht.
 - Jede Entität besitzt eine stabile `unique_id`.
+- Jede Discovery-Komponente besitzt eine deterministische
+  `default_entity_id` aus Plattform und Komponenten-ID. Sichtbare Namen dürfen
+  diese technische Vorgabe nicht beeinflussen.
+- Nur Live-Entitäten erhalten `expire_after`; der Standard entspricht dem
+  Dreifachen von `NORMAL_UPDATE_INTERVAL`.
+- Archive, Historienstatistiken, Periodenstatistiken und Brennkurven dürfen
+  weder `expire_after` noch die Live-Availability erhalten. Ihre retained
+  Werte müssen während einer abgeschalteten Sommerpause sichtbar bleiben.
 - Alle Entitäten gehören zum Gerät `WiFire-Kamin`.
 - Ein MQTT-Ausfall darf vorhandene lokale Historien nicht beschädigen.
 - Historische Einzelkurven dürfen nicht als wachsende Anzahl eigener

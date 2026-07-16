@@ -192,6 +192,18 @@ class HistoryManagerTests(unittest.TestCase):
                 (project_dir / "data" / "history-incomplete").resolve(),
             )
 
+    def test_default_manager_injects_storage_logger(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            messages: list[str] = []
+            logger = messages.append
+
+            manager = create_default_history_manager(
+                Path(directory),
+                logger=logger,
+            )
+
+            self.assertIs(manager.storage.logger, logger)
+
 
 if __name__ == "__main__":
     unittest.main()

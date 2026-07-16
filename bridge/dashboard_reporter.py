@@ -14,6 +14,7 @@ from bridge.dashboard import (
     DashboardCurveSnapshot,
     build_dashboard_snapshot,
 )
+from bridge.logging_setup import log_warning
 from history.curve_analysis import analyze_curves
 from history.curves import BurnCurveLoadResult, read_burn_curves
 
@@ -93,14 +94,16 @@ class DashboardCurveReporter:
             include_warnings=self.include_warnings,
         )
         for issue in result.issues:
-            self.logger(
+            log_warning(
+                self.logger,
                 "Historien-Datei für Brennkurven übersprungen: "
                 f"{issue.path.name}: {issue.message}"
             )
 
         if not result.curves:
             if result.issues:
-                self.logger(
+                log_warning(
+                    self.logger,
                     "Brennkurven-Vergleich nicht veröffentlicht: keine "
                     "lesbare Historien-Datei; retained Werte bleiben "
                     "unverändert."

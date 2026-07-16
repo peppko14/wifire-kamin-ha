@@ -6,6 +6,9 @@
 # Die private Kopie enthält MQTT-Zugangsdaten und muss nur für ihren Besitzer
 # lesbar sein: chmod 600 config.py
 
+# Zentrale Protokollierung: DEBUG, INFO, WARNING, ERROR oder CRITICAL.
+LOG_LEVEL = "INFO"
+
 # WiFire-Steuerung
 WIFIRE_URL = "http://192.168.0.1/direct/00"
 REQUEST_TIMEOUT = 5
@@ -42,6 +45,9 @@ ACTIVE_FIRE_UPDATE_INTERVAL = 10
 ERROR_RETRY_INTERVAL = 300
 ACTIVE_FIRE_TEMPERATURE_C = 40
 OFFLINE_AFTER_FAILURES = 3
+# Ohne neuen Live-Zustand werden nur die Live-Entitäten danach unavailable.
+# None deaktiviert diese zusätzliche Home-Assistant-Ablaufüberwachung.
+LIVE_EXPIRE_AFTER = NORMAL_UPDATE_INTERVAL * 3
 # Gesamtzahl der Versuche pro Live-Zyklus; 1 entspricht altem Verhalten.
 LIVE_RETRY_COUNT = 2
 LIVE_RETRY_DELAY = 2
