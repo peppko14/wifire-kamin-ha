@@ -15,6 +15,10 @@ class FakeConfig:
     ENABLE_FAN_ENTITY = False
 
 
+class FakeFanConfig(FakeConfig):
+    ENABLE_FAN_ENTITY = True
+
+
 class DiscoveryTests(unittest.TestCase):
     def setUp(self) -> None:
         self.topics = MqttTopics(
@@ -22,76 +26,100 @@ class DiscoveryTests(unittest.TestCase):
             discovery_prefix="homeassistant",
         )
 
-    def test_payload_contains_device_metadata(self) -> None:
-        payload = build_discovery_payload(
-            FakeConfig,
+    def build_payload(
+        self,
+        config: type[FakeConfig] = FakeConfig,
+    ) -> dict[str, object]:
+        return build_discovery_payload(
+            config,
             self.topics,
             app_name="WiFire-Kamin MQTT Bridge",
-            app_version="0.6.0",
+            app_version="0.12.2",
         )
 
-        self.assertEqual(
-            payload["device"]["name"],
-            "WiFire-Kamin",
-        )
-        self.assertEqual(
-            payload["device"]["model"],
-            "WiFire",
-        )
+    def test_payload_contains_device_metadata(self) -> None:
+        payload = self.build_payload()
+
+        self.assertEqual(payload["device"]["name"], "WiFire-Kamin")
+        self.assertEqual(payload["device"]["model"], "WiFire")
 
     def test_payload_contains_live_components(self) -> None:
-        payload = build_discovery_payload(
-            FakeConfig,
-            self.topics,
-            app_name="Bridge",
-            app_version="0.6.0",
-        )
+        components = self.build_payload()["components"]
 
-        components = payload["components"]
-        self.assertIn(
+        self.assertIn("wifire_kamin_temperature", components)
+        self.assertIn("wifire_kamin_door", components)
+
+    def test_live_components_use_bridge_availability(self) -> None:
+        components = self.build_payload()["components"]
+        live_component_ids = {
             "wifire_kamin_temperature",
-            components,
-        )
-        self.assertIn(
+            "wifire_kamin_flap",
+            "wifire_kamin_burn_time",
+            "wifire_kamin_burn_minutes",
             "wifire_kamin_door",
-            components,
-        )
+            "wifire_kamin_flap_moving",
+        }
 
-    def test_payload_contains_three_archive_components(self) -> None:
-        payload = build_discovery_payload(
-            FakeConfig,
-            self.topics,
-            app_name="Bridge",
-            app_version="0.6.0",
-        )
-
-        components = payload["components"]
-        for number in (1, 2, 3):
-            self.assertIn(
-                f"wifire_kamin_archive_{number}",
-                components,
+        for component_id in live_component_ids:
+            component = components[component_id]
+            self.assertEqual(
+                component["availability_topic"],
+                self.topics.availability,
             )
+            self.assertEqual(component["payload_available"], "online")
+            self.assertEqual(component["payload_not_available"], "offline")
 
     def test_fan_component_is_optional(self) -> None:
-        payload = build_discovery_payload(
-            FakeConfig,
-            self.topics,
-            app_name="Bridge",
-            app_version="0.6.0",
-        )
+        components = self.build_payload()["components"]
 
-        self.assertNotIn(
-            "wifire_kamin_fan_raw",
-            payload["components"],
+        self.assertNotIn("wifire_kamin_fan_raw", components)
+
+    def test_optional_fan_uses_bridge_availability(self) -> None:
+        components = self.build_payload(FakeFanConfig)["components"]
+        component = components["wifire_kamin_fan_raw"]
+
+        self.assertEqual(
+            component["availability_topic"],
+            self.topics.availability,
         )
+        self.assertEqual(component["payload_available"], "online")
+        self.assertEqual(component["payload_not_available"], "offline")
+
+    def test_payload_has_no_global_availability(self) -> None:
+        payload = self.build_payload()
+
+        self.assertNotIn("availability_topic", payload)
+        self.assertNotIn("payload_available", payload)
+        self.assertNotIn("payload_not_available", payload)
+
+    def test_payload_contains_three_archive_components(self) -> None:
+        components = self.build_payload()["components"]
+
+        for number in (1, 2, 3):
+            self.assertIn(f"wifire_kamin_archive_{number}", components)
+
+    def test_retained_history_components_ignore_bridge_availability(
+        self,
+    ) -> None:
+        components = self.build_payload()["components"]
+        persistent_component_ids = {
+            component_id
+            for component_id in components
+            if component_id.startswith("wifire_kamin_archive_")
+            or component_id.startswith("wifire_kamin_statistics_")
+            or component_id.startswith("wifire_kamin_period_")
+            or component_id == "wifire_kamin_dashboard_curves"
+        }
+
+        self.assertTrue(persistent_component_ids)
+        for component_id in persistent_component_ids:
+            component = components[component_id]
+            self.assertNotIn("availability_topic", component)
+            self.assertNotIn("payload_available", component)
+            self.assertNotIn("payload_not_available", component)
 
     def test_payload_contains_dashboard_curve_component(self) -> None:
-        components = build_discovery_payload(
-            FakeConfig,
-            self.topics,
-            app_name="Bridge",
-            app_version="0.12.0",
-        )["components"]
+        components = self.build_payload()["components"]
 
         component = components["wifire_kamin_dashboard_curves"]
         self.assertEqual(
@@ -106,13 +134,7 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(component["entity_category"], "diagnostic")
 
     def test_payload_contains_six_statistics_components(self) -> None:
-        payload = build_discovery_payload(
-            FakeConfig,
-            self.topics,
-            app_name="Bridge",
-            app_version="0.7.0",
-        )
-        components = payload["components"]
+        components = self.build_payload()["components"]
         expected = {
             "wifire_kamin_statistics_burn_count",
             "wifire_kamin_statistics_latest_burn",
@@ -130,12 +152,7 @@ class DiscoveryTests(unittest.TestCase):
             )
 
     def test_statistics_components_have_expected_device_classes(self) -> None:
-        components = build_discovery_payload(
-            FakeConfig,
-            self.topics,
-            app_name="Bridge",
-            app_version="0.7.0",
-        )["components"]
+        components = self.build_payload()["components"]
 
         self.assertEqual(
             components["wifire_kamin_statistics_latest_burn"][
@@ -157,12 +174,7 @@ class DiscoveryTests(unittest.TestCase):
         )
 
     def test_payload_contains_month_and_three_season_components(self) -> None:
-        components = build_discovery_payload(
-            FakeConfig,
-            self.topics,
-            app_name="Bridge",
-            app_version="0.8.0",
-        )["components"]
+        components = self.build_payload()["components"]
         expected_month = {
             "wifire_kamin_period_month_period",
             "wifire_kamin_period_month_burn_count",
@@ -193,12 +205,7 @@ class DiscoveryTests(unittest.TestCase):
             )
 
     def test_period_duration_and_temperature_classes_are_defined(self) -> None:
-        components = build_discovery_payload(
-            FakeConfig,
-            self.topics,
-            app_name="Bridge",
-            app_version="0.8.0",
-        )["components"]
+        components = self.build_payload()["components"]
 
         self.assertEqual(
             components["wifire_kamin_period_month_total_duration"][
@@ -214,12 +221,7 @@ class DiscoveryTests(unittest.TestCase):
         )
 
     def test_three_seasons_use_fixed_payload_indexes(self) -> None:
-        components = build_discovery_payload(
-            FakeConfig,
-            self.topics,
-            app_name="Bridge",
-            app_version="0.8.0",
-        )["components"]
+        components = self.build_payload()["components"]
 
         for number, index in ((1, 0), (2, 1), (3, 2)):
             template = components[
