@@ -7,6 +7,14 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Wartbarkeit
+
+- Fehlende private `config.py` wird beim Programmstart mit konkreten
+  Einrichtungsschritten und definiertem Rückgabecode gemeldet
+- Importfehler innerhalb einer vorhandenen Konfiguration bleiben als echte
+  Programmfehler sichtbar und werden nicht fälschlich als Ersteinrichtung
+  behandelt
+
 ## [0.12.4] - 2026-07-16
 
 ### Sicherheit
