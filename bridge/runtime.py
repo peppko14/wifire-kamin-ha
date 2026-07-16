@@ -14,6 +14,7 @@ from bridge.polling import (
     PollingSettings,
     get_next_poll_interval,
 )
+from bridge.logging_setup import log_warning
 from protocol.models import LiveStatus
 
 
@@ -113,7 +114,8 @@ class BridgeRuntime:
             read_failed = True
             self.consecutive_failures += 1
 
-            self.logger(
+            log_warning(
+                self.logger,
                 f"Lesefehler {self.consecutive_failures}/"
                 f"{self.offline_after_failures}: {error}"
             )
@@ -126,7 +128,8 @@ class BridgeRuntime:
                 self.publisher.publish_availability(False)
                 self.availability_online = False
 
-                self.logger(
+                log_warning(
+                    self.logger,
                     "WiFire-Kamin wird als offline gemeldet."
                 )
 

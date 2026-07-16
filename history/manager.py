@@ -7,13 +7,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 from history.diagnostics import HistoryDiagnosticStorage
 from history.identifiers import build_burn_id
 from history.storage import HistoryReadResult, HistoryStorage
 from protocol.models import BurnRecord
 from protocol.quality import validate_burn_record
+
+
+Logger = Callable[[str], None]
 
 
 
@@ -141,11 +144,15 @@ class HistoryManager:
         return records[0]
 
 
-def create_default_history_manager(project_dir: Path) -> HistoryManager:
+def create_default_history_manager(
+    project_dir: Path,
+    *,
+    logger: Logger = print,
+) -> HistoryManager:
     """Erzeugt einen Manager mit portablem Standardpfad."""
     history_dir = project_dir.resolve() / "data" / "history"
     diagnostic_dir = project_dir.resolve() / "data" / "history-incomplete"
     return HistoryManager(
-        HistoryStorage(history_dir),
+        HistoryStorage(history_dir, logger=logger),
         HistoryDiagnosticStorage(diagnostic_dir),
     )

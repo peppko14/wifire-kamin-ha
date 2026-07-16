@@ -12,6 +12,7 @@ from typing import Callable
 from urllib.parse import urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
+from bridge.logging_setup import log_warning
 from history.manager import HistoryManager, HistorySyncResult
 from history.ring_buffer import ArchiveOutcome, RingBufferStrategy
 from protocol.adapters import ArchiveRecordLike, archive_record_to_burn_record
@@ -242,7 +243,10 @@ def synchronize_archives(
                 logger(f"Archiv {number}: unvollständig, übersprungen.")
             else:
                 outcome = ArchiveOutcome.READ_ERROR
-                logger(f"Archiv {number}: lokale Speicherung fehlgeschlagen.")
+                log_warning(
+                    logger,
+                    f"Archiv {number}: lokale Speicherung fehlgeschlagen.",
+                )
 
             # Optionale Verbraucher laufen bewusst erst nach dem lokalen
             # Speichern und dürfen den Historienabgleich nicht gefährden.
@@ -250,7 +254,8 @@ def synchronize_archives(
                 try:
                     on_record_synchronized(number, archive_record, sync_result)
                 except Exception as error:  # optionale externe Integration
-                    logger(
+                    log_warning(
+                        logger,
                         f"Archiv {number}: nachgelagerte Verarbeitung "
                         f"fehlgeschlagen: {error}"
                     )
@@ -258,7 +263,10 @@ def synchronize_archives(
         except (OSError, RuntimeError, ValueError) as error:
             read_failures += 1
             outcome = ArchiveOutcome.READ_ERROR
-            logger(f"Archiv {number}: Lesefehler: {error}")
+            log_warning(
+                logger,
+                f"Archiv {number}: Lesefehler: {error}",
+            )
 
         if not strategy.should_continue_after(outcome):
             break

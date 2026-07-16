@@ -16,6 +16,7 @@ from bridge.dashboard_reporter import (
     DashboardCurveReporter,
     parse_dashboard_since,
 )
+from bridge.logging_setup import configure_logging, log_warning
 from bridge.mqtt_client import MqttConnection
 from bridge.polling import LivePoller, PollingSettings
 from bridge.runtime import BridgeRuntime
@@ -142,7 +143,10 @@ def refresh_history_outputs(
         try:
             reporter.refresh()
         except (OSError, RuntimeError, ValueError) as error:
-            logger(f"{name} konnte nicht aktualisiert werden: {error}")
+            log_warning(
+                logger,
+                f"{name} konnte nicht aktualisiert werden: {error}",
+            )
 
 
 def create_application(
@@ -153,6 +157,9 @@ def create_application(
     app_version: str,
 ) -> BridgeApplication:
     """Erzeugt die vollständig konfigurierte Bridge-Anwendung."""
+    logger = configure_logging(
+        getattr(config_module, "LOG_LEVEL", "INFO")
+    )
     running_state = RunningState()
     topics = MqttTopics(
         device_id=config_module.DEVICE_ID,
@@ -171,6 +178,7 @@ def create_application(
         ),
         sleeper=sleeper,
         is_running=running_state,
+        logger=logger,
     )
     connection = MqttConnection(
         config_module,
@@ -178,9 +186,11 @@ def create_application(
         app_name=app_name,
         app_version=app_version,
         is_running=running_state,
+        logger=logger,
     )
     history_manager = create_default_history_manager(
-        project_dir
+        project_dir,
+        logger=logger,
     )
     statistics_reporter = HistoryStatisticsReporter(
         history_provider=history_manager,
@@ -188,6 +198,7 @@ def create_application(
         since=parse_statistics_since(
             getattr(config_module, "STATISTICS_SINCE", None)
         ),
+        logger=logger,
     )
     dashboard_since = parse_dashboard_since(
         getattr(
@@ -205,6 +216,7 @@ def create_application(
             "DASHBOARD_INCLUDE_WARNINGS",
             True,
         ),
+        logger=logger,
     )
 
     archive_settings = build_archive_sync_settings(config_module)
@@ -214,9 +226,11 @@ def create_application(
         history_manager=history_manager,
         sleeper=sleeper,
         is_running=running_state,
+        logger=logger,
         on_complete=lambda: refresh_history_outputs(
             statistics_reporter,
             dashboard_reporter,
+            logger=logger,
         ),
     )
     runtime = BridgeRuntime(
@@ -239,10 +253,12 @@ def create_application(
             3,
         ),
         on_state=connection.remember_state,
+        logger=logger,
     )
 
     return BridgeApplication(
         connection=connection,
         runtime=runtime,
         running_state=running_state,
+        logger=logger,
     )

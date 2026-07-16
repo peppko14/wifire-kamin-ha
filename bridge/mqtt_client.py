@@ -16,6 +16,7 @@ from typing import Any, Callable, Protocol
 import paho.mqtt.client as mqtt
 
 from bridge.discovery import build_discovery_payload
+from bridge.logging_setup import log_error, log_warning
 from bridge.publisher import MqttPublisher
 from bridge.topics import MqttTopics
 from protocol.models import LiveStatus
@@ -185,7 +186,8 @@ class MqttConnection:
 
         if self.tls_settings.insecure:
             self.client.tls_insecure_set(True)
-            self.logger(
+            log_warning(
+                self.logger,
                 "WARNUNG: MQTT-TLS-Hostnameprüfung ist deaktiviert. "
                 "MQTT_TLS_INSECURE nur vorübergehend zum Testen verwenden."
             )
@@ -234,7 +236,8 @@ class MqttConnection:
     ) -> None:
         """Verarbeitet eine hergestellte MQTT-Verbindung."""
         if reason_code.is_failure:
-            self.logger(
+            log_error(
+                self.logger,
                 f"MQTT-Verbindung fehlgeschlagen: {reason_code}"
             )
             return
@@ -295,7 +298,8 @@ class MqttConnection:
     ) -> None:
         """Protokolliert unerwartete MQTT-Unterbrechungen."""
         if self.is_running() and reason_code.is_failure:
-            self.logger(
+            log_warning(
+                self.logger,
                 f"MQTT-Verbindung unterbrochen: {reason_code}"
             )
 
@@ -313,7 +317,8 @@ class MqttConnection:
                 keepalive=60,
             )
         except (OSError, ValueError) as error:
-            self.logger(
+            log_error(
+                self.logger,
                 f"MQTT-Konfiguration ungültig: {error}"
             )
             raise

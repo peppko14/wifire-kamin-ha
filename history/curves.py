@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Mapping
 
+from bridge.logging_setup import log_warning
 from history.identifiers import build_burn_id
 from history.storage import (
     HISTORY_SCHEMA_VERSION,
@@ -364,7 +365,8 @@ def load_burn_curves(
         include_warnings=include_warnings,
     )
     for issue in result.issues:
-        logger(
+        log_warning(
+            logger,
             "Brennkurven-Datei übersprungen: "
             f"{issue.path.name}: {issue.message}"
         )
