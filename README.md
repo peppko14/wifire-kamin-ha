@@ -48,11 +48,18 @@ Das Projekt schreibt keine Daten oder Einstellungen zur Steuerung zurück.
 - Python 3.11 oder neuer
 - Mosquitto MQTT Broker
 - Home Assistant mit MQTT-Integration
-- FireControls WiFire in der im Projekt untersuchten Geräte-/Firmwarevariante
+- FireControls WiFire mit Heizgeräteprofil `UNIVERSAL / UNI-80°C`
+- getestete Gerätefirmware: WEB `w3.3.3`, MCU `ver.37 B368`, Stand November 2024
 
 Nicht unterstützt werden die modernere **FireControls WiFire NET**-Variante
-und **WiFire H2O**. Die optionale Lüfterfunktion der unterstützten WiFire
-konnte mangels angeschlossener Hardware nicht praktisch getestet werden.
+und **WiFire H2O**. H2O-spezifische Kessel- und Puffertemperaturen sowie die
+Umwälzpumpe sind deshalb nicht Bestandteil des Projekts. Die optionale
+Lüfterfunktion der unterstützten WiFire konnte mangels angeschlossener Hardware
+nicht praktisch getestet werden.
+
+Das verifizierte Referenzgerät und die Grenzen der daraus ableitbaren
+Protokollinformationen sind unter
+[`docs/device-profile.md`](docs/device-profile.md) dokumentiert.
 
 ## Netzwerkaufbau
 

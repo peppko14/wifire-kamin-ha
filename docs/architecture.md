@@ -1,6 +1,6 @@
 # Architektur
 
-Dokumentversion: 1.13.0
+Dokumentversion: 1.14.0
 
 Projektstand: WiFire-Kamin Home Assistant Bridge v0.14.1
 
@@ -92,6 +92,12 @@ Die Plätze 24 bis 30 wurden als adressierbar, aber leer beobachtet. Die
 produktive Sicherheitsgrenze bleibt von dieser Beobachtung getrennt.
 Transport- und ungültige Antwortdaten werden begrenzt wiederholt;
 Programmierfehler werden nicht als Netzwerkfehler maskiert.
+
+Die verifizierte Referenzsteuerung verwendet das Heizgeräteprofil
+`UNIVERSAL / UNI-80°C`, WEB `w3.3.3` und MCU `ver.37 B368`. Diese Angaben
+beschreiben die getestete Variante und keine universelle Eigenschaft aller
+WiFire-Steuerungen. Details und Abgrenzungen stehen in
+[`docs/device-profile.md`](device-profile.md).
 
 Produktive Ringpuffer-Synchronisation und manueller Vollimport verwenden
 dieselbe Implementierung. Die Scanstrategie bleibt davon getrennt: Beide
@@ -222,8 +228,11 @@ Definiert unveränderliche Datenmodelle:
 
 ### `protocol/duration.py`
 
-Rekonstruiert die fachliche Abbrenndauer zentral aus dem entrollten
-Zeitpunkt der Klappenstellung 0 %. Die Messpunktanzahl ist keine Dauer.
+Rekonstruiert die fachliche Abbrenndauer zentral aus der entrollten
+S5-/0-%-Phasenmarke des Archivtelegramms. Die Marke kennzeichnet das Ende des
+aktiven Abbrands. Eine konfigurierte Schließzeitverzögerung kann bewirken, dass
+die Luftklappe mechanisch erst später vollständig schließt. Die
+Messpunktanzahl ist keine Dauer.
 
 ### `protocol/quality.py`
 
