@@ -15,7 +15,8 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
   - 5 Minuten nach Kommunikationsfehlern
 - lesender Zugriff auf archivierte Abbrände
 - automatische lokale Historisierung unter `data/history/`
-- schonende Synchronisation der bekannten Ringpufferplätze 1 bis 23
+- adaptive, schonende Synchronisation bis zum ersten leeren oder bereits
+  bekannten Ringpufferplatz
 - stabile SHA-256-ID und Duplikaterkennung
 - atomisches Speichern der JSON-Dateien
 - Historien-Schema 2 mit zentraler Dauer- und Qualitätsdefinition
@@ -284,9 +285,9 @@ Da die WiFire-Schnittstelle empfindlich auf schnelle Folgeanfragen
 reagiert, sollten konservative Pausen verwendet werden:
 
 ```bash
-python3 -u tools/history_importer_v1_0_3.py \
+python3 -u tools/history_importer_v1_1_0.py \
   --first 1 \
-  --last 23 \
+  --last 255 \
   --delay 10 \
   --retries 5
 ```
@@ -298,8 +299,11 @@ gestoppt sein, damit nicht mehrere Prozesse gleichzeitig zugreifen.
 
 Die Bridge prüft den Ringpuffer nur im konfigurierten, langen
 Archivintervall. Die Plätze werden nacheinander mit mindestens zehn Sekunden
-Abstand gelesen. Bereits bekannte Abbrände beenden den Scan frühzeitig;
-unvollständige oder vorübergehend nicht lesbare Plätze werden protokolliert.
+Abstand gelesen. Der erste eindeutig leere Platz oder ein bereits bekannter
+Abbrand beendet den Scan frühzeitig. Leere Plätze werden nicht als
+unvollständige Abbrände oder Diagnosen gespeichert. Unvollständige Plätze
+werden protokolliert; nach drei aufeinanderfolgenden Lesefehlern endet der
+Lauf kontrolliert.
 
 Neue vollständige Abbrände werden zuerst atomisch lokal gespeichert. Erst
 danach folgt die optionale MQTT-Veröffentlichung. Ein MQTT-Ausfall kann daher
@@ -309,9 +313,11 @@ Die produktive Ringpuffer-Synchronisation und der manuelle Vollimport nutzen
 gemeinsam `protocol/archive.py`. Die Schnittstelle nimmt nur eine
 Archivnummer entgegen und erzeugt daraus selbst den fest definierten lesenden
 `/direct/35`-Request. Beliebige Hex-Befehle können darüber nicht gesendet
-werden. Der technisch mögliche Ein-Byte-Bereich 1 bis 255 ist dabei keine
-bestätigte Aussage zur tatsächlichen Anzahl der Archivplätze. Die produktive
-Scan-Grenze bleibt bis zur kontrollierten Untersuchung unverändert.
+werden. Die Plätze 24 bis 30 antworteten am untersuchten Gerät mit
+syntaktisch gültigen, leeren Telegrammen. Deshalb nutzt der adaptive Scan den
+Ein-Byte-Bereich bis 255 nur als technische Sicherheitsgrenze und beendet
+sich normalerweise bereits am ersten leeren Platz. Dies ist weiterhin kein
+Nachweis für 255 physisch vorhandene Speicherplätze.
 
 ## Historienstatistik
 
@@ -479,11 +485,12 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Version 0.13.0 umfasst 424 automatisierte Tests.
+Assistant ausführbar. Der Entwicklungsstand für v0.14.0 umfasst nach der
+adaptiven Scan-Grenze 444 automatisierte Tests.
 
 ## Werkzeuge
 
-- `tools/history_importer_v1_0_3.py`: lokale Historie importieren
+- `tools/history_importer_v1_1_0.py`: lokale Historie adaptiv importieren
 - `tools/history_statistics_v1_2_0.py`: Gesamt-, Monats- und Saisonstatistik
 - `tools/history_audit_v1_0_0.py`: Historie und Diagnoseablage prüfen
 - `tools/history_backup_v1_0_0.py`: Historie sichern, prüfen und restaurieren
@@ -507,16 +514,17 @@ Mit v0.13.0 umgesetzt:
 
 Für spätere Versionen vorgesehen:
 
-- v0.14: gemeinsame ausschließlich lesende Archivschnittstelle, danach Bridge
-  und Vollimport darauf umstellen, Archivplätze oberhalb 23 kontrolliert
-  untersuchen und einen realen Rohmitschnitt als Golden Fixture aufnehmen
+- v0.14: gemeinsame ausschließlich lesende Archivschnittstelle, adaptive
+  Leerer-Platz-Grenze und kontrollierte Untersuchung oberhalb von Platz 23;
+  anschließend einen realen Rohmitschnitt als Golden Fixture aufnehmen
 - Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
   Beendigungssignal unmittelbar abbrechen
 
 Die Sicherheitsgrenzen und der Ablauf der Untersuchung oberhalb von Platz 23
 sind in [`docs/archive-slot-probe.md`](docs/archive-slot-probe.md)
-dokumentiert. Ein lesbarer Platz wird erst nach Auswertung der privaten
-Rohdaten als tatsächlicher zusätzlicher Archivplatz bewertet.
+dokumentiert. Die Untersuchung bestätigte die technische Adressierbarkeit
+der Plätze 24 bis 30, aber dort noch keinen zusätzlichen abgeschlossenen
+Abbrand.
 
 ## Lizenz
 

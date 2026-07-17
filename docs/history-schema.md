@@ -88,9 +88,11 @@ Hinweis besitzt. Datensätze mit Qualitätsfehlern werden nicht unter
 - Archivnummer 0, negativ oder kein zulässiger Ganzzahlwert,
 - Phasenwert außerhalb von 0 bis 255.
 
-Archivnummern oberhalb von 23 sind zulässig. Die bekannten Scan-Plätze 1–23
-sind eine getrennte, konfigurierbare Ringpufferstrategie und keine fachliche
-Grenze des Historienmodells.
+Archivnummern oberhalb von 23 sind zulässig. Der produktive Scan verwendet
+255 lediglich als technische Sicherheitsgrenze und beendet sich am ersten
+eindeutig leeren Platz. Ein leerer Platz wird nicht als unvollständiger
+Abbrand und nicht als Diagnose gespeichert. Die Archivnummer bleibt damit
+eine Transportinformation und keine fachliche Grenze des Historienmodells.
 
 ### Warnungen
 

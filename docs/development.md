@@ -102,6 +102,10 @@ lesende Archivabfrage transportiert.
   APIs.
 - Der technisch durch ein Byte darstellbare Bereich 1 bis 255 ist getrennt
   von der durch Tests bestätigten Scan-Grenze zu behandeln.
+- Ein eindeutig leerer Archivplatz besitzt keinen Startzeitpunkt, keine
+  Temperaturmesspunkte, keine Phasenwerte und ist als aktiv oder
+  unvollständig markiert. Er beendet den adaptiven Scan, wird aber weder in
+  die Historie noch in die Diagnoseablage übernommen.
 
 ## Netzwerk und Fehlerbehandlung
 

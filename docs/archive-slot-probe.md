@@ -1,6 +1,6 @@
 # Archivplätze oberhalb 23 untersuchen
 
-Dokumentversion: 1.0.0
+Dokumentversion: 1.1.0
 
 Das Werkzeug `tools/archive_slot_probe_v1_0_0.py` untersucht einen ausdrücklich
 gewählten kleinen Bereich oberhalb der bislang bestätigten Plätze 1 bis 23.
@@ -24,6 +24,28 @@ WiFire-Firmware wird nicht vorausgesetzt.
 
 Der Bereich bis 255 folgt nur aus dem einzelnen Adressbyte im bekannten
 Telegramm. Er ist kein Nachweis für 255 tatsächlich vorhandene Speicherplätze.
+
+## Beobachtung vom 17. Juli 2026
+
+Nach Wiederherstellung der WiFire-WLAN-Verbindung wurden die Plätze 24 bis 30
+einzeln und mit zehn Sekunden Abstand gelesen. Alle Antworten hatten:
+
+- den erwarteten Paketkopf,
+- die bekannte Länge von 506 Bytes,
+- die jeweils angefragte Archivnummer,
+- keinen Startzeitpunkt,
+- keine Temperaturmesspunkte und
+- den Zustand aktiv oder unvollständig.
+
+Die Plätze sind damit technisch adressierbar, waren zum Prüfzeitpunkt aber
+leer. Platz 23 enthielt gleichzeitig noch einen vollständigen Abbrand. Das
+beweist, dass 23 keine feste Protokoll- oder Gerätekapazitätsgrenze ist, aber
+nicht, wie viele abgeschlossene Abbrände das Gerät maximal speichert.
+
+Die produktive Synchronisation nutzt diese Beobachtung konservativ: Sie darf
+bis zur technischen Ein-Byte-Grenze 255 adressieren, beendet den Scan jedoch
+am ersten eindeutig leeren Platz. Der leere Platz wird weder in die Historie
+noch in die Diagnoseablage übernommen.
 
 ## Voraussetzungen
 
@@ -99,4 +121,7 @@ folgende getrennte Läufe möglich:
 41–50
 ```
 
-Ein automatischer Scan bis 255 ist ausdrücklich nicht vorgesehen.
+Das Diagnosewerkzeug erweitert seinen Bereich weiterhin niemals automatisch.
+Der produktive adaptive Scan verwendet 255 dagegen nur als Sicherheitsgrenze
+und erreicht sie im Normalfall nicht, weil der erste leere oder bereits
+bekannte Platz den Lauf beendet.
