@@ -1,6 +1,6 @@
 # Architektur
 
-Dokumentversion: 1.8.0
+Dokumentversion: 1.9.0
 
 Projektstand: WiFire-Kamin Home Assistant Bridge v0.12.5
 
@@ -52,6 +52,7 @@ wifire-kamin-ha/
 │   ├── curves.py
 │   ├── curve_analysis.py
 │   ├── curve_reference.py
+│   ├── curve_comparison.py
 │   └── curve_export.py
 ├── operations/
 │   └── diagnostics.py
@@ -294,6 +295,14 @@ Abbrände mit Qualitätsstatus `valid` zugelassen. Optionale Filter begrenzen
 die Auswahl auf eine Heizsaison, einen Starttemperaturbereich und eine
 Messpunktanzahl. Zu kleine Gruppen werden als `not_evaluable` ausgewiesen;
 uneindeutige Gruppen mit gemischten Messpunktanzahlen werden abgewiesen.
+
+### `history/curve_comparison.py`
+
+Bestimmt deterministisch den letzten abgeschlossenen Abbrand und entfernt ihn
+vor der Referenzberechnung aus der historischen Vergleichsgruppe. Das Modul
+berechnet seinen RMSE zur Mediankurve und optional zu einem über die stabile
+`burn_id` ausgewählten realen Referenzabbrand. Ein Abbrand mit Warnstatus oder
+eine zu kleine Referenzgruppe ergeben ausdrücklich `not_evaluable`.
 
 ### `history/curve_export.py`
 

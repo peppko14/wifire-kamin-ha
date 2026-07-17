@@ -13,6 +13,8 @@ from typing import Iterable, Sequence
 
 from history.curves import BurnCurve
 
+
+
 class CurveAnalysisError(ValueError):
     """Brennkurven können nicht verlässlich gemeinsam analysiert werden."""
 
@@ -99,6 +101,22 @@ def curve_rmse_to_median(
         )
     reference_temperatures = tuple(
         point.median_temperature_c for point in median_points
+    )
+    return _curve_rmse_to_temperatures(curve, reference_temperatures)
+
+
+def curve_rmse_between(
+    curve: BurnCurve,
+    reference_curve: BurnCurve,
+) -> float:
+    """Berechnet den RMSE zwischen zwei realen historischen Kurven."""
+    if curve.sample_count != reference_curve.sample_count:
+        raise CurveAnalysisError(
+            "Verglichene Kurven besitzen verschiedene Messpunktanzahlen."
+        )
+    reference_temperatures = tuple(
+        float(temperature)
+        for temperature in reference_curve.temperatures_c
     )
     return _curve_rmse_to_temperatures(curve, reference_temperatures)
 
