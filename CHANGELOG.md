@@ -9,6 +9,12 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Brennkurvenanalyse
 
+- Versioniertes Datenmodell für zeitgestempelte Messpunkte und laufende
+  Brennkurven-Sitzungen ergänzt
+- Laufenden Zwischenstand atomisch unter `data/live-curve/current.json`
+  gespeichert und nach einem Prozessneustart wieder ladbar gemacht
+- Live-Temperatur, Geräte-Abbrennzeit, Statusbyte, Klappenstellung und
+  Türzustand je Messpunkt getrennt von der historischen Archivachse erfasst
 - Aktuelle und zwei vorherige Heizsaisons als feste, vergleichbare
   Kurvenmomentaufnahme ergänzt
 - Für jede ausreichend große Heizsaison eine eigene Mediankurve und einen
@@ -58,6 +64,10 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Getestet
 
+- Roundtrip, Schema-Validierung und atomischer Austausch laufender
+  Brennkurven-Zwischenstände
+- Wiederaufnahme nach Neustart sowie erkennbare beschädigte und inkonsistente
+  Live-Kurven-Dateien
 - Abwärtskompatible Schlüssel und Dashboard-Schema-Version 2
 - Median-, letzter-Abbrand- und optionale Referenzreihen
 - Drei saisonale Einträge einschließlich `not_evaluable`
