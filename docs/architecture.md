@@ -134,6 +134,14 @@ damit SIGINT und SIGTERM zeitnah wirken.
 Steuert die zyklische Live-Abfrage, Offline-Erkennung, Archivplanung und
 Wartezeit. Die Klasse ist unabhängig vom konkreten MQTT-Client testbar.
 
+### `bridge/live_curve.py`
+
+Definiert das von der historischen Archivachse getrennte Schema für eine
+laufende Brennkurve. Jeder Messpunkt besitzt einen Zeitzonen-Zeitstempel,
+Temperatur, Geräte-Abbrennzeit und ausgewählte Statusfelder. Der aktuelle
+Zwischenstand wird atomisch unter `data/live-curve/current.json` ersetzt und
+kann nach einem Prozessneustart streng validiert wieder geladen werden.
+
 ### `bridge/statistics.py`
 
 Liest die lokale Historie, wendet den optionalen inklusiven

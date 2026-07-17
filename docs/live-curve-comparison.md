@@ -8,8 +8,7 @@ Archivmesspunkten vorweg.
 
 ## Implementierungsstand
 
-Mit den Commits 2 bis 4 von v0.13.0 sind folgende historische Grundlagen
-umgesetzt:
+Mit den Commits 2 bis 6 von v0.13.0 sind folgende Grundlagen umgesetzt:
 
 - punktweise Mediankurve zusätzlich zum bestehenden Durchschnitt,
 - eigener realer Referenzabbrand mit kleinstem RMSE zur Mediankurve,
@@ -21,11 +20,16 @@ umgesetzt:
 - optionaler Vergleich zu einem über `burn_id` ausgewählten Referenzabbrand,
 - eigene Mediananalyse für aktuelle und zwei vorherige Heizsaisons,
 - sichtbarer Zustand `not_evaluable` für leere oder zu kleine Saisons,
-- retained Dashboard-Schema 2 mit Median, letztem Abbrand und Saisonkurven.
+- retained Dashboard-Schema 2 mit Median, letztem Abbrand und Saisonkurven,
+- versioniertes Modell für zeitgestempelte Live-Messpunkte und Sitzungen,
+- atomische Ablage des laufenden Zwischenstands unter
+  `data/live-curve/current.json`,
+- strenge Wiederaufnahme und Validierung des Zwischenstands nach Neustart.
 
 Die bisher verwendeten Dashboard-Schlüssel bleiben für bestehende Karten
-erhalten. Die laufende Live-Erfassung wird erst in den folgenden Commits
-ergänzt.
+erhalten. Commit 6 stellt Datenmodell und Speicherung bereit. Die
+Start-/Ende-Erkennung, Verdrahtung in die Laufzeit und MQTT-Veröffentlichung
+werden in den folgenden Commits ergänzt.
 
 ## Ziele
 
@@ -110,10 +114,12 @@ Jeder Live-Messpunkt wird mindestens mit diesen Angaben erfasst:
 - vom Gerät gemeldete Abbrennzeit,
 - Statusinformation, die für Start oder Ende der Sitzung verwendet wurde.
 
-Der Zwischenstand wird atomisch unter `data/` gespeichert, damit ein
-Prozessneustart nicht automatisch die gesamte laufende Beobachtung verliert.
-Die endgültige Verzeichnis- und Schemabezeichnung wird mit dem Datenmodell
-festgelegt.
+Der Zwischenstand wird atomisch unter `data/live-curve/current.json`
+gespeichert, damit ein Prozessneustart nicht automatisch die gesamte laufende
+Beobachtung verliert. Schema 1 enthält Sitzungskennung, Start- und
+Aktualisierungszeitpunkt sowie eine geordnete Liste der Messpunkte. Eine
+beschädigte oder inkonsistente Datei wird ausdrücklich als Fehler gemeldet und
+nicht stillschweigend als gültige Sitzung fortgesetzt.
 
 Eine Live-Sitzung und ein später aus dem Ringpuffer importierter Abbrand sind
 zunächst getrennte Datensätze. Eine automatische Zusammenführung benötigt

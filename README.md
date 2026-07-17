@@ -470,7 +470,7 @@ Assistant ausführbar. Version 0.12.5 umfasst 361 automatisierte Tests.
 Für spätere Versionen vorgesehen:
 
 - v0.13: robuste Medianreferenz, saisonale Kurvenvergleiche, letzter Abbrand
-  und getrennte laufende Brennkurve
+  und getrennte laufende Brennkurve mit atomischem Zwischenstand
 - v0.14: Archivplätze oberhalb 23 lesend untersuchen, reales Golden Fixture,
   gemeinsame Vollimportlogik und weiter vereinheitlichte Protokollschnittstelle
 - Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
