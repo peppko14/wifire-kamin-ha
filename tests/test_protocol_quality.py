@@ -47,6 +47,11 @@ class BurnQualityTests(unittest.TestCase):
         self.assertTrue(report.is_valid)
         self.assertEqual(report.status, "warning")
         self.assertEqual(self.codes(record), {"timestamp_uncertain"})
+        self.assertEqual(len(report.warnings), 1)
+        self.assertIn(
+            "ohne belegte Zeitsynchronisation",
+            report.warnings[0].message,
+        )
 
     def test_missing_start_is_invalid(self) -> None:
         report = validate_burn_record(

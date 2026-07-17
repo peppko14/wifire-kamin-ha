@@ -19,6 +19,15 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Klappenpositionen der Abbrandphasen als heizgeräteprofilabhängig
   dokumentiert; bestehende Archivfeldnamen bleiben vorerst kompatibel
 
+### Datenqualität
+
+- Warnung `timestamp_uncertain` auf eine fehlende belegte
+  Zeitsynchronisation der Steuerung präzisiert
+- Archiv- und Alarmlisteneinträge mit derselben internen Gerätezeit werden
+  nicht mehr als Nachweis eines realen Kalenderjahres interpretiert
+- bestehende Zeitstempel bleiben unverändert; es erfolgt keine automatische
+  Schätzung oder Verschiebung historischer Datensätze
+
 ## [0.14.1] - 2026-07-17
 
 ### Zuverlässigkeit

@@ -110,9 +110,16 @@ eine Transportinformation und keine fachliche Grenze des Historienmodells.
 - Startzeitpunkt vor 2020 (`timestamp_uncertain`).
 
 Die sechs vorhandenen Datensätze aus 2017 bleiben auswertbar. Da nicht sicher
-unterschieden werden kann, ob sie echte historische Zeiten oder eine damals
-falsch eingestellte Geräteuhr darstellen, werden sie nicht verändert und nur
-als zeitlich unsicher gekennzeichnet.
+kalendertreu zugeordnet werden kann, wann sie entstanden sind, werden sie nicht
+verändert und nur als zeitlich unsicher gekennzeichnet. Für die Referenzanlage
+ist belegt, dass die Steuerungszeit für diese alten Einträge nicht
+synchronisiert wurde. Gleichlautende Jahresangaben in Archiv und Alarmliste
+bestätigen lediglich eine gemeinsame interne Gerätezeit und nicht das reale
+Kalenderjahr.
+
+Der kompatible Qualitätscode bleibt `timestamp_uncertain`. Dadurch bleiben
+bestehende Filter, Audits und gespeicherte Schema-2-Dateien verwendbar. Eine
+automatische Verschiebung oder Schätzung der Zeitstempel findet nicht statt.
 
 ## Diagnoseablage
 
