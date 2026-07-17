@@ -67,13 +67,15 @@ ARCHIVE_RETRY_COUNT = 3
 ARCHIVE_RETRY_DELAY = 10
 ARCHIVE_MAX_CONSECUTIVE_READ_ERRORS = 3
 
-# Seltene, ausschließlich lesende Gerätediagnose. Die Aktualisierung läuft
-# zusammen mit ARCHIVE_UPDATE_INTERVAL und erzeugt daher keinen eigenen
-# häufigen Zeitplan. Zwischen Steuerungszeit und Alarmliste liegt eine Pause.
+# Seltene, ausschließlich lesende Steuerungszeit-Diagnose. Sie läuft zusammen
+# mit ARCHIVE_UPDATE_INTERVAL.
 DEVICE_DIAGNOSTICS_REQUEST_TIMEOUT = REQUEST_TIMEOUT
 DEVICE_DIAGNOSTICS_RETRY_COUNT = 2
 DEVICE_DIAGNOSTICS_RETRY_DELAY = 2
-DEVICE_DIAGNOSTICS_REQUEST_DELAY = 2
+
+# Die Heizfehlerliste wird für zeitnahe Home-Assistant-Meldungen häufiger,
+# aber weiterhin sequenziell und ausschließlich lesend geprüft.
+HEATING_FAILURE_POLL_INTERVAL = 300
 
 # Statistikfilter; None berücksichtigt alle gespeicherten Datensätze.
 # Beispiel zum Ausschließen falsch datierter Altbestände: "2026-01-01"

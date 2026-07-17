@@ -220,6 +220,13 @@ def build_discovery_payload(
             "value_template": "{{ value_json.count }}",
             "icon": "mdi:counter",
         },
+        "heating_failure_event": {
+            "name": "Heizfehler-Ereignis",
+            "state_topic": topics.heating_failure_event,
+            "value_template": "{{ value_json.event_id }}",
+            "json_attributes_topic": topics.heating_failure_event,
+            "icon": "mdi:fire-alert",
+        },
     }
     for key, component in device_diagnostic_components.items():
         component_id = f"{config.DEVICE_ID}_{key}"

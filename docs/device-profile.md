@@ -1,6 +1,6 @@
 # Verifiziertes WiFire-Geräteprofil
 
-Dokumentversion: 1.1.0
+Dokumentversion: 1.2.0
 
 Dieses Dokument beschreibt die konkrete WiFire-Variante, gegen die die
 WiFire-Kamin Home Assistant Bridge entwickelt und geprüft wird. Die Angaben
@@ -126,29 +126,51 @@ Referenzgerät praktisch bestätigt.
 
 ## Home-Assistant-Diagnose
 
-Die Bridge aktualisiert die verifizierten Diagnosewerte gemeinsam mit dem
-seltenen Archivzyklus. Damit werden keine häufigen zusätzlichen Abfragen an
-das schwache WiFire-Webmodul gestellt. Zwischen `/direct/22` und `/direct/04`
-liegt außerdem eine kurze konfigurierbare Pause.
+Die Bridge aktualisiert die interne Steuerungszeit gemeinsam mit dem seltenen
+Archivzyklus. Die Alarmliste wird dagegen in einem eigenen, konfigurierbaren
+Intervall gelesen. `HEATING_FAILURE_POLL_INTERVAL = 300` entspricht einer
+Prüfung alle fünf Minuten. Alle WiFire-Zugriffe bleiben seriell; es werden
+keine parallelen HTTP-Anfragen erzeugt. Die erste Alarmprüfung beginnt erst
+nach diesem Intervall, damit der Dienststart nicht gleichzeitig Live-, Alarm-
+und Archivzugriff auslöst.
 
-Home Assistant erhält vier Diagnoseentitäten:
+Home Assistant erhält fünf Diagnoseentitäten:
 
 - `Steuerungszeit`,
 - `Zeitabweichung Steuerung`,
 - `Letzter Heizfehler`,
-- `Gespeicherte Heizfehler`.
+- `Gespeicherte Heizfehler`,
+- `Heizfehler-Ereignis`.
 
 Die Zeitabweichung ist `Steuerungszeit minus Raspberry-Zeit` in Minuten. Ein
 negativer Wert bedeutet somit, dass die Steuerungsuhr zurückliegt. Die Liste
 der sichtbaren Heizfehler wird als Attribute der Entität `Letzter Heizfehler`
 mitgegeben. Unbekannte Rohbytes werden nicht an Home Assistant veröffentlicht.
 
-Beide Diagnose-Payloads werden retained und bewusst nicht an die
+Beim ersten erfolgreichen Lesen legt die Bridge nur einen lokalen
+Ausgangszustand an. Dadurch werden vorhandene Alarme nach Installation oder
+Neustart nicht als neue Ereignisse gemeldet. Erst eine spätere Änderung der
+geordneten Alarmliste erzeugt `Heizfehler-Ereignis`. Die Erkennung verwendet
+einen SHA-256-Fingerabdruck der Rohplätze und berücksichtigt gleiche
+Kalendertage mehrfach. Das ist wichtig, weil die Steuerung mehrere
+Heizfehlversuche am selben Tag speichern kann. Der lokale Zustand liegt unter
+`data/device-diagnostics/heating-failure-state.json` und wird atomar ersetzt.
+
+Ein Heizfehler bedeutet, dass die für einen erfolgreichen Start erwartete
+Temperatur nicht erreicht wurde. Eine mögliche Ursache ist erloschenes
+Anzündmaterial oder zu feuchtes Brennholz; aus dem Alarmcode allein lässt sich
+die konkrete Ursache jedoch nicht bestimmen. Home Assistant formuliert die
+Benachrichtigung deshalb als Aufforderung zur Kontrolle und nicht als sichere
+Ursachendiagnose.
+
+Alle Diagnose- und Ereignis-Payloads werden retained und bewusst nicht an die
 Live-Verfügbarkeit oder `expire_after` gebunden. Die zuletzt erfolgreich
 gelesenen Werte bleiben daher sichtbar, wenn der Raspberry saisonal
 ausgeschaltet ist oder eine spätere Diagnoseabfrage fehlschlägt. Uhr und
 Heizfehler werden unabhängig behandelt: Der Fehler eines Endpunkts löscht oder
-blockiert nicht den zuletzt gültigen Wert des anderen Endpunkts.
+blockiert nicht den zuletzt gültigen Wert des anderen Endpunkts. Ein Lesefehler
+der Alarmliste verändert außerdem weder den lokalen Ausgangszustand noch das
+zuletzt veröffentlichte Ereignis.
 
 Zusätzlich beobachtet wurden `/direct/24`, `/direct/36` und `/direct/37`.
 Teilwerte passen zu Firmware-, Profil- und Herstellerinformationen. Ihre

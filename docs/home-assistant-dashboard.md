@@ -252,3 +252,49 @@ config:
 Der Zustand der Entität lautet `active` oder `inactive`. Eine automatische
 Einordnung als typisch oder auffällig erfolgt vor der praktischen
 Verifizierung der Live-/Archivachsen bewusst noch nicht.
+
+## Push-Benachrichtigung bei neuem Heizfehler
+
+Die Entität `sensor.wifire_kamin_heating_failure_event` ändert ihren Zustand
+nur bei einer neu erkannten Änderung der Alarmliste. Der erste erfolgreiche
+Abruf nach Installation oder Verlust des lokalen Ausgangszustands erzeugt
+bewusst keine Nachricht zu älteren Einträgen.
+
+Die folgende Automation sendet eine Nachricht an die Home-Assistant-App. Der
+Dienst `notify.mobile_app_xiaomi_14` muss gegebenenfalls an den tatsächlichen
+Namen des Smartphones unter **Entwicklerwerkzeuge → Aktionen** angepasst
+werden:
+
+```yaml
+automation:
+  - id: wifire_heating_failure_notification
+    alias: WiFire Heizfehler melden
+    description: Meldet einen neu in der WiFire-Alarmliste erkannten Heizfehler.
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id: sensor.wifire_kamin_heating_failure_event
+        not_from:
+          - unknown
+          - unavailable
+        not_to:
+          - unknown
+          - unavailable
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none
+             and trigger.from_state.state != trigger.to_state.state }}
+    actions:
+      - action: notify.mobile_app_xiaomi_14
+        data:
+          title: "WiFire: Heizfehler"
+          message: >-
+            Die WiFire-Steuerung hat einen neuen fehlgeschlagenen Heizversuch
+            gespeichert. Bitte Feuer, Brennholz und Luftzufuhr kontrollieren.
+```
+
+Die Ereignis-ID ist ein stabiler Fingerabdruck und nicht der angezeigte
+Kalendertag. Dadurch löst auch ein zweiter Heizfehler am selben Tag eine neue
+Zustandsänderung aus. Datum, Anzahl und erkannte neue Einträge stehen als
+Attribute der Entität zur Verfügung.

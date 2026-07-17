@@ -54,6 +54,10 @@ class MqttTopics:
         return f"{self.base}/heating_failures"
 
     @property
+    def heating_failure_event(self) -> str:
+        return f"{self.base}/heating_failure_event"
+
+    @property
     def home_assistant_status(self) -> str:
         return f"{self.discovery_prefix}/status"
 
