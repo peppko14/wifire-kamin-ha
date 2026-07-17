@@ -71,7 +71,8 @@ lesende Archivabfrage transportiert.
 - MQTT-Client, Callbacks und Verbindungslebenszyklus gehören nach
   `bridge/mqtt_client.py`.
 - Live-Polling und Intervallwahl gehören nach `bridge/polling.py`.
-- Archivzugriff und -koordination gehören nach `bridge/archive.py` und
+- Die rohe Archivkommunikation gehört nach `protocol/archive.py`.
+- Archivkoordination und MQTT-Veröffentlichung gehören nach
   `bridge/archive_sync.py`.
 - Zeitplanung gehört nach `bridge/scheduler.py`.
 - Die zyklische Ablaufsteuerung gehört nach `bridge/runtime.py`.
@@ -96,6 +97,11 @@ lesende Archivabfrage transportiert.
   `data/history-incomplete/` und dürfen nicht in Statistiken einfließen.
 - Beobachtete Ringpuffergrenzen dürfen nicht als gesicherte Protokollgrenzen
   dokumentiert oder als fachliche Validierungsgrenze verwendet werden.
+- Archivschnittstellen akzeptieren Archivnummern und erzeugen den bekannten
+  lesenden Befehl intern; beliebige Hex-Befehle gehören nicht in produktive
+  APIs.
+- Der technisch durch ein Byte darstellbare Bereich 1 bis 255 ist getrennt
+  von der durch Tests bestätigten Scan-Grenze zu behandeln.
 
 ## Netzwerk und Fehlerbehandlung
 

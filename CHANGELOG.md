@@ -7,6 +7,25 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Archivprotokoll
+
+- Gemeinsamen, ausschließlich lesenden Archivclient unter
+  `protocol/archive.py` ergänzt
+- Archiv-URL und bekannten `/direct/35`-Lesebefehl zentral aus Live-URL und
+  Archivnummer erzeugt
+- Beliebige Hex-Befehle aus der öffentlichen Archivschnittstelle
+  ausgeschlossen
+- JSON- und Hex-Antworten validiert sowie Transportfehler mit begrenzten
+  Wiederholungsversuchen behandelt
+- Technischen Ein-Byte-Adressraum von 1 bis 255 von der noch zu
+  untersuchenden tatsächlichen Gerätegrenze getrennt
+
+### Tests
+
+- URL-Ableitung, Befehlsbildung und vollständigen HTTP-Request geprüft
+- Antwortvalidierung, Retry-Verhalten und enge Exception-Grenzen getestet
+- Ungültige Archivnummern werden vor einem Netzwerkzugriff abgewiesen
+
 ## [0.13.0] - 2026-07-17
 
 ### Brennkurvenanalyse
