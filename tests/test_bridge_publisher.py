@@ -224,11 +224,15 @@ class MqttPublisherTests(unittest.TestCase):
         self.assertEqual(message["qos"], 1)
         self.assertTrue(message["retain"])
         payload = json.loads(message["payload"])
+        self.assertEqual(payload["schema_version"], 2)
         self.assertEqual(payload["source_curve_count"], 1)
         self.assertEqual(
             tuple(payload["series"]),
-            ("average", "representative", "hottest"),
+            ("average", "representative", "hottest", "latest"),
         )
+        self.assertEqual(payload["series"]["latest"]["burn_id"], burn_id)
+        self.assertEqual(payload["comparison"]["status"], "not_evaluable")
+        self.assertEqual(len(payload["heating_seasons"]), 3)
 
 
 if __name__ == "__main__":

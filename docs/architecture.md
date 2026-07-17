@@ -1,6 +1,6 @@
 # Architektur
 
-Dokumentversion: 1.10.0
+Dokumentversion: 1.11.0
 
 Projektstand: WiFire-Kamin Home Assistant Bridge v0.12.5
 
@@ -321,11 +321,12 @@ Filterinformationen und stabilen Abbrand-IDs.
 
 ### `bridge/dashboard.py`
 
-Verdichtet eine Kurvenanalyse auf genau drei Temperaturarrays: Durchschnitt,
-repräsentativer realer Abbrand und heißester realer Abbrand. Die retained
-MQTT-Nachricht verwendet ein eigenes Schema und darf 16 KiB nicht
-überschreiten. Vollständige historische Einzelkurven werden nicht in
-Home-Assistant-Attribute kopiert.
+Erzeugt die auf 16 KiB begrenzte retained Kurvenmomentaufnahme nach Schema 2.
+Die drei bisherigen Reihenschlüssel bleiben erhalten. Ergänzt werden letzter
+Abbrand, historische Medianreferenzen, Vergleichsstatus und drei saisonale
+Mediankurven. Nicht auswertbare Gruppen enthalten Status und Grund, aber keine
+erfundene Temperaturreihe. Vollständige historische Einzelkurven werden nicht
+in Home-Assistant-Attribute kopiert.
 
 ### `bridge/dashboard_reporter.py`
 

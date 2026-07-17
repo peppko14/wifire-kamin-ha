@@ -103,6 +103,8 @@ class DashboardCurveReporterTests(unittest.TestCase):
 
         self.assertIsNotNone(snapshot)
         self.assertEqual(publisher.snapshots, [snapshot])
+        self.assertEqual(snapshot.schema_version, 2)
+        self.assertEqual(len(snapshot.heating_seasons), 3)
         self.assertEqual(
             calls,
             [
@@ -114,6 +116,7 @@ class DashboardCurveReporterTests(unittest.TestCase):
             ],
         )
         self.assertTrue(any("2 Abbrände" in item for item in messages))
+        self.assertTrue(any("Schema 2" in item for item in messages))
 
     def test_empty_history_is_logged_without_publication(self) -> None:
         publisher = FakePublisher()

@@ -31,7 +31,8 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
 - retained Historien-, Statistik- und Brennkurvenwerte bleiben auch bei
   ausgeschaltetem Raspberry in Home Assistant verfügbar
 - digitale historische Brennkurven mit expliziter Messpunktachse
-- Durchschnittskurve sowie repräsentativer und heißester Referenzabbrand
+- Durchschnitt, historischer Median, letzter Abbrand sowie reale Referenzen
+- eigene Mediankurven für aktuelle und zwei vorherige Heizsaisons
 - portabler JSON-Export als Grundlage für spätere Diagramme
 - begrenzte Wiederholungsversuche für die instabile Geräteschnittstelle
 - portabler systemd-Installer
@@ -392,14 +393,15 @@ Abbrand mit der höchsten Einzeltemperatur. Die Achse bleibt bewusst ein
 `sample_index` und wird nicht ohne Protokollnachweis als Minute bezeichnet.
 Details stehen in [`docs/burn-curves.md`](docs/burn-curves.md).
 
-Für Home Assistant verdichtet die Bridge die Historie auf genau drei Reihen:
-Durchschnitt, repräsentativer Abbrand und heißester Abbrand. MQTT Discovery
-stellt sie als eine gemeinsame Diagnoseentität bereit. Ein Beispiel für ein
+Für Home Assistant verdichtet die Bridge die Historie in einem begrenzten
+Schema 2. Die bisherigen Reihen Durchschnitt, repräsentativer Abbrand und
+heißester Abbrand bleiben erhalten. Hinzu kommen letzter Abbrand,
+Medianreferenz und drei saisonale Mediankurven. MQTT Discovery stellt sie als
+eine gemeinsame retained Diagnoseentität bereit. Ein Beispiel für ein
 interaktives Diagramm steht in
 [`docs/home-assistant-dashboard.md`](docs/home-assistant-dashboard.md).
 
-Die für v0.13.0 geplanten Median-, Saison- und Live-Vergleiche einschließlich
-der neutralen Bewertungsbegriffe sind in
+Die noch folgenden Live-Vergleiche und neutralen Bewertungsbegriffe sind in
 [`docs/live-curve-comparison.md`](docs/live-curve-comparison.md) spezifiziert.
 
 ## Betriebsresilienz

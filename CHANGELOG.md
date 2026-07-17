@@ -40,10 +40,28 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Gemischte Messpunktanzahlen ohne expliziten Filter als uneindeutig
   abgewiesen
 - Bestehende Durchschnitts-, Export- und Home-Assistant-Strukturen für eine
-  spätere versionierte Migration unverändert beibehalten
+  versionierte Migration weiterhin unter ihren bisherigen Schlüsseln erhalten
+
+### Home Assistant
+
+- Retained Brennkurven-Momentaufnahme auf Dashboard-Schema 2 angehoben
+- Bestehende Reihen `average`, `representative` und `hottest` kompatibel
+  beibehalten
+- Letzten Abbrand, historische Mediankurve und realen Median-Referenzabbrand
+  als kompakte Temperaturreihen ergänzt
+- Historischen Vergleichsstatus, Referenzgruppengröße und RMSE zum Median
+  veröffentlicht
+- Aktuelle und zwei vorherige Heizsaisons mit Status, Quellanzahl,
+  Eignungsanzahl und optionaler Mediankurve ergänzt
+- Nicht auswertbare Gruppen ohne erfundene Temperaturwerte dargestellt
+- Gesamtgröße der erweiterten retained Nachricht weiterhin auf 16 KiB begrenzt
 
 ### Getestet
 
+- Abwärtskompatible Schlüssel und Dashboard-Schema-Version 2
+- Median-, letzter-Abbrand- und optionale Referenzreihen
+- Drei saisonale Einträge einschließlich `not_evaluable`
+- Maximale Payload-Größe auch mit 121 Messpunkten und allen Vergleichsreihen
 - Feste Reihenfolge von aktueller und zwei vorherigen Heizsaisons
 - Eigene Medianberechnung je Saison und korrekte Grenze am 1. Juli
 - Leere, zu kleine und durch Qualitätswarnungen unzureichende Saisons
