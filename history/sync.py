@@ -5,24 +5,22 @@
 
 from __future__ import annotations
 
-import json
 import time
 from dataclasses import dataclass
 from typing import Callable
-from urllib.parse import urlsplit, urlunsplit
-from urllib.request import Request, urlopen
 
 from bridge.logging_setup import log_warning
 from history.manager import HistoryManager, HistorySyncResult
 from history.ring_buffer import ArchiveOutcome, RingBufferStrategy
 from protocol.adapters import ArchiveRecordLike, archive_record_to_burn_record
+from protocol.archive import ArchiveClient
 from protocol.models import BurnRecord
 from wifire_protocol import decode_archive_record
 
 
 
 
-RawReader = Callable[[str, int], str]
+RawReader = Callable[[int], str]
 Decoder = Callable[[str], ArchiveRecordLike]
 RecordAdapter = Callable[[ArchiveRecordLike], BurnRecord]
 Sleeper = Callable[[float], None]
@@ -74,81 +72,6 @@ class ArchiveReadResult:
     stopped_on_existing: bool
 
 
-def build_archive_url(live_url: str) -> str:
-    """Leitet ``/direct/35`` aus der konfigurierten Live-URL ab."""
-    parsed = urlsplit(live_url)
-
-    if not parsed.scheme or not parsed.netloc:
-        raise ValueError("WIFIRE_URL ist keine gültige absolute URL.")
-
-    path_parts = [part for part in parsed.path.split("/") if part]
-    if len(path_parts) < 2 or path_parts[-2] != "direct":
-        raise ValueError(
-            "WIFIRE_URL muss auf einen Endpunkt unter /direct/ zeigen."
-        )
-
-    path_parts[-1] = "35"
-    return urlunsplit(
-        (parsed.scheme, parsed.netloc, "/" + "/".join(path_parts), "", "")
-    )
-
-
-def build_archive_command(number: int) -> str:
-    """Erzeugt den bekannten lesenden Archivbefehl."""
-    if not 1 <= number <= 255:
-        raise ValueError("Archivnummer muss zwischen 1 und 255 liegen.")
-    return f"aacc33550235{number:02x}ffff"
-
-
-def read_archive_raw(
-    archive_url: str,
-    number: int,
-    *,
-    timeout: int,
-    retry_count: int,
-    retry_delay_seconds: float,
-) -> str:
-    """Liest einen Archivblock mit begrenzten Wiederholungsversuchen."""
-    last_error: Exception | None = None
-
-    for attempt in range(1, retry_count + 1):
-        try:
-            body = json.dumps(
-                {"raw": build_archive_command(number)}
-            ).encode("utf-8")
-            request = Request(
-                archive_url,
-                data=body,
-                headers={
-                    "Content-Type": "text/plain",
-                    "Accept": "application/json",
-                    "Connection": "close",
-                },
-                method="POST",
-            )
-
-            with urlopen(request, timeout=timeout) as response:
-                result = json.loads(response.read().decode("utf-8"))
-
-            raw = result.get("raw")
-            if not isinstance(raw, str):
-                raise ValueError(
-                    "Archivantwort enthält kein gültiges raw-Feld."
-                )
-
-            bytes.fromhex(raw)
-            return raw
-        except (OSError, ValueError) as error:
-            last_error = error
-            if attempt < retry_count:
-                time.sleep(retry_delay_seconds)
-
-    raise RuntimeError(
-        f"Archiv {number} konnte nach {retry_count} Versuchen "
-        f"nicht gelesen werden: {last_error}"
-    )
-
-
 def _merge_results(results: list[HistorySyncResult]) -> HistorySyncResult:
     """Fasst die einzeln und sofort gespeicherten Ergebnisse zusammen."""
     return HistorySyncResult(
@@ -194,19 +117,15 @@ def synchronize_archives(
     """
     settings.validate()
     strategy = settings.strategy()
-    archive_url = build_archive_url(settings.live_url)
-
     if raw_reader is None:
-        def configured_reader(url: str, number: int) -> str:
-            return read_archive_raw(
-                url,
-                number,
-                timeout=settings.request_timeout,
-                retry_count=settings.retry_count,
-                retry_delay_seconds=settings.retry_delay_seconds,
-            )
-
-        raw_reader = configured_reader
+        raw_reader = ArchiveClient(
+            live_url=settings.live_url,
+            request_timeout=settings.request_timeout,
+            retry_count=settings.retry_count,
+            retry_delay_seconds=settings.retry_delay_seconds,
+            sleeper=sleeper,
+            logger=logger,
+        ).read_raw
 
     records_read = 0
     read_failures = 0
@@ -222,7 +141,7 @@ def synchronize_archives(
         archives_examined += 1
 
         try:
-            raw = raw_reader(archive_url, number)
+            raw = raw_reader(number)
             archive_record = decoder(raw)
             burn_record = record_adapter(archive_record)
             records_read += 1

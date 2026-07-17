@@ -19,12 +19,20 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Wiederholungsversuchen behandelt
 - Technischen Ein-Byte-Adressraum von 1 bis 255 von der noch zu
   untersuchenden tatsächlichen Gerätegrenze getrennt
+- Produktive Ringpuffer-Synchronisation auf den gemeinsamen Archivclient
+  umgestellt
+- Manuellen Historien-Importer als Version 1.0.3 auf denselben Client
+  migriert
+- Doppelte HTTP-, Retry- und Befehlslogik aus `history/sync.py`,
+  `bridge/archive.py` und dem Importwerkzeug entfernt
 
 ### Tests
 
 - URL-Ableitung, Befehlsbildung und vollständigen HTTP-Request geprüft
 - Antwortvalidierung, Retry-Verhalten und enge Exception-Grenzen getestet
 - Ungültige Archivnummern werden vor einem Netzwerkzugriff abgewiesen
+- Bridge-Synchronisation und Importer-Client gegen die gemeinsame
+  Archivschnittstelle geprüft
 
 ## [0.13.0] - 2026-07-17
 

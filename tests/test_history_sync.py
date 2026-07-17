@@ -7,12 +7,11 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime
+from unittest.mock import patch
 
 from history.manager import HistorySyncResult
 from history.sync import (
     ArchiveSyncSettings,
-    build_archive_command,
-    build_archive_url,
     synchronize_archives,
 )
 from protocol.models import BurnRecord
@@ -56,30 +55,6 @@ class ArchiveSyncTests(unittest.TestCase):
             archive_delay_seconds=10,
         )
 
-    def test_archive_url_is_derived_from_live_url(self) -> None:
-        self.assertEqual(
-            build_archive_url("http://192.168.0.1/direct/00"),
-            "http://192.168.0.1/direct/35",
-        )
-
-    def test_archive_url_preserves_host_and_port(self) -> None:
-        self.assertEqual(
-            build_archive_url("http://wifire.local:8080/direct/00"),
-            "http://wifire.local:8080/direct/35",
-        )
-
-    def test_invalid_live_url_is_rejected(self) -> None:
-        with self.assertRaises(ValueError):
-            build_archive_url("192.168.0.1/direct/00")
-
-    def test_non_direct_url_is_rejected(self) -> None:
-        with self.assertRaises(ValueError):
-            build_archive_url("http://192.168.0.1/status/00")
-
-    def test_archive_command_is_correct(self) -> None:
-        self.assertEqual(build_archive_command(1), "aacc3355023501ffff")
-        self.assertEqual(build_archive_command(23), "aacc3355023517ffff")
-
     def test_settings_reject_invalid_range(self) -> None:
         with self.assertRaises(ValueError):
             ArchiveSyncSettings(
@@ -95,6 +70,37 @@ class ArchiveSyncTests(unittest.TestCase):
                 archive_delay_seconds=9.9,
             ).validate()
 
+    def test_default_reader_uses_shared_archive_client(self) -> None:
+        manager = FakeManager([result(existing=("id-1",))])
+
+        def sleeper(seconds: float) -> None:
+            pass
+
+        def logger(message: str) -> None:
+            pass
+
+        with patch("history.sync.ArchiveClient") as client_type:
+            client_type.return_value.read_raw.return_value = "1"
+
+            synchronize_archives(
+                manager,  # type: ignore[arg-type]
+                self.settings(last=1),
+                decoder=lambda raw: int(raw),
+                record_adapter=lambda number: burn(number),
+                sleeper=sleeper,
+                logger=logger,
+            )
+
+        client_type.assert_called_once_with(
+            live_url="http://192.168.0.1/direct/00",
+            request_timeout=15,
+            retry_count=3,
+            retry_delay_seconds=10.0,
+            sleeper=sleeper,
+            logger=logger,
+        )
+        client_type.return_value.read_raw.assert_called_once_with(1)
+
     def test_new_records_are_saved_immediately_and_scan_continues(self) -> None:
         manager = FakeManager([
             result(imported=("id-1",)),
@@ -106,7 +112,7 @@ class ArchiveSyncTests(unittest.TestCase):
         sync = synchronize_archives(
             manager,  # type: ignore[arg-type]
             self.settings(last=2),
-            raw_reader=lambda url, number: calls.append(number) or str(number),
+            raw_reader=lambda number: calls.append(number) or str(number),
             decoder=lambda raw: int(raw),
             record_adapter=lambda number: burn(number),
             sleeper=sleeps.append,
@@ -129,7 +135,7 @@ class ArchiveSyncTests(unittest.TestCase):
         sync = synchronize_archives(
             manager,  # type: ignore[arg-type]
             self.settings(last=3),
-            raw_reader=lambda url, number: calls.append(number) or str(number),
+            raw_reader=lambda number: calls.append(number) or str(number),
             decoder=lambda raw: int(raw),
             record_adapter=lambda number: burn(number),
             sleeper=sleeps.append,
@@ -151,7 +157,7 @@ class ArchiveSyncTests(unittest.TestCase):
         sync = synchronize_archives(
             manager,  # type: ignore[arg-type]
             self.settings(last=2),
-            raw_reader=lambda url, number: str(number),
+            raw_reader=lambda number: str(number),
             decoder=lambda raw: int(raw),
             record_adapter=lambda number: burn(number, incomplete=True),
             sleeper=lambda seconds: None,
@@ -164,7 +170,7 @@ class ArchiveSyncTests(unittest.TestCase):
     def test_read_error_does_not_discard_already_saved_record(self) -> None:
         manager = FakeManager([result(imported=("id-1",))])
 
-        def reader(url: str, number: int) -> str:
+        def reader(number: int) -> str:
             if number == 2:
                 raise RuntimeError("WLAN unterbrochen")
             return str(number)
@@ -195,7 +201,7 @@ class ArchiveSyncTests(unittest.TestCase):
         synchronize_archives(
             manager,  # type: ignore[arg-type]
             self.settings(last=3),
-            raw_reader=lambda url, number: calls.append(number) or str(number),
+            raw_reader=lambda number: calls.append(number) or str(number),
             decoder=lambda raw: int(raw),
             record_adapter=lambda number: burn(number),
             sleeper=stop_during_delay,
