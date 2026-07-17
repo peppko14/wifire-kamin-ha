@@ -17,6 +17,11 @@ from bridge.dashboard_reporter import (
     parse_dashboard_since,
 )
 from bridge.logging_setup import configure_logging, log_warning
+from bridge.live_curve import (
+    LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES,
+    LiveCurveRecorder,
+    create_default_live_curve_storage,
+)
 from bridge.mqtt_client import MqttConnection
 from bridge.polling import LivePoller, PollingSettings
 from bridge.runtime import BridgeRuntime
@@ -30,6 +35,7 @@ from decoder import read_live_data
 from history.manager import create_default_history_manager
 from history.sync import ArchiveSyncSettings
 from protocol.live import decode_live_status
+from protocol.models import LiveStatus
 
 
 
@@ -54,6 +60,28 @@ class RuntimeLike(Protocol):
 class HistoryReporterLike(Protocol):
     def refresh(self) -> object:
         ...
+
+
+class StateMemoryLike(Protocol):
+    def remember_state(self, state: LiveStatus) -> None:
+        ...
+
+
+class LiveCurveRecorderLike(Protocol):
+    def observe(self, state: LiveStatus) -> object:
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class LiveStateHandler:
+    """Speichert den Live-Zustand für MQTT und lokale Brennkurve."""
+
+    state_memory: StateMemoryLike
+    curve_recorder: LiveCurveRecorderLike
+
+    def __call__(self, state: LiveStatus) -> None:
+        self.state_memory.remember_state(state)
+        self.curve_recorder.observe(state)
 
 
 @dataclass(slots=True)
@@ -218,6 +246,18 @@ def create_application(
         ),
         logger=logger,
     )
+    live_curve_recorder = LiveCurveRecorder(
+        storage=create_default_live_curve_storage(project_dir),
+        active_temperature_c=(
+            polling_settings.active_fire_temperature_c
+        ),
+        end_after_inactive_samples=getattr(
+            config_module,
+            "LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES",
+            LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES,
+        ),
+        logger=logger,
+    )
 
     archive_settings = build_archive_sync_settings(config_module)
     archive_synchronizer = RingBufferArchiveSynchronizer(
@@ -252,7 +292,10 @@ def create_application(
             "OFFLINE_AFTER_FAILURES",
             3,
         ),
-        on_state=connection.remember_state,
+        on_state=LiveStateHandler(
+            state_memory=connection,
+            curve_recorder=live_curve_recorder,
+        ),
         logger=logger,
     )
 

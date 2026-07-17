@@ -141,6 +141,10 @@ laufende Brennkurve. Jeder Messpunkt besitzt einen Zeitzonen-Zeitstempel,
 Temperatur, Geräte-Abbrennzeit und ausgewählte Statusfelder. Der aktuelle
 Zwischenstand wird atomisch unter `data/live-curve/current.json` ersetzt und
 kann nach einem Prozessneustart streng validiert wieder geladen werden.
+Der Recorder startet an der bestehenden Aktivtemperatur, verwendet mehrere
+aufeinanderfolgende kalte Messungen als Ende-Hysterese und verschiebt
+abgeschlossene Sitzungen nach `data/live-curve/completed/`. Speicherfehler
+werden isoliert; MQTT- und Live-Statusverarbeitung laufen weiter.
 
 ### `bridge/statistics.py`
 

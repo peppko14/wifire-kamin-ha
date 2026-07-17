@@ -7,19 +7,33 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, replace
-from datetime import datetime
+from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+from uuid import uuid4
 
+from bridge.logging_setup import log_warning
 from protocol.models import LiveStatus
 
 
 LIVE_CURVE_SCHEMA_VERSION = 1
+LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES = 3
+Logger = Callable[[str], None]
+Clock = Callable[[], datetime]
+SessionIdFactory = Callable[[], str]
 
 
 class LiveCurveStorageError(RuntimeError):
     """Fehler beim Lesen oder Schreiben der laufenden Brennkurve."""
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _new_session_id() -> str:
+    return uuid4().hex
 
 
 def _validate_aware_datetime(value: datetime, field_name: str) -> None:
@@ -158,6 +172,11 @@ class LiveCurveSession:
     def __post_init__(self) -> None:
         if not self.session_id or not self.session_id.strip():
             raise ValueError("session_id darf nicht leer sein.")
+        if not all(
+            character.isalnum() or character in {"-", "_"}
+            for character in self.session_id
+        ):
+            raise ValueError("session_id enthält unzulässige Zeichen.")
         _validate_aware_datetime(self.started_at, "started_at")
         if not self.points:
             raise ValueError("Eine Live-Sitzung benötigt mindestens einen Punkt.")
@@ -249,9 +268,12 @@ class LiveCurveStorage:
 
     path: Path
 
-    def save(self, session: LiveCurveSession) -> None:
-        """Ersetzt den Zwischenstand atomisch durch die neue Sitzung."""
-        target = self.path.resolve()
+    @property
+    def completed_directory(self) -> Path:
+        """Verzeichnis für abgeschlossene Live-Sitzungen."""
+        return self.path.resolve().parent / "completed"
+
+    def _write(self, target: Path, session: LiveCurveSession) -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
         temporary = target.with_suffix(target.suffix + ".tmp")
         try:
@@ -271,6 +293,25 @@ class LiveCurveStorage:
             raise LiveCurveStorageError(
                 f"Live-Kurve konnte nicht gespeichert werden: {target}"
             ) from error
+
+    def save(self, session: LiveCurveSession) -> None:
+        """Ersetzt den Zwischenstand atomisch durch die neue Sitzung."""
+        self._write(self.path.resolve(), session)
+
+    def completed_path(self, session: LiveCurveSession) -> Path:
+        """Erzeugt einen stabilen Dateipfad für eine abgeschlossene Sitzung."""
+        start_text = session.started_at.strftime("%Y-%m-%d_%H-%M-%S")
+        return (
+            self.completed_directory
+            / f"{start_text}_{session.session_id[:12]}.json"
+        )
+
+    def finalize(self, session: LiveCurveSession) -> Path:
+        """Archiviert die Sitzung und entfernt danach den Zwischenstand."""
+        target = self.completed_path(session)
+        self._write(target, session)
+        self.clear()
+        return target
 
     def load(self) -> LiveCurveSession | None:
         """Lädt die laufende Sitzung oder gibt bei fehlender Datei None zurück."""
@@ -293,6 +334,111 @@ class LiveCurveStorage:
             raise LiveCurveStorageError(
                 f"Live-Kurve konnte nicht entfernt werden: {self.path}"
             ) from error
+
+
+@dataclass(slots=True)
+class LiveCurveRecorder:
+    """Erkennt, speichert und beendet laufende Brennkurven-Sitzungen."""
+
+    storage: LiveCurveStorage
+    active_temperature_c: int
+    end_after_inactive_samples: int = (
+        LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES
+    )
+    clock: Clock = _utc_now
+    session_id_factory: SessionIdFactory = _new_session_id
+    logger: Logger = print
+    current_session: LiveCurveSession | None = field(
+        default=None,
+        init=False,
+    )
+    inactive_samples: int = field(default=0, init=False)
+    initialized: bool = field(default=False, init=False)
+    enabled: bool = field(default=True, init=False)
+
+    def __post_init__(self) -> None:
+        if (
+            isinstance(self.active_temperature_c, bool)
+            or not isinstance(self.active_temperature_c, int)
+        ):
+            raise ValueError("active_temperature_c muss eine Ganzzahl sein.")
+        if (
+            isinstance(self.end_after_inactive_samples, bool)
+            or not isinstance(self.end_after_inactive_samples, int)
+            or self.end_after_inactive_samples < 1
+        ):
+            raise ValueError(
+                "end_after_inactive_samples muss mindestens 1 sein."
+            )
+
+    def _restore(self) -> None:
+        if self.initialized:
+            return
+        self.current_session = self.storage.load()
+        self.initialized = True
+        if self.current_session is not None:
+            self.logger(
+                "Laufende Brennkurve wiederaufgenommen: "
+                f"{len(self.current_session.points)} Messpunkte."
+            )
+
+    def observe(self, status: LiveStatus) -> LiveCurveSession | None:
+        """Verarbeitet einen Live-Zustand ohne die Bridge zu gefährden."""
+        if not self.enabled:
+            return self.current_session
+        try:
+            return self._observe(status)
+        except LiveCurveStorageError as error:
+            self.enabled = False
+            log_warning(
+                self.logger,
+                "Live-Brennkurve wurde nach einem Speicherfehler "
+                f"deaktiviert: {error}",
+            )
+            return self.current_session
+
+    def _observe(self, status: LiveStatus) -> LiveCurveSession | None:
+        self._restore()
+        point = LiveCurvePoint.from_status(
+            status,
+            observed_at=self.clock(),
+        )
+
+        if self.current_session is None:
+            if status.temperature_c < self.active_temperature_c:
+                return None
+            self.current_session = LiveCurveSession.start(
+                session_id=self.session_id_factory(),
+                point=point,
+            )
+            self.storage.save(self.current_session)
+            self.inactive_samples = 0
+            self.logger(
+                "Live-Brennkurve gestartet: "
+                f"{self.current_session.session_id}."
+            )
+            return self.current_session
+
+        self.current_session = self.current_session.append(point)
+        self.storage.save(self.current_session)
+
+        if status.temperature_c >= self.active_temperature_c:
+            self.inactive_samples = 0
+            return self.current_session
+
+        self.inactive_samples += 1
+        if self.inactive_samples < self.end_after_inactive_samples:
+            return self.current_session
+
+        completed = self.current_session
+        target = self.storage.finalize(completed)
+        self.current_session = None
+        self.inactive_samples = 0
+        self.logger(
+            "Live-Brennkurve abgeschlossen: "
+            f"{len(completed.points)} Messpunkte unter {target}."
+        )
+        return None
 
 
 def create_default_live_curve_storage(project_dir: Path) -> LiveCurveStorage:

@@ -116,6 +116,21 @@ Standard entspricht dem Dreifachen des normalen Abfrageintervalls. Mit
 `LIVE_EXPIRE_AFTER = None` lässt sich diese zusätzliche Überwachung
 deaktivieren.
 
+Die lokale Live-Brennkurve beginnt, sobald
+`ACTIVE_FIRE_TEMPERATURE_C` erreicht ist. Sie endet erst nach mehreren
+aufeinanderfolgenden kälteren Messungen, damit ein kurzer Ausschlag die
+Sitzung nicht zerteilt. Die Anzahl ist optional konfigurierbar:
+
+```python
+LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES = 3
+```
+
+Der aktuelle Zwischenstand liegt atomisch unter
+`data/live-curve/current.json`. Nach einem Neustart wird er fortgesetzt.
+Abgeschlossene Live-Sitzungen werden getrennt unter
+`data/live-curve/completed/` aufbewahrt. Sie werden noch nicht automatisch
+mit einem später importierten Archiv-Abbrand gleichgesetzt.
+
 ### Optionale MQTT-Verschlüsselung
 
 Im vertrauten Heimnetz bleibt die bisherige unverschlüsselte Verbindung
@@ -401,7 +416,9 @@ eine gemeinsame retained Diagnoseentität bereit. Ein Beispiel für ein
 interaktives Diagramm steht in
 [`docs/home-assistant-dashboard.md`](docs/home-assistant-dashboard.md).
 
-Die noch folgenden Live-Vergleiche und neutralen Bewertungsbegriffe sind in
+Die lokale Erfassung laufender Brennkurven ist vorbereitet und in die
+erfolgreichen Live-Abfragen eingebunden. Die noch folgende MQTT-Darstellung,
+Live-Vergleiche und neutralen Bewertungsbegriffe sind in
 [`docs/live-curve-comparison.md`](docs/live-curve-comparison.md) spezifiziert.
 
 ## Betriebsresilienz
