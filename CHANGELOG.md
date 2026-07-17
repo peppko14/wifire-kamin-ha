@@ -21,8 +21,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   untersuchenden tatsächlichen Gerätegrenze getrennt
 - Produktive Ringpuffer-Synchronisation auf den gemeinsamen Archivclient
   umgestellt
-- Manuellen Historien-Importer als Version 1.0.3 auf denselben Client
-  migriert
+- Manuellen Historien-Importer als Version 1.1.0 auf denselben Client
+  migriert und auf einen adaptiven Scan umgestellt
 - Doppelte HTTP-, Retry- und Befehlslogik aus `history/sync.py`,
   `bridge/archive.py` und dem Importwerkzeug entfernt
 - Begrenztes Diagnosewerkzeug `archive_slot_probe_v1_0_0.py` für explizite
@@ -31,6 +31,16 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Request-Abstand begrenzt
 - Private Rohantworten atomisch ausschließlich unter `data/archive-probe/`
   gespeichert und nicht an Historie oder MQTT weitergegeben
+- Archivplätze 24 bis 30 am realen Gerät als adressierbare, syntaktisch
+  gültige, aber derzeit leere 506-Byte-Telegramme bestätigt
+- Produktiven Scan und Vollimport auf eine technische Sicherheitsgrenze von
+  255 erweitert; der erste eindeutig leere Platz oder ein bereits bekannter
+  Abbrand beendet den Scan frühzeitig
+- Leere Plätze werden weder als unvollständige Abbrände noch als
+  Diagnosedateien gespeichert
+- Scan nach drei aufeinanderfolgenden Lesefehlern begrenzt, damit ein
+  getrenntes WiFire-WLAN keinen stundenlangen Lauf bis zur Sicherheitsgrenze
+  auslöst
 
 ### Tests
 
@@ -41,6 +51,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Archivschnittstelle geprüft
 - Sicherheitsgrenzen, Reihenfolge, Pausen, Fehlerisolation, Hashvergleich und
   atomische Berichtsausgabe der Archivplatz-Probe getestet
+- Leerer-Platz-Erkennung, adaptiven Scanabbruch, fehlende Historien- und
+  Diagnoseausgabe sowie technische Lesefehlergrenze getestet
 
 ## [0.13.0] - 2026-07-17
 

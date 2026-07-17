@@ -8,10 +8,12 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 import tempfile
 import unittest
 
 from bridge.archive_sync import RingBufferArchiveSynchronizer
+from history.diagnostics import HistoryDiagnosticStorage
 from history.manager import HistoryManager
 from history.storage import HistoryStorage
 from history.sync import ArchiveSyncSettings, synchronize_archives
@@ -26,6 +28,38 @@ def simulated_burn(archive_number: int) -> BurnRecord:
         start=datetime(2026, 7, 13, 20, 0),
         temperatures_c=(24, 80, 210, 430, 280, 90),
         source_archive_number=archive_number,
+    )
+
+
+def archive_record(archive_number: int) -> SimpleNamespace:
+    """Erzeugt einen belegten dekodierten Archivplatz."""
+    return SimpleNamespace(
+        archive_number=archive_number,
+        timestamp=datetime(2026, 7, 13, 20, 0),
+        stage_90_minute=5,
+        stage_75_minute=30,
+        stage_50_minute=60,
+        stage_25_minute=120,
+        stage_0_minute=180,
+        temperatures=[24, 80, 210, 430, 280, 90],
+        active_or_incomplete=False,
+        raw="aacc3355",
+    )
+
+
+def empty_archive_record(archive_number: int) -> SimpleNamespace:
+    """Erzeugt einen beobachteten leeren, aber adressierbaren Platz."""
+    return SimpleNamespace(
+        archive_number=archive_number,
+        timestamp=None,
+        stage_90_minute=None,
+        stage_75_minute=None,
+        stage_50_minute=None,
+        stage_25_minute=None,
+        stage_0_minute=None,
+        temperatures=[],
+        active_or_incomplete=True,
+        raw="aacc3355",
     )
 
 
@@ -67,8 +101,10 @@ class HistorySyncIntegrationTests(unittest.TestCase):
                     lambda number: first_calls.append(number)
                     or str(number)
                 ),
-                decoder=lambda raw: int(raw),
-                record_adapter=simulated_burn,
+                decoder=lambda raw: archive_record(int(raw)),
+                record_adapter=lambda record: simulated_burn(
+                    record.archive_number
+                ),
                 sleeper=first_sleeps.append,
                 logger=lambda message: None,
             )
@@ -91,8 +127,10 @@ class HistorySyncIntegrationTests(unittest.TestCase):
                     lambda number: second_calls.append(number)
                     or str(number)
                 ),
-                decoder=lambda raw: int(raw),
-                record_adapter=simulated_burn,
+                decoder=lambda raw: archive_record(int(raw)),
+                record_adapter=lambda record: simulated_burn(
+                    record.archive_number
+                ),
                 sleeper=second_sleeps.append,
                 logger=lambda message: None,
             )
@@ -118,8 +156,10 @@ class HistorySyncIntegrationTests(unittest.TestCase):
                 sleeper=lambda seconds: None,
                 logger=messages.append,
                 raw_reader=lambda number: str(number),
-                decoder=lambda raw: int(raw),
-                record_adapter=simulated_burn,
+                decoder=lambda raw: archive_record(int(raw)),
+                record_adapter=lambda record: simulated_burn(
+                    record.archive_number
+                ),
                 attributes_builder=lambda record: {},
             )
 
@@ -132,6 +172,44 @@ class HistorySyncIntegrationTests(unittest.TestCase):
                     "nachgelagerte Verarbeitung" in message
                     for message in messages
                 )
+            )
+
+    def test_empty_slot_creates_neither_history_nor_diagnostic(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            storage = HistoryStorage(root / "history")
+            diagnostics = HistoryDiagnosticStorage(root / "diagnostics")
+            manager = HistoryManager(storage, diagnostics)
+            calls: list[int] = []
+
+            result = synchronize_archives(
+                manager,
+                ArchiveSyncSettings(
+                    live_url="http://192.0.2.1/direct/00",
+                    first_archive=24,
+                    last_archive=30,
+                    archive_delay_seconds=10,
+                ),
+                raw_reader=(
+                    lambda number: calls.append(number) or str(number)
+                ),
+                decoder=lambda raw: empty_archive_record(int(raw)),
+                record_adapter=lambda record: self.fail(
+                    "Ein leerer Platz darf nicht adaptiert werden."
+                ),
+                sleeper=lambda seconds: self.fail(
+                    "Nach einem leeren Platz darf nicht gewartet werden."
+                ),
+                logger=lambda message: None,
+            )
+
+            self.assertEqual(calls, [24])
+            self.assertTrue(result.stopped_on_empty)
+            self.assertEqual(result.empty_archives, 1)
+            self.assertEqual(list((root / "history").glob("*.json")), [])
+            self.assertEqual(
+                list((root / "diagnostics").glob("*.json")),
+                [],
             )
 
 

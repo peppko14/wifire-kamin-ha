@@ -88,14 +88,16 @@ akzeptiert bewusst keine beliebigen Hex-Befehle.
 Die Archivnummer besitzt im bekannten Telegramm genau ein Byte. Deshalb
 validiert das Modul technisch den Bereich 1 bis 255. Das ist keine Aussage
 darüber, wie viele Plätze die konkrete WiFire-Firmware tatsächlich speichert.
-Die bislang produktiv verwendete und beobachtete Scan-Grenze bleibt davon
-getrennt. Transport- und ungültige Antwortdaten werden begrenzt wiederholt;
+Die Plätze 24 bis 30 wurden als adressierbar, aber leer beobachtet. Die
+produktive Sicherheitsgrenze bleibt von dieser Beobachtung getrennt.
+Transport- und ungültige Antwortdaten werden begrenzt wiederholt;
 Programmierfehler werden nicht als Netzwerkfehler maskiert.
 
 Produktive Ringpuffer-Synchronisation und manueller Vollimport verwenden
-dieselbe Implementierung. Die Scanstrategie bleibt davon getrennt: Die Bridge
-beendet den inkrementellen Scan bei einem bekannten Abbrand, während der
-manuelle Import einen explizit gewählten Bereich vollständig liest.
+dieselbe Implementierung. Die Scanstrategie bleibt davon getrennt: Beide
+beenden den Lauf am ersten eindeutig leeren Platz; die Bridge zusätzlich bei
+einem bekannten Abbrand. Die Obergrenze 255 verhindert nur einen unendlichen
+oder unkontrollierten Scan.
 
 ## Bridge
 
@@ -283,9 +285,10 @@ vollständige Abbrände.
 
 Stellt die MQTT-unabhängige inkrementelle Ringpuffer-Synchronisation für die
 Bridge bereit. Sie verwendet denselben lesenden `ArchiveClient` wie der
-manuelle Vollimport. Beide behalten bewusst ihr unterschiedliches
-Scanverhalten: inkrementeller Abbruch bei einem bekannten Abbrand gegenüber
-vollständigem Lesen eines explizit gewählten Bereichs.
+manuelle Vollimport. Beide beenden den Scan am ersten eindeutig leeren Platz;
+die Bridge zusätzlich beim ersten bereits lokal bekannten vollständigen
+Abbrand. Nach drei aufeinanderfolgenden Lesefehlern endet ein Scan
+kontrolliert.
 
 Das separate Werkzeug `tools/archive_slot_probe_v1_0_0.py` verwendet den
 gleichen Transport, übernimmt seine Ergebnisse aber bewusst weder in die
@@ -295,9 +298,11 @@ bleiben als private Diagnose unter `data/archive-probe/`.
 
 ### `history/ring_buffer.py`
 
-Definiert die Strategie für die bekannten Archivplätze 1 bis 23. Der Scan
-läuft sequenziell, hält mindestens zehn Sekunden Abstand und kann bei einem
-bereits bekannten vollständigen Abbrand frühzeitig enden.
+Definiert die adaptive Strategie für den Ein-Byte-Adressbereich 1 bis 255.
+Der Wert 255 ist ausschließlich eine technische Sicherheitsgrenze und keine
+behauptete Gerätekapazität. Der Scan läuft sequenziell, hält mindestens zehn
+Sekunden Abstand und endet beim ersten leeren Platz, einem bereits bekannten
+vollständigen Abbrand oder nach drei aufeinanderfolgenden Lesefehlern.
 
 ### `history/statistics.py`
 
@@ -483,6 +488,6 @@ zeitgestempelten Live-Reihe und dem historischen `sample_index` durch einen
 echten Abbrand bestätigt ist. Die fachlichen Regeln stehen in
 [`live-curve-comparison.md`](live-curve-comparison.md).
 
-Für v0.14.0 bleiben die weitere Vereinheitlichung der Protokollschnittstelle,
-ein reales Golden Fixture, die lesende Untersuchung von Archivplätzen über 23
-und die gemeinsame Archivleselogik für Bridge und Vollimport vorgesehen.
+Für v0.14.0 bleibt nach der gemeinsamen Archivleselogik, der kontrollierten
+Untersuchung oberhalb von Platz 23 und der adaptiven Leerer-Platz-Grenze noch
+die Aufnahme eines realen, unveränderlichen Golden Fixtures vorgesehen.

@@ -34,6 +34,10 @@ from bridge.statistics import (
 from bridge.topics import MqttTopics
 from decoder import read_live_data
 from history.manager import create_default_history_manager
+from history.ring_buffer import (
+    DEFAULT_ARCHIVE_SCAN_LIMIT,
+    DEFAULT_MAX_CONSECUTIVE_READ_ERRORS,
+)
 from history.sync import ArchiveSyncSettings
 from protocol.live import decode_live_status
 from protocol.models import LiveStatus
@@ -147,7 +151,11 @@ def build_archive_sync_settings(config_module: Any) -> ArchiveSyncSettings:
     return ArchiveSyncSettings(
         live_url=config_module.WIFIRE_URL,
         first_archive=getattr(config_module, "ARCHIVE_FIRST_SLOT", 1),
-        last_archive=getattr(config_module, "ARCHIVE_LAST_SLOT", 23),
+        last_archive=getattr(
+            config_module,
+            "ARCHIVE_LAST_SLOT",
+            DEFAULT_ARCHIVE_SCAN_LIMIT,
+        ),
         request_timeout=getattr(
             config_module,
             "ARCHIVE_REQUEST_TIMEOUT",
@@ -163,6 +171,11 @@ def build_archive_sync_settings(config_module: Any) -> ArchiveSyncSettings:
             config_module,
             "ARCHIVE_REQUEST_DELAY",
             10,
+        ),
+        max_consecutive_read_errors=getattr(
+            config_module,
+            "ARCHIVE_MAX_CONSECUTIVE_READ_ERRORS",
+            DEFAULT_MAX_CONSECUTIVE_READ_ERRORS,
         ),
     )
 

@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 
-__version__ = "1.0.3"
+__version__ = "1.1.0"
 
 # Das Werkzeug liegt unter tools/. Deshalb muss das Repository-Hauptverzeichnis
 # vor den projektinternen Imports in sys.path aufgenommen werden.
@@ -24,6 +24,11 @@ from history.manager import (  # noqa: E402
     HistorySyncResult,
     create_default_history_manager,
 )
+from history.ring_buffer import (  # noqa: E402
+    DEFAULT_ARCHIVE_SCAN_LIMIT,
+    DEFAULT_MAX_CONSECUTIVE_READ_ERRORS,
+    is_empty_archive_record,
+)
 from protocol.adapters import archive_record_to_burn_record  # noqa: E402
 from protocol.archive import ArchiveClient  # noqa: E402
 from wifire_protocol import decode_archive_record  # noqa: E402
@@ -33,8 +38,8 @@ WIFIRE_LIVE_URL = "http://192.168.0.1/direct/00"
 REQUEST_TIMEOUT = 15
 
 DEFAULT_FIRST_ARCHIVE = 1
-DEFAULT_LAST_ARCHIVE = 23
-DEFAULT_DELAY = 3.0
+DEFAULT_LAST_ARCHIVE = DEFAULT_ARCHIVE_SCAN_LIMIT
+DEFAULT_DELAY = 10.0
 DEFAULT_RETRIES = 3
 
 
@@ -61,7 +66,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Importiert vorhandene WiFire-Archive in die lokale "
-            "Historienablage."
+            "Historienablage und endet am ersten leeren Platz."
         )
     )
 
@@ -86,33 +91,29 @@ def print_summary(result: HistorySyncResult) -> None:
 def main() -> None:
     args = parse_args()
 
-    if not 1 <= args.first <= args.last <= 255:
+    if not 1 <= args.first <= args.last <= DEFAULT_ARCHIVE_SCAN_LIMIT:
         sys.exit(
             "Ungültiger Bereich. Erwartet: "
             "1 <= --first <= --last <= 255"
         )
-
     if args.retries < 1:
         sys.exit("--retries muss mindestens 1 sein.")
+    if args.delay < 10:
+        sys.exit("--delay muss mindestens 10 Sekunden betragen.")
 
-    if args.delay < 0:
-        sys.exit("--delay darf nicht negativ sein.")
-
-    manager: HistoryManager = create_default_history_manager(
-        PROJECT_DIR
-    )
+    manager: HistoryManager = create_default_history_manager(PROJECT_DIR)
     archive_client = create_archive_client(
         retries=args.retries,
-        retry_delay=max(1.0, args.delay),
+        retry_delay=args.delay,
     )
 
     records = []
     read_failures = 0
+    consecutive_read_failures = 0
+    empty_slot: int | None = None
 
     print(f"WiFire History Importer v{__version__}")
-    print(
-        f"Archive {args.first} bis {args.last} werden gelesen."
-    )
+    print(f"Archive {args.first} bis {args.last} werden gelesen.")
     print(f"Ziel: {manager.storage.directory}")
     print()
 
@@ -122,9 +123,14 @@ def main() -> None:
         try:
             raw = archive_client.read_raw(number)
             archive_record = decode_archive_record(raw)
-            burn_record = archive_record_to_burn_record(
-                archive_record
-            )
+            consecutive_read_failures = 0
+
+            if is_empty_archive_record(archive_record):
+                empty_slot = number
+                print("leer | Scan beendet")
+                break
+
+            burn_record = archive_record_to_burn_record(archive_record)
             records.append(burn_record)
 
             if burn_record.is_complete:
@@ -138,7 +144,17 @@ def main() -> None:
 
         except (RuntimeError, ValueError) as error:
             read_failures += 1
+            consecutive_read_failures += 1
             print(f"FEHLER | {error}")
+            if (
+                consecutive_read_failures
+                >= DEFAULT_MAX_CONSECUTIVE_READ_ERRORS
+            ):
+                print(
+                    "Import nach zu vielen aufeinanderfolgenden "
+                    "Lesefehlern beendet."
+                )
+                break
 
         if number < args.last:
             time.sleep(args.delay)
@@ -146,6 +162,8 @@ def main() -> None:
     result = manager.synchronize(records)
     print_summary(result)
 
+    if empty_slot is not None:
+        print(f"Erster leerer Archivplatz: {empty_slot}")
     if read_failures:
         print(f"Lesefehler vor Synchronisation: {read_failures}")
 

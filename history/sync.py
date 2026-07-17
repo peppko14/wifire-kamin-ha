@@ -11,7 +11,13 @@ from typing import Callable
 
 from bridge.logging_setup import log_warning
 from history.manager import HistoryManager, HistorySyncResult
-from history.ring_buffer import ArchiveOutcome, RingBufferStrategy
+from history.ring_buffer import (
+    DEFAULT_ARCHIVE_SCAN_LIMIT,
+    DEFAULT_MAX_CONSECUTIVE_READ_ERRORS,
+    ArchiveOutcome,
+    RingBufferStrategy,
+    is_empty_archive_record,
+)
 from protocol.adapters import ArchiveRecordLike, archive_record_to_burn_record
 from protocol.archive import ArchiveClient
 from protocol.models import BurnRecord
@@ -35,11 +41,14 @@ class ArchiveSyncSettings:
 
     live_url: str
     first_archive: int = 1
-    last_archive: int = 23
+    last_archive: int = DEFAULT_ARCHIVE_SCAN_LIMIT
     request_timeout: int = 15
     retry_count: int = 3
     retry_delay_seconds: float = 10.0
     archive_delay_seconds: float = 10.0
+    max_consecutive_read_errors: int = (
+        DEFAULT_MAX_CONSECUTIVE_READ_ERRORS
+    )
 
     def strategy(self) -> RingBufferStrategy:
         """Erzeugt und validiert die gemeinsame Ringpuffer-Strategie."""
@@ -47,6 +56,9 @@ class ArchiveSyncSettings:
             first_archive=self.first_archive,
             last_archive=self.last_archive,
             request_delay_seconds=self.archive_delay_seconds,
+            max_consecutive_read_errors=(
+                self.max_consecutive_read_errors
+            ),
         )
         strategy.validate()
         return strategy
@@ -70,6 +82,9 @@ class ArchiveReadResult:
     sync_result: HistorySyncResult
     archives_examined: int
     stopped_on_existing: bool
+    empty_archives: int
+    stopped_on_empty: bool
+    stopped_on_read_error_limit: bool
 
 
 def _merge_results(results: list[HistorySyncResult]) -> HistorySyncResult:
@@ -111,9 +126,9 @@ def synchronize_archives(
     """Speichert neue Abbrände sofort und unabhängig von MQTT lokal.
 
     Der Scan läuft vom neuesten zum älteren Ringpufferplatz. Beim ersten
-    bereits vorhandenen vollständigen Abbrand endet er. Fehler und
-    unvollständige Datensätze werden protokolliert, stoppen den Scan aber
-    nicht.
+    leeren Platz oder bereits vorhandenen vollständigen Abbrand endet er.
+    Unvollständige Datensätze werden protokolliert; nach mehreren
+    aufeinanderfolgenden Lesefehlern endet der Lauf kontrolliert.
     """
     settings.validate()
     strategy = settings.strategy()
@@ -129,8 +144,12 @@ def synchronize_archives(
 
     records_read = 0
     read_failures = 0
+    consecutive_read_errors = 0
     archives_examined = 0
     stopped_on_existing = False
+    empty_archives = 0
+    stopped_on_empty = False
+    stopped_on_read_error_limit = False
     sync_results: list[HistorySyncResult] = []
     archive_numbers = strategy.archive_numbers()
 
@@ -143,53 +162,88 @@ def synchronize_archives(
         try:
             raw = raw_reader(number)
             archive_record = decoder(raw)
-            burn_record = record_adapter(archive_record)
-            records_read += 1
+            consecutive_read_errors = 0
 
-            # Wichtig: sofort lokal speichern, nicht erst am Ende des Scans.
-            sync_result = manager.synchronize([burn_record])
-            sync_results.append(sync_result)
-
-            if sync_result.imported_count:
-                outcome = ArchiveOutcome.NEW
-                logger(f"Archiv {number}: neuer Abbrand lokal gespeichert.")
-            elif sync_result.existing_count:
-                outcome = ArchiveOutcome.EXISTING
-                stopped_on_existing = True
-                logger(f"Archiv {number}: bereits lokal vorhanden.")
-            elif sync_result.skipped_incomplete:
-                outcome = ArchiveOutcome.INCOMPLETE
-                logger(f"Archiv {number}: unvollständig, übersprungen.")
+            if is_empty_archive_record(archive_record):
+                empty_archives += 1
+                stopped_on_empty = True
+                outcome = ArchiveOutcome.EMPTY
+                logger(f"Archiv {number}: leer, Scan beendet.")
             else:
-                outcome = ArchiveOutcome.READ_ERROR
-                log_warning(
-                    logger,
-                    f"Archiv {number}: lokale Speicherung fehlgeschlagen.",
-                )
+                burn_record = record_adapter(archive_record)
+                records_read += 1
 
-            # Optionale Verbraucher laufen bewusst erst nach dem lokalen
-            # Speichern und dürfen den Historienabgleich nicht gefährden.
-            if on_record_synchronized is not None:
-                try:
-                    on_record_synchronized(number, archive_record, sync_result)
-                except Exception as error:  # optionale externe Integration
+                # Wichtig: sofort lokal speichern, nicht erst am Scanende.
+                sync_result = manager.synchronize([burn_record])
+                sync_results.append(sync_result)
+
+                if sync_result.imported_count:
+                    outcome = ArchiveOutcome.NEW
+                    logger(
+                        f"Archiv {number}: neuer Abbrand lokal gespeichert."
+                    )
+                elif sync_result.existing_count:
+                    outcome = ArchiveOutcome.EXISTING
+                    stopped_on_existing = True
+                    logger(f"Archiv {number}: bereits lokal vorhanden.")
+                elif sync_result.skipped_incomplete:
+                    outcome = ArchiveOutcome.INCOMPLETE
+                    logger(
+                        f"Archiv {number}: unvollständig, übersprungen."
+                    )
+                else:
+                    outcome = ArchiveOutcome.READ_ERROR
                     log_warning(
                         logger,
-                        f"Archiv {number}: nachgelagerte Verarbeitung "
-                        f"fehlgeschlagen: {error}"
+                        f"Archiv {number}: lokale Speicherung "
+                        "fehlgeschlagen.",
                     )
+
+                # Optionale Verbraucher laufen erst nach lokalem Speichern.
+                if on_record_synchronized is not None:
+                    try:
+                        on_record_synchronized(
+                            number,
+                            archive_record,
+                            sync_result,
+                        )
+                    except Exception as error:  # externe Integration
+                        log_warning(
+                            logger,
+                            f"Archiv {number}: nachgelagerte Verarbeitung "
+                            f"fehlgeschlagen: {error}"
+                        )
 
         except (OSError, RuntimeError, ValueError) as error:
             read_failures += 1
+            consecutive_read_errors += 1
             outcome = ArchiveOutcome.READ_ERROR
             log_warning(
                 logger,
                 f"Archiv {number}: Lesefehler: {error}",
             )
 
-        if not strategy.should_continue_after(outcome):
+        if not strategy.should_continue_after(
+            outcome,
+            consecutive_read_errors,
+        ):
+            if (
+                outcome is ArchiveOutcome.READ_ERROR
+                and consecutive_read_errors
+                >= strategy.max_consecutive_read_errors
+            ):
+                stopped_on_read_error_limit = True
+                log_warning(
+                    logger,
+                    "Archivscan nach zu vielen aufeinanderfolgenden "
+                    "Lesefehlern beendet.",
+                )
             break
-        if strategy.needs_delay_after(number, outcome):
+        if strategy.needs_delay_after(
+            number,
+            outcome,
+            consecutive_read_errors,
+        ):
             sleeper(strategy.request_delay_seconds)
 
     return ArchiveReadResult(
@@ -198,4 +252,7 @@ def synchronize_archives(
         sync_result=_merge_results(sync_results),
         archives_examined=archives_examined,
         stopped_on_existing=stopped_on_existing,
+        empty_archives=empty_archives,
+        stopped_on_empty=stopped_on_empty,
+        stopped_on_read_error_limit=stopped_on_read_error_limit,
     )
