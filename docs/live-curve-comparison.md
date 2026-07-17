@@ -1,10 +1,24 @@
 # Laufende und historische Brennkurvenvergleiche
 
-Dokumentversion: 1.0.0
+Dokumentversion: 1.1.0
 
 Dieses Dokument definiert den fachlichen Zielzustand für v0.13.0. Es ist eine
 Spezifikation und nimmt noch keine unbestätigte Zuordnung zwischen Live- und
 Archivmesspunkten vorweg.
+
+## Implementierungsstand
+
+Mit Commit 2 von v0.13.0 sind folgende historische Grundlagen umgesetzt:
+
+- punktweise Mediankurve zusätzlich zum bestehenden Durchschnitt,
+- eigener realer Referenzabbrand mit kleinstem RMSE zur Mediankurve,
+- reproduzierbare Auswahl ausschließlich gültiger Referenzkurven,
+- optionale Filter nach Heizsaison, Starttemperatur und Messpunktanzahl,
+- expliziter Zustand `not_evaluable` bei einer zu kleinen Referenzgruppe.
+
+Die MQTT-/Dashboard-Schemata und die laufende Live-Erfassung werden erst in
+den folgenden Commits angepasst. Dadurch bleibt das bisherige Verhalten in
+diesem Schritt rückwärtskompatibel.
 
 ## Ziele
 

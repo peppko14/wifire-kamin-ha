@@ -7,6 +7,29 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Brennkurvenanalyse
+
+- Punktweise Mediankurve als robuste Ergänzung zur bestehenden
+  Durchschnittskurve implementiert
+- Realen Referenzabbrand getrennt und deterministisch über den kleinsten RMSE
+  zur Mediankurve bestimmt
+- Referenzgruppen standardmäßig auf Abbrände mit Qualitätsstatus `valid`
+  begrenzt und optional nach Heizsaison, Starttemperatur sowie Messpunktanzahl
+  filterbar gemacht
+- Zu kleine Referenzgruppen als `not_evaluable` ausgewiesen, ohne fachlich
+  ungeeignete Datensätze ersatzweise aufzunehmen
+- Gemischte Messpunktanzahlen ohne expliziten Filter als uneindeutig
+  abgewiesen
+- Bestehende Durchschnitts-, Export- und Home-Assistant-Strukturen für eine
+  spätere versionierte Migration unverändert beibehalten
+
+### Getestet
+
+- Medianberechnung für gerade und ungerade Gruppengrößen sowie Ausreißer
+- Deterministische Auswahl des realen Median-Referenzabbrands
+- Qualitäts-, Heizsaison-, Starttemperatur- und Messpunktfilter
+- Zu kleine, doppelte und nicht eindeutig vergleichbare Referenzgruppen
+
 ### Dokumentation
 
 - Fachliches Zielmodell für Medianreferenz, saisonale Kurvenvergleiche,
