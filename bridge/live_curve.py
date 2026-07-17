@@ -19,6 +19,8 @@ from protocol.models import LiveStatus
 
 LIVE_CURVE_SCHEMA_VERSION = 1
 LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES = 3
+MAX_LIVE_CURVE_MQTT_POINTS = 121
+MAX_LIVE_CURVE_MQTT_PAYLOAD_BYTES = 16 * 1024
 Logger = Callable[[str], None]
 Clock = Callable[[], datetime]
 SessionIdFactory = Callable[[], str]
@@ -26,6 +28,10 @@ SessionIdFactory = Callable[[], str]
 
 class LiveCurveStorageError(RuntimeError):
     """Fehler beim Lesen oder Schreiben der laufenden Brennkurve."""
+
+
+class LiveCurvePayloadError(ValueError):
+    """Fehler beim Erzeugen der kompakten MQTT-Darstellung."""
 
 
 def _utc_now() -> datetime:
@@ -260,6 +266,84 @@ class LiveCurveSession:
                 "updated_at stimmt nicht mit dem letzten Messpunkt überein."
             )
         return session
+
+
+def _select_live_curve_points(
+    points: tuple[LiveCurvePoint, ...],
+    maximum_points: int,
+) -> tuple[LiveCurvePoint, ...]:
+    if maximum_points < 2:
+        raise LiveCurvePayloadError("maximum_points muss mindestens 2 sein.")
+    if len(points) <= maximum_points:
+        return points
+    last_index = len(points) - 1
+    selected_indexes = tuple(
+        round(position * last_index / (maximum_points - 1))
+        for position in range(maximum_points)
+    )
+    return tuple(points[index] for index in selected_indexes)
+
+
+def build_live_curve_mqtt_payload(
+    session: LiveCurveSession | None,
+    *,
+    maximum_points: int = MAX_LIVE_CURVE_MQTT_POINTS,
+    maximum_payload_bytes: int = MAX_LIVE_CURVE_MQTT_PAYLOAD_BYTES,
+) -> dict[str, object]:
+    """Erzeugt eine begrenzte, zeitgestempelte MQTT-Momentaufnahme."""
+    if maximum_payload_bytes < 1:
+        raise LiveCurvePayloadError(
+            "maximum_payload_bytes muss mindestens 1 sein."
+        )
+    if session is None:
+        payload: dict[str, object] = {
+            "schema_version": LIVE_CURVE_SCHEMA_VERSION,
+            "status": "inactive",
+            "session_id": None,
+            "started_at": None,
+            "updated_at": None,
+            "point_count": 0,
+            "published_point_count": 0,
+            "sample_axis": "observed_at",
+            "observed_at": [],
+            "temperatures_c": [],
+            "burn_total_minutes": [],
+        }
+    else:
+        selected = _select_live_curve_points(session.points, maximum_points)
+        payload = {
+            "schema_version": LIVE_CURVE_SCHEMA_VERSION,
+            "status": "active",
+            "session_id": session.session_id,
+            "started_at": session.started_at.isoformat(timespec="seconds"),
+            "updated_at": session.updated_at.isoformat(timespec="seconds"),
+            "point_count": len(session.points),
+            "published_point_count": len(selected),
+            "sample_axis": "observed_at",
+            "observed_at": [
+                point.observed_at.isoformat(timespec="seconds")
+                for point in selected
+            ],
+            "temperatures_c": [
+                point.temperature_c for point in selected
+            ],
+            "burn_total_minutes": [
+                point.burn_total_minutes for point in selected
+            ],
+        }
+    payload_size = len(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    if payload_size > maximum_payload_bytes:
+        raise LiveCurvePayloadError(
+            f"Live-Kurven-Payload ist mit {payload_size} Bytes größer als "
+            f"die Grenze von {maximum_payload_bytes} Bytes."
+        )
+    return payload
 
 
 @dataclass(frozen=True, slots=True)

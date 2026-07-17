@@ -14,10 +14,14 @@ from pathlib import Path
 
 from bridge.live_curve import (
     LIVE_CURVE_SCHEMA_VERSION,
+    MAX_LIVE_CURVE_MQTT_PAYLOAD_BYTES,
+    MAX_LIVE_CURVE_MQTT_POINTS,
     LiveCurvePoint,
+    LiveCurvePayloadError,
     LiveCurveRecorder,
     LiveCurveSession,
     LiveCurveStorageError,
+    build_live_curve_mqtt_payload,
     create_default_live_curve_storage,
 )
 from protocol.models import LiveStatus
@@ -189,6 +193,62 @@ class LiveCurveStorageTests(unittest.TestCase):
 
         self.assertFalse(self.storage.path.exists())
         self.assertIsNone(self.storage.load())
+
+
+class LiveCurveMqttPayloadTests(unittest.TestCase):
+    def test_inactive_payload_is_explicit_and_empty(self) -> None:
+        payload = build_live_curve_mqtt_payload(None)
+
+        self.assertEqual(payload["status"], "inactive")
+        self.assertEqual(payload["point_count"], 0)
+        self.assertEqual(payload["temperatures_c"], [])
+
+    def test_long_session_is_bounded_and_preserves_endpoints(self) -> None:
+        started_at = datetime(2026, 11, 4, 18, 30, tzinfo=UTC)
+        points = tuple(
+            live_point(
+                started_at + timedelta(seconds=index * 10),
+                temperature_c=40 + index,
+            )
+            for index in range(500)
+        )
+        session = LiveCurveSession(
+            session_id="long-session",
+            started_at=started_at,
+            points=points,
+        )
+
+        payload = build_live_curve_mqtt_payload(session)
+        encoded = json.dumps(
+            payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+
+        self.assertEqual(payload["point_count"], 500)
+        self.assertEqual(
+            payload["published_point_count"],
+            MAX_LIVE_CURVE_MQTT_POINTS,
+        )
+        self.assertEqual(payload["temperatures_c"][0], 40)
+        self.assertEqual(payload["temperatures_c"][-1], 539)
+        self.assertLessEqual(
+            len(encoded),
+            MAX_LIVE_CURVE_MQTT_PAYLOAD_BYTES,
+        )
+
+    def test_payload_limit_is_enforced(self) -> None:
+        started_at = datetime(2026, 11, 4, 18, 30, tzinfo=UTC)
+        session = LiveCurveSession.start(
+            session_id="small-limit",
+            point=live_point(started_at),
+        )
+
+        with self.assertRaisesRegex(LiveCurvePayloadError, "größer"):
+            build_live_curve_mqtt_payload(
+                session,
+                maximum_payload_bytes=1,
+            )
 
 
 class LiveCurveRecorderTests(unittest.TestCase):

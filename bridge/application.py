@@ -20,6 +20,7 @@ from bridge.logging_setup import configure_logging, log_warning
 from bridge.live_curve import (
     LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES,
     LiveCurveRecorder,
+    LiveCurveSession,
     create_default_live_curve_storage,
 )
 from bridge.mqtt_client import MqttConnection
@@ -68,7 +69,15 @@ class StateMemoryLike(Protocol):
 
 
 class LiveCurveRecorderLike(Protocol):
-    def observe(self, state: LiveStatus) -> object:
+    def observe(self, state: LiveStatus) -> LiveCurveSession | None:
+        ...
+
+
+class LiveCurvePublisherLike(Protocol):
+    def publish_live_curve(
+        self,
+        session: LiveCurveSession | None,
+    ) -> None:
         ...
 
 
@@ -78,10 +87,12 @@ class LiveStateHandler:
 
     state_memory: StateMemoryLike
     curve_recorder: LiveCurveRecorderLike
+    curve_publisher: LiveCurvePublisherLike
 
     def __call__(self, state: LiveStatus) -> None:
         self.state_memory.remember_state(state)
-        self.curve_recorder.observe(state)
+        session = self.curve_recorder.observe(state)
+        self.curve_publisher.publish_live_curve(session)
 
 
 @dataclass(slots=True)
@@ -295,6 +306,7 @@ def create_application(
         on_state=LiveStateHandler(
             state_memory=connection,
             curve_recorder=live_curve_recorder,
+            curve_publisher=connection.publisher,
         ),
         logger=logger,
     )

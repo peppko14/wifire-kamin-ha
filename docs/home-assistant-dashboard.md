@@ -1,6 +1,6 @@
 # Home-Assistant-Dashboard für Brennkurven
 
-Dokumentversion: 1.2.0
+Dokumentversion: 1.3.0
 
 ## Datenquelle
 
@@ -44,6 +44,11 @@ Temperatur, Luftklappe, Tür, Abbrenndauer und der optionale Lüfter bleiben
 dagegen Live-Entitäten. Sie werden bei beendeter Bridge oder ausgeschaltetem
 Raspberry bewusst als nicht verfügbar angezeigt, damit alte Messwerte nicht
 als aktueller Kaminzustand erscheinen.
+
+Das gilt ebenso für die getrennte Entität `Laufende Brennkurve`. Ihr
+nicht-retained Zustand verwendet Live-Verfügbarkeit und Ablaufzeit. Die
+vollständige Sitzung bleibt lokal gespeichert; die Home-Assistant-Darstellung
+ist auf höchstens 121 gleichmäßig ausgewählte Messpunkte begrenzt.
 
 Für eine mehrmonatige Sommerpause kann der Raspberry nach einer letzten
 erfolgreichen Veröffentlichung ausgeschaltet werden. Home Assistant und der
@@ -205,3 +210,45 @@ config:
 
 Die Karte liest nur den aktuellen retained MQTT-Zustand. Sie erzeugt keine
 zusätzlichen WiFire-Abfragen und verändert keine Daten am Kamin.
+
+## Getrenntes Diagramm der laufenden Brennkurve
+
+Die Live-Kurve besitzt echte Zeitzonen-Zeitstempel und wird deshalb nicht
+stillschweigend mit dem historischen `sample_index` auf dieselbe X-Achse
+gelegt. Eine separate Plotly-Karte kann sie so darstellen:
+
+```yaml
+type: custom:plotly-graph
+title: WiFire-Kamin laufende Brennkurve
+refresh_interval: auto
+raw_plotly_config: true
+entities:
+  - entity: sensor.wifire_kamin_live_curve
+    name: Laufender Abbrand
+    mode: lines
+    line:
+      width: 4
+    x: |
+      $fn ({hass}) => hass.states[
+        "sensor.wifire_kamin_live_curve"
+      ]?.attributes?.observed_at ?? []
+    y: |
+      $fn ({hass}) => hass.states[
+        "sensor.wifire_kamin_live_curve"
+      ]?.attributes?.temperatures_c ?? []
+layout:
+  height: 360
+  xaxis:
+    title:
+      text: Beobachtungszeit
+  yaxis:
+    title:
+      text: Temperatur °C
+config:
+  displaylogo: false
+  scrollZoom: true
+```
+
+Der Zustand der Entität lautet `active` oder `inactive`. Eine automatische
+Einordnung als typisch oder auffällig erfolgt vor der praktischen
+Verifizierung der Live-/Archivachsen bewusst noch nicht.

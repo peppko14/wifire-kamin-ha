@@ -1,6 +1,6 @@
 # Laufende und historische Brennkurvenvergleiche
 
-Dokumentversion: 1.5.0
+Dokumentversion: 1.6.0
 
 Dieses Dokument definiert den fachlichen Zielzustand für v0.13.0. Es ist eine
 Spezifikation und nimmt noch keine unbestätigte Zuordnung zwischen Live- und
@@ -8,7 +8,7 @@ Archivmesspunkten vorweg.
 
 ## Implementierungsstand
 
-Mit den Commits 2 bis 7 von v0.13.0 sind folgende Grundlagen umgesetzt:
+Mit den Commits 2 bis 8 von v0.13.0 sind folgende Grundlagen umgesetzt:
 
 - punktweise Mediankurve zusätzlich zum bestehenden Durchschnitt,
 - eigener realer Referenzabbrand mit kleinstem RMSE zur Mediankurve,
@@ -29,12 +29,14 @@ Mit den Commits 2 bis 7 von v0.13.0 sind folgende Grundlagen umgesetzt:
 - konfigurierbare Ende-Hysterese über aufeinanderfolgende kalte Messungen,
 - Wiederaufnahme einer laufenden und getrennte Ablage einer abgeschlossenen
   Live-Sitzung,
-- lokale Erfassung vor der MQTT-Veröffentlichung.
+- lokale Erfassung vor der MQTT-Veröffentlichung,
+- getrennte nicht-retained Home-Assistant-Entität für die laufende Kurve,
+- gleichmäßige Begrenzung der MQTT-Reihe auf 121 Punkte und 16 KiB.
 
 Die bisher verwendeten Dashboard-Schlüssel bleiben für bestehende Karten
-erhalten. Commit 7 verdrahtet Start, Fortschreibung und Ende mit jeder
-erfolgreichen Live-Abfrage. Die getrennte MQTT-Veröffentlichung wird im
-folgenden Commit ergänzt.
+erhalten. Commit 8 veröffentlicht den laufenden Zwischenstand getrennt mit
+Live-Verfügbarkeit und Ablaufzeit. Eine fachliche Bewertung bleibt bis zum
+Praxistest der Achsenzuordnung ausdrücklich gesperrt.
 
 ## Ziele
 
