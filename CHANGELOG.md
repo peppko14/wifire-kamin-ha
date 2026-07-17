@@ -7,6 +7,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-07-17
+
 ### Zuverlässigkeit
 
 - Archivclient prüft den gemeinsamen Laufzustand vor jedem HTTP-Versuch und

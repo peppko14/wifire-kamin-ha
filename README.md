@@ -520,6 +520,14 @@ Mit v0.14.0 umgesetzt:
   adressierbaren, derzeit leeren Plätze 24 bis 30
 - unveränderliches reales Archivtelegramm als Golden Fixture
 
+Mit v0.14.1 umgesetzt:
+
+- Stoppsignale brechen Archiv- und Retry-Wartezeiten kontrolliert ab
+- nach einem Abbruch werden weder weitere Archivrequests noch nachgelagerte
+  Historienauswertungen gestartet
+- ein bereits laufender HTTP-Aufruf bleibt durch seinen Request-Timeout
+  begrenzt
+
 Für spätere Versionen vorgesehen:
 
 - Backlog: Zuordnung zwischen Live-Zeitachse und historischem
