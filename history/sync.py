@@ -19,7 +19,7 @@ from history.ring_buffer import (
     is_empty_archive_record,
 )
 from protocol.adapters import ArchiveRecordLike, archive_record_to_burn_record
-from protocol.archive import ArchiveClient
+from protocol.archive import ArchiveClient, ArchiveReadCancelled
 from protocol.models import BurnRecord
 from wifire_protocol import decode_archive_record
 
@@ -85,6 +85,7 @@ class ArchiveReadResult:
     empty_archives: int
     stopped_on_empty: bool
     stopped_on_read_error_limit: bool
+    stopped_on_request: bool
 
 
 def _merge_results(results: list[HistorySyncResult]) -> HistorySyncResult:
@@ -140,6 +141,7 @@ def synchronize_archives(
             retry_delay_seconds=settings.retry_delay_seconds,
             sleeper=sleeper,
             logger=logger,
+            is_running=is_running,
         ).read_raw
 
     records_read = 0
@@ -150,11 +152,13 @@ def synchronize_archives(
     empty_archives = 0
     stopped_on_empty = False
     stopped_on_read_error_limit = False
+    stopped_on_request = False
     sync_results: list[HistorySyncResult] = []
     archive_numbers = strategy.archive_numbers()
 
     for number in archive_numbers:
         if not is_running():
+            stopped_on_request = True
             break
 
         archives_examined += 1
@@ -214,6 +218,10 @@ def synchronize_archives(
                             f"fehlgeschlagen: {error}"
                         )
 
+        except ArchiveReadCancelled:
+            stopped_on_request = True
+            logger("Archivscan wurde kontrolliert abgebrochen.")
+            break
         except (OSError, RuntimeError, ValueError) as error:
             read_failures += 1
             consecutive_read_errors += 1
@@ -222,6 +230,11 @@ def synchronize_archives(
                 logger,
                 f"Archiv {number}: Lesefehler: {error}",
             )
+
+        if not is_running():
+            stopped_on_request = True
+            logger("Archivscan wurde kontrolliert abgebrochen.")
+            break
 
         if not strategy.should_continue_after(
             outcome,
@@ -255,4 +268,5 @@ def synchronize_archives(
         empty_archives=empty_archives,
         stopped_on_empty=stopped_on_empty,
         stopped_on_read_error_limit=stopped_on_read_error_limit,
+        stopped_on_request=stopped_on_request,
     )

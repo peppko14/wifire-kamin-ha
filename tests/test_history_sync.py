@@ -16,6 +16,7 @@ from history.sync import (
     synchronize_archives,
 )
 from protocol.models import BurnRecord
+from protocol.archive import ArchiveReadCancelled
 
 
 def result(
@@ -111,6 +112,9 @@ class ArchiveSyncTests(unittest.TestCase):
     def test_default_reader_uses_shared_archive_client(self) -> None:
         manager = FakeManager([result(existing=("id-1",))])
 
+        def running() -> bool:
+            return True
+
         def sleeper(seconds: float) -> None:
             pass
 
@@ -127,6 +131,7 @@ class ArchiveSyncTests(unittest.TestCase):
                 record_adapter=lambda record: burn(record.archive_number),
                 sleeper=sleeper,
                 logger=logger,
+                is_running=running,
             )
 
         client_type.assert_called_once_with(
@@ -136,6 +141,7 @@ class ArchiveSyncTests(unittest.TestCase):
             retry_delay_seconds=10.0,
             sleeper=sleeper,
             logger=logger,
+            is_running=running,
         )
         client_type.return_value.read_raw.assert_called_once_with(1)
 
@@ -277,6 +283,25 @@ class ArchiveSyncTests(unittest.TestCase):
         self.assertEqual(sleeps, [10, 10])
         self.assertEqual(sync.read_failures, 3)
         self.assertTrue(sync.stopped_on_read_error_limit)
+
+    def test_cancelled_read_is_not_counted_as_failure(self) -> None:
+        manager = FakeManager([])
+
+        def reader(number: int) -> str:
+            raise ArchiveReadCancelled("Dienst wird beendet")
+
+        sync = synchronize_archives(
+            manager,  # type: ignore[arg-type]
+            self.settings(last=3),
+            raw_reader=reader,
+            sleeper=lambda seconds: None,
+            logger=lambda message: None,
+        )
+
+        self.assertTrue(sync.stopped_on_request)
+        self.assertEqual(sync.read_failures, 0)
+        self.assertEqual(sync.archives_examined, 1)
+        self.assertEqual(manager.records, [])
 
     def test_stop_request_prevents_the_next_archive_request(self) -> None:
         manager = FakeManager([result(imported=("id-1",))])
