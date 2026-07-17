@@ -7,6 +7,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-17
+
 ### Brennkurvenanalyse
 
 - Versioniertes Datenmodell für zeitgestempelte Messpunkte und laufende
@@ -119,8 +121,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Zeitgestempelte Live-Reihe ausdrücklich vom unbestätigten historischen
   `sample_index` getrennt; Live-Bewertung bis zur realen Achsenvalidierung als
   `noch nicht bewertbar` vorgesehen
-- Architektur-, Brennkurven- und Roadmap-Dokumentation auf den Stand v0.12.5
-  sowie die geplanten Ausbaustufen v0.13 und v0.14 aktualisiert
+- Architektur-, Brennkurven- und Roadmap-Dokumentation auf den Stand v0.13.0
+  sowie die nächste geplante Ausbaustufe v0.14 aktualisiert
 
 ## [0.12.5] - 2026-07-16
 
