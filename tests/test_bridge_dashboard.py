@@ -11,6 +11,13 @@ import unittest
 from bridge.dashboard import (
     DASHBOARD_SCHEMA_VERSION,
     MAX_DASHBOARD_PAYLOAD_BYTES,
+    ROLE_AVERAGE,
+    ROLE_HOTTEST,
+    ROLE_LATEST,
+    ROLE_MEDIAN,
+    ROLE_MEDIAN_REPRESENTATIVE,
+    ROLE_REPRESENTATIVE,
+    ROLE_SELECTED_REFERENCE,
     DashboardCurveSeries,
     DashboardCurveSnapshot,
     DashboardPayloadTooLargeError,
@@ -18,6 +25,8 @@ from bridge.dashboard import (
     build_dashboard_snapshot,
 )
 from history.curve_analysis import analyze_curves
+from history.curve_comparison import HistoricalComparisonStatus
+from history.curve_seasons import HeatingSeasonCurveStatus
 from history.curves import BurnCurve, CurvePoint, SAMPLE_AXIS
 from history.identifiers import build_burn_id
 from protocol.models import BurnRecord
@@ -73,7 +82,7 @@ def make_analysis(*, sample_count: int = 3):
 
 
 class DashboardSnapshotTests(unittest.TestCase):
-    def test_snapshot_contains_exactly_three_defined_series(self) -> None:
+    def test_snapshot_preserves_legacy_series_and_adds_latest(self) -> None:
         snapshot = build_dashboard_snapshot(
             make_analysis(),
             generated_at=datetime(2026, 7, 14, tzinfo=timezone.utc),
@@ -82,10 +91,76 @@ class DashboardSnapshotTests(unittest.TestCase):
         payload = snapshot.to_dict()
 
         self.assertEqual(
-            tuple(payload["series"]),
-            ("average", "representative", "hottest"),
+            tuple(payload["series"])[0:3],
+            (ROLE_AVERAGE, ROLE_REPRESENTATIVE, ROLE_HOTTEST),
         )
+        self.assertIn(ROLE_LATEST, payload["series"])
         self.assertNotIn("curves", payload)
+
+    def test_ready_comparison_adds_median_and_real_reference(self) -> None:
+        analysis = make_analysis()
+        snapshot = build_dashboard_snapshot(
+            analysis,
+            minimum_reference_curve_count=2,
+        )
+
+        self.assertEqual(
+            snapshot.comparison_status,
+            HistoricalComparisonStatus.READY,
+        )
+        self.assertEqual(
+            snapshot.median.temperatures_c if snapshot.median else None,
+            (25.0, 26.5, 28.0),
+        )
+        self.assertIsNotNone(snapshot.median_representative)
+        self.assertIn(ROLE_MEDIAN, snapshot.to_dict()["series"])
+        self.assertIn(
+            ROLE_MEDIAN_REPRESENTATIVE,
+            snapshot.to_dict()["series"],
+        )
+
+    def test_small_reference_group_is_transparently_not_evaluable(self) -> None:
+        snapshot = build_dashboard_snapshot(make_analysis())
+
+        self.assertEqual(
+            snapshot.comparison_status,
+            HistoricalComparisonStatus.NOT_EVALUABLE,
+        )
+        self.assertIsNone(snapshot.median)
+        self.assertIsNone(snapshot.median_representative)
+        self.assertIsNotNone(snapshot.comparison_reason)
+
+    def test_selected_reference_is_included_by_stable_burn_id(self) -> None:
+        analysis = make_analysis()
+        selected = analysis.curves[0]
+
+        snapshot = build_dashboard_snapshot(
+            analysis,
+            minimum_reference_curve_count=2,
+            selected_reference_burn_id=selected.burn_id,
+        )
+
+        self.assertEqual(snapshot.selected_reference.burn_id, selected.burn_id)
+        self.assertIn(ROLE_SELECTED_REFERENCE, snapshot.to_dict()["series"])
+
+    def test_snapshot_contains_three_rolling_heating_seasons(self) -> None:
+        snapshot = build_dashboard_snapshot(
+            make_analysis(),
+            generated_at=datetime(2026, 7, 14, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(
+            tuple(item.label for item in snapshot.heating_seasons),
+            ("2026/2027", "2025/2026", "2024/2025"),
+        )
+        self.assertEqual(
+            snapshot.heating_seasons[1].status,
+            HeatingSeasonCurveStatus.READY,
+        )
+        self.assertEqual(
+            len(snapshot.to_dict()["heating_seasons"]),
+            3,
+        )
 
     def test_snapshot_preserves_axis_and_filter_metadata(self) -> None:
         snapshot = build_dashboard_snapshot(make_analysis())
@@ -93,6 +168,7 @@ class DashboardSnapshotTests(unittest.TestCase):
         payload = snapshot.to_dict()
 
         self.assertEqual(payload["schema_version"], DASHBOARD_SCHEMA_VERSION)
+        self.assertEqual(payload["schema_version"], 2)
         self.assertEqual(payload["sample_axis"], SAMPLE_AXIS)
         self.assertEqual(payload["source_curve_count"], 3)
         self.assertEqual(payload["sample_count"], 3)
@@ -142,7 +218,12 @@ class DashboardSnapshotTests(unittest.TestCase):
         )
 
     def test_full_size_snapshot_stays_below_fixed_payload_limit(self) -> None:
-        snapshot = build_dashboard_snapshot(make_analysis(sample_count=121))
+        analysis = make_analysis(sample_count=121)
+        snapshot = build_dashboard_snapshot(
+            analysis,
+            minimum_reference_curve_count=2,
+            selected_reference_burn_id=analysis.curves[0].burn_id,
+        )
 
         self.assertLessEqual(
             snapshot.payload_size_bytes,
@@ -186,6 +267,14 @@ class DashboardSnapshotTests(unittest.TestCase):
                 average=shortened,
                 representative=snapshot.representative,
                 hottest=snapshot.hottest,
+                median=snapshot.median,
+                median_representative=snapshot.median_representative,
+                latest=snapshot.latest,
+                selected_reference=snapshot.selected_reference,
+                heating_seasons=snapshot.heating_seasons,
+                comparison_status=snapshot.comparison_status,
+                comparison_reason=snapshot.comparison_reason,
+                reference_curve_count=snapshot.reference_curve_count,
                 since=snapshot.since,
                 include_warnings=snapshot.include_warnings,
             )

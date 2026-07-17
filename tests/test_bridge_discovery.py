@@ -70,6 +70,7 @@ class DiscoveryTests(unittest.TestCase):
             "wifire_kamin_burn_minutes",
             "wifire_kamin_door",
             "wifire_kamin_flap_moving",
+            "wifire_kamin_live_curve",
         }
 
         for component_id in live_component_ids:
@@ -106,6 +107,7 @@ class DiscoveryTests(unittest.TestCase):
             "wifire_kamin_burn_minutes",
             "wifire_kamin_door",
             "wifire_kamin_flap_moving",
+            "wifire_kamin_live_curve",
         }
 
         for component_id in live_component_ids:
@@ -215,6 +217,22 @@ class DiscoveryTests(unittest.TestCase):
         )
         self.assertEqual(component["device_class"], "timestamp")
         self.assertEqual(component["entity_category"], "diagnostic")
+
+    def test_payload_contains_separate_live_curve_component(self) -> None:
+        components = self.build_payload()["components"]
+
+        component = components["wifire_kamin_live_curve"]
+        self.assertEqual(
+            component["state_topic"],
+            "wifire_kamin/wifire_kamin/live_curve",
+        )
+        self.assertEqual(
+            component["json_attributes_topic"],
+            "wifire_kamin/wifire_kamin/live_curve",
+        )
+        self.assertEqual(component["value_template"], "{{ value_json.status }}")
+        self.assertEqual(component["availability_topic"], self.topics.availability)
+        self.assertEqual(component["expire_after"], 180)
 
     def test_payload_contains_six_statistics_components(self) -> None:
         components = self.build_payload()["components"]

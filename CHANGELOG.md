@@ -7,6 +7,123 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-17
+
+### Brennkurvenanalyse
+
+- Versioniertes Datenmodell für zeitgestempelte Messpunkte und laufende
+  Brennkurven-Sitzungen ergänzt
+- Laufenden Zwischenstand atomisch unter `data/live-curve/current.json`
+  gespeichert und nach einem Prozessneustart wieder ladbar gemacht
+- Live-Temperatur, Geräte-Abbrennzeit, Statusbyte, Klappenstellung und
+  Türzustand je Messpunkt getrennt von der historischen Archivachse erfasst
+- Lokale Live-Sitzung ab der bestehenden Aktivtemperatur automatisch
+  gestartet und nach konfigurierbar vielen kalten Messungen abgeschlossen
+- Laufende Sitzung nach Prozessneustart fortgesetzt und abgeschlossene
+  Live-Sitzungen getrennt unter `data/live-curve/completed/` aufbewahrt
+- Live-Messpunkte vor der MQTT-Veröffentlichung lokal gespeichert, sodass ein
+  MQTT-Ausfall die laufende Kurve nicht verhindert
+- Aktuelle und zwei vorherige Heizsaisons als feste, vergleichbare
+  Kurvenmomentaufnahme ergänzt
+- Für jede ausreichend große Heizsaison eine eigene Mediankurve und einen
+  realen Median-Referenzabbrand berechnet
+- Leere und zu kleine Saisons als `not_evaluable` beibehalten, ohne Daten aus
+  anderen Zeiträumen einzusetzen
+- Gemeinsame Messpunktanzahl über alle Saisonkurven erzwungen und uneindeutige
+  Achsen ohne expliziten Filter abgewiesen
+- Qualitätswarnungen aus den saisonalen Referenzgruppen ausgeschlossen und
+  Quell- sowie Eignungsanzahl getrennt offengelegt
+- Letzten abgeschlossenen Abbrand deterministisch bestimmt und vor der
+  Referenzberechnung aus seiner eigenen Vergleichsgruppe entfernt
+- RMSE des letzten Abbrands zur historischen Mediankurve berechnet
+- Optionalen realen Referenzabbrand ausschließlich über seine stabile
+  `burn_id` ausgewählt und mit getrenntem RMSE verglichen
+- Warnstatus des letzten Abbrands und zu kleine Referenzgruppen transparent
+  als `not_evaluable` statt als scheinbar belastbares Ergebnis behandelt
+- Messpunktanzahl des letzten Abbrands automatisch als Kompatibilitätsfilter
+  für seine Referenzgruppe verwendet
+- Punktweise Mediankurve als robuste Ergänzung zur bestehenden
+  Durchschnittskurve implementiert
+- Realen Referenzabbrand getrennt und deterministisch über den kleinsten RMSE
+  zur Mediankurve bestimmt
+- Referenzgruppen standardmäßig auf Abbrände mit Qualitätsstatus `valid`
+  begrenzt und optional nach Heizsaison, Starttemperatur sowie Messpunktanzahl
+  filterbar gemacht
+- Zu kleine Referenzgruppen als `not_evaluable` ausgewiesen, ohne fachlich
+  ungeeignete Datensätze ersatzweise aufzunehmen
+- Gemischte Messpunktanzahlen ohne expliziten Filter als uneindeutig
+  abgewiesen
+- Bestehende Durchschnitts-, Export- und Home-Assistant-Strukturen für eine
+  versionierte Migration weiterhin unter ihren bisherigen Schlüsseln erhalten
+
+### Home Assistant
+
+- Eigene Diagnoseentität `Laufende Brennkurve` auf einem getrennten
+  nicht-retained MQTT-Topic ergänzt
+- Laufende Kurve an Live-Verfügbarkeit und `LIVE_EXPIRE_AFTER` gebunden,
+  damit eine alte Sitzung nicht als aktueller Kaminzustand erscheint
+- Zeitgestempelte Live-Kurve gleichmäßig auf höchstens 121 veröffentlichte
+  Punkte und insgesamt 16 KiB begrenzt
+- Inaktiven Zustand ausdrücklich mit leeren Kurvenarrays veröffentlicht
+- Retained Brennkurven-Momentaufnahme auf Dashboard-Schema 2 angehoben
+- Bestehende Reihen `average`, `representative` und `hottest` kompatibel
+  beibehalten
+- Letzten Abbrand, historische Mediankurve und realen Median-Referenzabbrand
+  als kompakte Temperaturreihen ergänzt
+- Historischen Vergleichsstatus, Referenzgruppengröße und RMSE zum Median
+  veröffentlicht
+- Aktuelle und zwei vorherige Heizsaisons mit Status, Quellanzahl,
+  Eignungsanzahl und optionaler Mediankurve ergänzt
+- Nicht auswertbare Gruppen ohne erfundene Temperaturwerte dargestellt
+- Gesamtgröße der erweiterten retained Nachricht weiterhin auf 16 KiB begrenzt
+
+### Getestet
+
+- Eigenes Live-Kurven-Topic, Discovery-Availability, Ablaufzeit und
+  nicht-retained Veröffentlichung
+- Begrenzung langer Live-Sitzungen auf 121 Punkte bei Erhalt des ersten und
+  letzten Messpunkts sowie Einhaltung der 16-KiB-Grenze
+- Roundtrip, Schema-Validierung und atomischer Austausch laufender
+  Brennkurven-Zwischenstände
+- Wiederaufnahme nach Neustart sowie erkennbare beschädigte und inkonsistente
+  Live-Kurven-Dateien
+- Start an der Temperaturschwelle, Hysterese durch mehrere kalte Messungen,
+  Fortsetzung einer gespeicherten Sitzung und getrennte Finalisierung
+- Speicherfehler deaktivieren nur die Kurvenerfassung und überschreiben keine
+  beschädigte Zwischenstandsdatei
+- Abwärtskompatible Schlüssel und Dashboard-Schema-Version 2
+- Median-, letzter-Abbrand- und optionale Referenzreihen
+- Drei saisonale Einträge einschließlich `not_evaluable`
+- Maximale Payload-Größe auch mit 121 Messpunkten und allen Vergleichsreihen
+- Feste Reihenfolge von aktueller und zwei vorherigen Heizsaisons
+- Eigene Medianberechnung je Saison und korrekte Grenze am 1. Juli
+- Leere, zu kleine und durch Qualitätswarnungen unzureichende Saisons
+- Gemeinsame sowie explizit gefilterte Messpunktanzahlen über Saisonkurven
+- Stabile Saisonabfrage und Ablehnung doppelter Abbrand-IDs
+- Ausschluss des letzten Abbrands aus seiner eigenen Referenzgruppe
+- Vergleich mit Median und explizit ausgewähltem realen Referenzabbrand
+- Ablehnung unbekannter, ungeeigneter und selbstreferenzierender `burn_id`
+- Nicht bewertbare Vergleiche bei Warnstatus oder zu kleiner Referenzgruppe
+- Automatische Begrenzung auf kompatible Messpunktanzahlen
+- Medianberechnung für gerade und ungerade Gruppengrößen sowie Ausreißer
+- Deterministische Auswahl des realen Median-Referenzabbrands
+- Qualitäts-, Heizsaison-, Starttemperatur- und Messpunktfilter
+- Zu kleine, doppelte und nicht eindeutig vergleichbare Referenzgruppen
+
+### Dokumentation
+
+- Fachliches Zielmodell für Medianreferenz, saisonale Kurvenvergleiche,
+  letzten Abbrand und eine getrennte laufende Brennkurve festgelegt
+- Referenzauswahl auf gültige, vergleichbare Datensätze mit expliziten Filtern
+  und Mindestgruppengröße begrenzt
+- Neutrale Bewertungstexte definiert und unbelegte Aussagen über einen
+  gesunden, optimalen oder besten Abbrand ausgeschlossen
+- Zeitgestempelte Live-Reihe ausdrücklich vom unbestätigten historischen
+  `sample_index` getrennt; Live-Bewertung bis zur realen Achsenvalidierung als
+  `noch nicht bewertbar` vorgesehen
+- Architektur-, Brennkurven- und Roadmap-Dokumentation auf den Stand v0.13.0
+  sowie die nächste geplante Ausbaustufe v0.14 aktualisiert
+
 ## [0.12.5] - 2026-07-16
 
 ### Wartbarkeit

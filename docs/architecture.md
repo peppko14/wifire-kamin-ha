@@ -1,8 +1,8 @@
 # Architektur
 
-Dokumentversion: 1.6.1
+Dokumentversion: 1.12.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.12.1
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.13.0
 
 ## Ziele
 
@@ -33,6 +33,9 @@ wifire-kamin-ha/
 │   ├── scheduler.py
 │   ├── runtime.py
 │   ├── statistics.py
+│   ├── dashboard.py
+│   ├── dashboard_reporter.py
+│   ├── logging_setup.py
 │   └── application.py
 ├── history/
 │   ├── backup.py
@@ -48,6 +51,9 @@ wifire-kamin-ha/
 │   ├── period_statistics.py
 │   ├── curves.py
 │   ├── curve_analysis.py
+│   ├── curve_reference.py
+│   ├── curve_comparison.py
+│   ├── curve_seasons.py
 │   └── curve_export.py
 ├── operations/
 │   └── diagnostics.py
@@ -80,12 +86,14 @@ Erzeugt alle MQTT-Topics zentral aus Geräte-ID und Discovery-Präfix.
 
 Erzeugt die Home-Assistant-Device-Discovery für Live-Sensoren,
 Diagnosewerte, drei veröffentlichte Archivplätze, Gesamtstatistik, aktuellen
-Monat und drei rollierende Heizsaisons.
+Monat, drei rollierende Heizsaisons und den historischen
+Brennkurven-Vergleich. Nur Live-Entitäten verwenden Availability und
+`expire_after`.
 
 ### `bridge/publisher.py`
 
 Kapselt MQTT-Veröffentlichungen für Verfügbarkeit, Live-Zustand,
-Archivattribute sowie retained Gesamt- und Periodenstatistiken.
+Archivattribute sowie retained Gesamt-, Perioden- und Brennkurvendaten.
 
 ### `bridge/mqtt_client.py`
 
@@ -126,6 +134,21 @@ damit SIGINT und SIGTERM zeitnah wirken.
 Steuert die zyklische Live-Abfrage, Offline-Erkennung, Archivplanung und
 Wartezeit. Die Klasse ist unabhängig vom konkreten MQTT-Client testbar.
 
+### `bridge/live_curve.py`
+
+Definiert das von der historischen Archivachse getrennte Schema für eine
+laufende Brennkurve. Jeder Messpunkt besitzt einen Zeitzonen-Zeitstempel,
+Temperatur, Geräte-Abbrennzeit und ausgewählte Statusfelder. Der aktuelle
+Zwischenstand wird atomisch unter `data/live-curve/current.json` ersetzt und
+kann nach einem Prozessneustart streng validiert wieder geladen werden.
+Der Recorder startet an der bestehenden Aktivtemperatur, verwendet mehrere
+aufeinanderfolgende kalte Messungen als Ende-Hysterese und verschiebt
+abgeschlossene Sitzungen nach `data/live-curve/completed/`. Speicherfehler
+werden isoliert; MQTT- und Live-Statusverarbeitung laufen weiter.
+Für Home Assistant entsteht eine getrennte, nicht-retained Momentaufnahme
+mit Zeitstempelachse. Sie ist auf 121 Punkte und 16 KiB begrenzt und verwendet
+die Live-Verfügbarkeit einschließlich Ablaufzeit.
+
 ### `bridge/statistics.py`
 
 Liest die lokale Historie, wendet den optionalen inklusiven
@@ -138,7 +161,9 @@ Archiv-Synchronisation nicht.
 
 Erzeugt und verbindet alle Bridge-Komponenten. Der Application Runner
 registriert SIGINT und SIGTERM, startet MQTT und Laufzeitsteuerung und
-garantiert den kontrollierten MQTT-Stopp auch bei einem Laufzeitfehler.
+garantiert den kontrollierten MQTT-Stopp auch bei einem Laufzeitfehler. Eine
+zentral konfigurierte Logger-Instanz wird an alle produktiven Komponenten
+weitergegeben.
 
 ### `mqtt_discovery.py`
 
@@ -234,8 +259,10 @@ vollständige Abbrände.
 
 ### `history/sync.py`
 
-Stellt die vollständige Ringpuffer-Synchronisation für Importwerkzeuge
-bereit. Die Archiv-URL wird aus der konfigurierten Live-URL abgeleitet.
+Stellt die MQTT-unabhängige inkrementelle Ringpuffer-Synchronisation für die
+Bridge bereit. Die Archiv-URL wird aus der konfigurierten Live-URL abgeleitet.
+Der manuelle Vollimport besitzt derzeit bewusst ein anderes Scanverhalten;
+seine Umstellung auf gemeinsame Lesebausteine ist für v0.14.0 vorgesehen.
 
 ### `history/ring_buffer.py`
 
@@ -271,9 +298,35 @@ Messintervall nicht als gesicherte Protokolleigenschaft dokumentiert ist.
 
 ### `history/curve_analysis.py`
 
-Berechnet die Durchschnittskurve, den realen Abbrand mit dem kleinsten RMSE
-zur Durchschnittskurve und getrennt die Kurve mit der höchsten gemessenen
-Temperatur. Alle verglichenen Kurven benötigen dieselbe Messpunktanzahl.
+Berechnet parallel die bestehende Durchschnittskurve und eine robuste
+punktweise Mediankurve. Zu beiden Lagekurven wird deterministisch der reale
+Abbrand mit dem kleinsten RMSE bestimmt; die Kurve mit der höchsten gemessenen
+Temperatur bleibt eine getrennte Kennzahl. Alle verglichenen Kurven benötigen
+dieselbe Messpunktanzahl.
+
+### `history/curve_reference.py`
+
+Wählt reproduzierbare historische Referenzgruppen aus. Standardmäßig sind nur
+Abbrände mit Qualitätsstatus `valid` zugelassen. Optionale Filter begrenzen
+die Auswahl auf eine Heizsaison, einen Starttemperaturbereich und eine
+Messpunktanzahl. Zu kleine Gruppen werden als `not_evaluable` ausgewiesen;
+uneindeutige Gruppen mit gemischten Messpunktanzahlen werden abgewiesen.
+
+### `history/curve_comparison.py`
+
+Bestimmt deterministisch den letzten abgeschlossenen Abbrand und entfernt ihn
+vor der Referenzberechnung aus der historischen Vergleichsgruppe. Das Modul
+berechnet seinen RMSE zur Mediankurve und optional zu einem über die stabile
+`burn_id` ausgewählten realen Referenzabbrand. Ein Abbrand mit Warnstatus oder
+eine zu kleine Referenzgruppe ergeben ausdrücklich `not_evaluable`.
+
+### `history/curve_seasons.py`
+
+Erzeugt in fester Reihenfolge die aktuelle und zwei vorherige Heizsaisons.
+Jede ausreichend große Saison erhält eine eigene Mediananalyse und einen
+realen Median-Referenzabbrand. Leere oder zu kleine Saisons bleiben als
+`not_evaluable` sichtbar. Ein gemeinsamer Messpunktfilter verhindert
+scheinbar vergleichbare Kurven auf unterschiedlichen Achsen.
 
 ### `history/curve_export.py`
 
@@ -283,11 +336,12 @@ Filterinformationen und stabilen Abbrand-IDs.
 
 ### `bridge/dashboard.py`
 
-Verdichtet eine Kurvenanalyse auf genau drei Temperaturarrays: Durchschnitt,
-repräsentativer realer Abbrand und heißester realer Abbrand. Die retained
-MQTT-Nachricht verwendet ein eigenes Schema und darf 16 KiB nicht
-überschreiten. Vollständige historische Einzelkurven werden nicht in
-Home-Assistant-Attribute kopiert.
+Erzeugt die auf 16 KiB begrenzte retained Kurvenmomentaufnahme nach Schema 2.
+Die drei bisherigen Reihenschlüssel bleiben erhalten. Ergänzt werden letzter
+Abbrand, historische Medianreferenzen, Vergleichsstatus und drei saisonale
+Mediankurven. Nicht auswertbare Gruppen enthalten Status und Grund, aber keine
+erfundene Temperaturreihe. Vollständige historische Einzelkurven werden nicht
+in Home-Assistant-Attribute kopiert.
 
 ### `bridge/dashboard_reporter.py`
 
@@ -378,24 +432,28 @@ werden nicht in der regulären Historie gespeichert.
 - Neue Abbrände werden vor nachgelagerten MQTT-Aktionen lokal gespeichert.
 - MQTT- oder Statistikfehler machen eine erfolgreiche lokale Speicherung
   nicht rückgängig.
-- Ein gestoppter Dienst setzt die gemeinsame MQTT-Verfügbarkeit auf offline;
-  Home Assistant zeigt dann auch retained Statistikwerte als nicht verfügbar.
+- Ein gestoppter Dienst setzt ausschließlich die Live-Verfügbarkeit auf
+  offline. Retained Archive, Statistiken und historische Brennkurven bleiben
+  während einer Sommerabschaltung sichtbar.
 
 ## Tests
 
-Version 0.12.0 umfasst 292 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
+Version 0.12.5 umfasst 361 Unit-Tests. Netzwerk, MQTT-Broker und Kamin sind
 für diese Tests nicht erforderlich.
 
 ```bash
 python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-## Bewusst verschoben
+## Nächste Ausbaustufen
 
-Noch nicht Bestandteil von v0.12.0 sind:
+Für v0.13.0 sind robuste historische Medianreferenzen, saisonale Vergleiche,
+die Erfassung einer laufenden Brennkurve und eine getrennte Live-Darstellung
+geplant. Eine Live-Bewertung bleibt gesperrt, bis die Zuordnung zwischen der
+zeitgestempelten Live-Reihe und dem historischen `sample_index` durch einen
+echten Abbrand bestätigt ist. Die fachlichen Regeln stehen in
+[`live-curve-comparison.md`](live-curve-comparison.md).
 
-- Vergleiche der laufenden Kurve mit historischen Abbränden,
-- die vollständige Ablösung der bestehenden Decoder-Einstiegspunkte.
-
-Diese Punkte können auf der stabilen Historien- und Bridge-Architektur in
-einer späteren Version aufgebaut werden.
+Für v0.14.0 bleiben die weitere Vereinheitlichung der Protokollschnittstelle,
+ein reales Golden Fixture, die lesende Untersuchung von Archivplätzen über 23
+und die gemeinsame Archivleselogik für Bridge und Vollimport vorgesehen.

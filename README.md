@@ -31,7 +31,8 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
 - retained Historien-, Statistik- und Brennkurvenwerte bleiben auch bei
   ausgeschaltetem Raspberry in Home Assistant verfügbar
 - digitale historische Brennkurven mit expliziter Messpunktachse
-- Durchschnittskurve sowie repräsentativer und heißester Referenzabbrand
+- Durchschnitt, historischer Median, letzter Abbrand sowie reale Referenzen
+- eigene Mediankurven für aktuelle und zwei vorherige Heizsaisons
 - portabler JSON-Export als Grundlage für spätere Diagramme
 - begrenzte Wiederholungsversuche für die instabile Geräteschnittstelle
 - portabler systemd-Installer
@@ -114,6 +115,21 @@ ohne neue MQTT-Nachricht als nicht verfügbar kennzeichnet. Der öffentliche
 Standard entspricht dem Dreifachen des normalen Abfrageintervalls. Mit
 `LIVE_EXPIRE_AFTER = None` lässt sich diese zusätzliche Überwachung
 deaktivieren.
+
+Die lokale Live-Brennkurve beginnt, sobald
+`ACTIVE_FIRE_TEMPERATURE_C` erreicht ist. Sie endet erst nach mehreren
+aufeinanderfolgenden kälteren Messungen, damit ein kurzer Ausschlag die
+Sitzung nicht zerteilt. Die Anzahl ist optional konfigurierbar:
+
+```python
+LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES = 3
+```
+
+Der aktuelle Zwischenstand liegt atomisch unter
+`data/live-curve/current.json`. Nach einem Neustart wird er fortgesetzt.
+Abgeschlossene Live-Sitzungen werden getrennt unter
+`data/live-curve/completed/` aufbewahrt. Sie werden noch nicht automatisch
+mit einem später importierten Archiv-Abbrand gleichgesetzt.
 
 ### Optionale MQTT-Verschlüsselung
 
@@ -203,6 +219,7 @@ Entitäten für:
 - Luftklappenstellung und Bewegung
 - Türstatus
 - Abbrenndauer
+- laufende, zeitgestempelte Brennkurve als Diagnoseentität
 - Verfügbarkeit
 - drei aktuelle Archivplätze als Diagnoseentitäten
 - Anzahl berücksichtigter historischer Abbrände
@@ -222,8 +239,8 @@ Ein Eintrag in `configuration.yaml` ist nicht erforderlich.
 
 Nur die Live-Entitäten verwenden die MQTT-Verfügbarkeit der Bridge. Wird die
 Bridge beendet oder der Raspberry ausgeschaltet, zeigt Home Assistant daher
-Temperatur, Luftklappe, Tür, Abbrenndauer und den optionalen Lüfter als
-**nicht verfügbar** an.
+Temperatur, Luftklappe, Tür, Abbrenndauer, laufende Brennkurve und den
+optionalen Lüfter als **nicht verfügbar** an.
 
 Zusätzlich besitzen diese Live-Entitäten eine Ablaufzeit. Bleibt eine neue
 Live-Nachricht aus, markiert Home Assistant die Werte nach standardmäßig drei
@@ -392,11 +409,21 @@ Abbrand mit der höchsten Einzeltemperatur. Die Achse bleibt bewusst ein
 `sample_index` und wird nicht ohne Protokollnachweis als Minute bezeichnet.
 Details stehen in [`docs/burn-curves.md`](docs/burn-curves.md).
 
-Für Home Assistant verdichtet die Bridge die Historie auf genau drei Reihen:
-Durchschnitt, repräsentativer Abbrand und heißester Abbrand. MQTT Discovery
-stellt sie als eine gemeinsame Diagnoseentität bereit. Ein Beispiel für ein
+Für Home Assistant verdichtet die Bridge die Historie in einem begrenzten
+Schema 2. Die bisherigen Reihen Durchschnitt, repräsentativer Abbrand und
+heißester Abbrand bleiben erhalten. Hinzu kommen letzter Abbrand,
+Medianreferenz und drei saisonale Mediankurven. MQTT Discovery stellt sie als
+eine gemeinsame retained Diagnoseentität bereit. Ein Beispiel für ein
 interaktives Diagramm steht in
 [`docs/home-assistant-dashboard.md`](docs/home-assistant-dashboard.md).
+
+Die lokale Erfassung laufender Brennkurven ist in die erfolgreichen
+Live-Abfragen eingebunden. Home Assistant erhält dafür eine getrennte
+nicht-retained Diagnoseentität mit Zeitzonen-Zeitstempeln und Temperaturen.
+Lange Sitzungen werden gleichmäßig auf höchstens 121 veröffentlichte Punkte
+verdichtet; die vollständige lokale Sitzung bleibt unverändert. Die noch
+folgenden Live-Vergleiche und neutralen Bewertungsbegriffe sind in
+[`docs/live-curve-comparison.md`](docs/live-curve-comparison.md) spezifiziert.
 
 ## Betriebsresilienz
 
@@ -444,7 +471,7 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Version 0.12.5 umfasst 361 automatisierte Tests.
+Assistant ausführbar. Version 0.13.0 umfasst 424 automatisierte Tests.
 
 ## Werkzeuge
 
@@ -461,10 +488,17 @@ Assistant ausführbar. Version 0.12.5 umfasst 361 automatisierte Tests.
 
 ## Roadmap
 
+Mit v0.13.0 umgesetzt:
+
+- robuste Medianreferenz und saisonale Kurvenvergleiche
+- Vergleich des letzten abgeschlossenen Abbrands mit historischen Referenzen
+- getrennte laufende Brennkurve mit atomischem Zwischenstand und eigener
+  Home-Assistant-Live-Entität
+
 Für spätere Versionen vorgesehen:
 
-- v0.13: laufende Brennkurve mit historischen Abbränden vergleichen
-- v0.14: weiter vereinheitlichte Protokollschnittstelle
+- v0.14: Archivplätze oberhalb 23 lesend untersuchen, reales Golden Fixture,
+  gemeinsame Vollimportlogik und weiter vereinheitlichte Protokollschnittstelle
 - Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
   Beendigungssignal unmittelbar abbrechen
 

@@ -1,6 +1,6 @@
 # Entwicklungsrichtlinien
 
-Dokumentversion: 1.7.0
+Dokumentversion: 1.8.0
 
 Diese Regeln gelten für die WiFire-Kamin Home Assistant Bridge.
 
@@ -140,6 +140,27 @@ lesende Archivabfrage transportiert.
   Entitäten veröffentlicht werden.
 - Brennkurvenattribute sind auf drei Referenzreihen und höchstens 16 KiB je
   retained Nachricht begrenzt.
+
+## Brennkurvenvergleiche
+
+- Der arithmetische Durchschnitt bleibt eine beschreibende Kennzahl; die
+  Mediankurve ist die bevorzugte robuste typische Referenz.
+- Referenzgruppen enthalten standardmäßig ausschließlich Datensätze mit
+  `quality.status == "valid"` und gleicher Messpunktanzahl.
+- Beschädigte, diagnostische und unvollständige Datensätze dürfen niemals in
+  Referenzgruppen gelangen.
+- Saison, Starttemperaturtoleranz, Mindestgruppengröße und ausgewählte
+  `burn_id` müssen explizit und reproduzierbar konfiguriert werden.
+- `sample_index` darf ohne Protokollnachweis weder als Minute noch als
+  Live-Abtastintervall bezeichnet werden.
+- Aufheiz- und Abkühlgeschwindigkeiten werden bis zur Bestätigung der Zeitachse
+  höchstens je Messpunkt angegeben, nicht in Grad Celsius pro Minute.
+- Zulässige neutrale Bewertungstexte sind `typisch`, `auffällig`,
+  `deutlich abweichend` und `noch nicht bewertbar`.
+- Begriffe wie gesund, ungesund, optimal, sicher oder bester Abbrand sind ohne
+  fachlich validierte und transparent konfigurierte Kriterien unzulässig.
+- Historische retained Kurven und eine vergängliche Live-Kurve verwenden
+  getrennte MQTT-Entitäten und getrennte Verfügbarkeitsregeln.
 
 ## Tests
 

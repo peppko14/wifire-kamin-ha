@@ -42,6 +42,10 @@ class MqttTopics:
         return f"{self.base}/dashboard_curves"
 
     @property
+    def live_curve(self) -> str:
+        return f"{self.base}/live_curve"
+
+    @property
     def home_assistant_status(self) -> str:
         return f"{self.discovery_prefix}/status"
 
