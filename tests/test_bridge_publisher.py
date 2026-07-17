@@ -321,6 +321,27 @@ class MqttPublisherTests(unittest.TestCase):
         self.assertTrue(message["retain"])
         self.assertEqual(json.loads(message["payload"])["count"], 10)
 
+    def test_publish_heating_failure_event_is_retained(self) -> None:
+        self.publisher.publish_heating_failure_event(
+            {
+                "event_id": "a" * 64,
+                "detected_at": "2026-07-17T14:20:00+02:00",
+                "new_count": 1,
+            }
+        )
+
+        message = self.client.messages[0]
+        self.assertEqual(
+            message["topic"],
+            "wifire_kamin/wifire_kamin/heating_failure_event",
+        )
+        self.assertEqual(message["qos"], 1)
+        self.assertTrue(message["retain"])
+        self.assertEqual(
+            json.loads(message["payload"])["event_id"],
+            "a" * 64,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

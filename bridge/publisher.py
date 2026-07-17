@@ -176,3 +176,19 @@ class MqttPublisher:
             qos=1,
             retain=True,
         )
+
+    def publish_heating_failure_event(
+        self,
+        payload: dict[str, object],
+    ) -> None:
+        """Veröffentlicht ein neues, restartfestes Heizfehler-Ereignis."""
+        self.client.publish(
+            self.topics.heating_failure_event,
+            payload=json.dumps(
+                payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            qos=1,
+            retain=True,
+        )

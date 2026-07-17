@@ -9,6 +9,10 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Home Assistant
 
+- neue retained Diagnoseentität `Heizfehler-Ereignis` für Automationen und
+  mobile Benachrichtigungen ergänzt
+- Beispielautomation für eine Push-Nachricht bei neu erkanntem Heizfehler
+  dokumentiert
 - interne Steuerungszeit und signierte Abweichung zur Raspberry-Zeit als
   eigene Diagnoseentitäten ergänzt
 - letzten sichtbaren Heizfehler, Anzahl und vollständige verifizierte Liste
@@ -21,12 +25,19 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Effizienz
 
-- Gerätediagnose an den seltenen Archivzyklus gekoppelt statt einen weiteren
-  häufigen Zeitplan einzuführen
-- kurze konfigurierbare Pause zwischen den beiden Diagnoseabfragen ergänzt
+- Steuerungszeit weiterhin an den seltenen Archivzyklus gekoppelt
+- Alarmliste mit eigenem konfigurierbarem Fünf-Minuten-Intervall überwacht,
+  ohne parallele HTTP-Anfragen zu erzeugen; erste Prüfung bis nach dem
+  Startintervall verzögert, um das WiFire-Webmodul beim Dienststart zu schonen
 
 ### Gerätediagnose
 
+- restart-sicheren lokalen Ausgangszustand und SHA-256-Fingerabdruck der
+  geordneten Alarmplätze eingeführt
+- beim ersten erfolgreichen Abruf vorhandene Alarme nur als Ausgangszustand
+  übernommen, damit alte Fehler nach Neustart keine Push-Nachricht auslösen
+- neue Alarme einschließlich mehrfacher Heizfehler am selben Kalendertag
+  erkannt; Lesefehler verändern weder Ausgangszustand noch retained Ereignis
 - ausschließlich lesende GET-Endpunkte `/direct/22` für die interne
   Steuerungszeit und `/direct/04` für die Alarmliste aus einem App-Mitschnitt
   reproduzierbar zugeordnet

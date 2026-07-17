@@ -220,6 +220,9 @@ class DiscoveryTests(unittest.TestCase):
             "wifire_kamin_heating_failure_count": (
                 "wifire_kamin/wifire_kamin/heating_failures"
             ),
+            "wifire_kamin_heating_failure_event": (
+                "wifire_kamin/wifire_kamin/heating_failure_event"
+            ),
         }
 
         for component_id, topic in expected_topics.items():

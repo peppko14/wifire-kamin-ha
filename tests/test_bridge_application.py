@@ -119,7 +119,15 @@ class LiveStateHandlerTests(unittest.TestCase):
                 ("publish", state)
             )
         )
-        handler = LiveStateHandler(memory, recorder, publisher)
+        monitor = types.SimpleNamespace(
+            refresh_if_due=lambda: calls.append(("monitor", state))
+        )
+        handler = LiveStateHandler(
+            memory,
+            recorder,
+            publisher,
+            monitor,
+        )
 
         handler(state)
 
@@ -129,6 +137,7 @@ class LiveStateHandlerTests(unittest.TestCase):
                 ("memory", state),
                 ("curve", state),
                 ("publish", state),
+                ("monitor", state),
             ],
         )
 
@@ -347,6 +356,10 @@ class ApplicationAssemblyTests(unittest.TestCase):
             captured["diagnostics_logger"] = kwargs["logger"]
             return FakeReporter()
 
+        def monitor_factory(*args: Any, **kwargs: Any) -> Any:
+            captured["monitor_logger"] = kwargs["logger"]
+            return types.SimpleNamespace(refresh_if_due=lambda: None)
+
         config = types.SimpleNamespace(
             LOG_LEVEL="DEBUG",
             DEVICE_ID="wifire_kamin",
@@ -370,8 +383,11 @@ class ApplicationAssemblyTests(unittest.TestCase):
             "bridge.application.DashboardCurveReporter",
             side_effect=dashboard_factory,
         ), patch(
-            "bridge.application.DeviceDiagnosticsReporter",
+            "bridge.application.ControllerDiagnosticsReporter",
             side_effect=diagnostics_factory,
+        ), patch(
+            "bridge.application.HeatingFailureMonitor",
+            side_effect=monitor_factory,
         ):
             application = create_application(
                 config,
@@ -396,6 +412,7 @@ class ApplicationAssemblyTests(unittest.TestCase):
         self.assertIs(captured["statistics_logger"], logger)
         self.assertIs(captured["dashboard_logger"], logger)
         self.assertIs(captured["diagnostics_logger"], logger)
+        self.assertIs(captured["monitor_logger"], logger)
 
 
 if __name__ == "__main__":
