@@ -471,7 +471,7 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Version 0.12.5 umfasst 361 automatisierte Tests.
+Assistant ausführbar. Version 0.13.0 umfasst 424 automatisierte Tests.
 
 ## Werkzeuge
 
@@ -488,10 +488,15 @@ Assistant ausführbar. Version 0.12.5 umfasst 361 automatisierte Tests.
 
 ## Roadmap
 
+Mit v0.13.0 umgesetzt:
+
+- robuste Medianreferenz und saisonale Kurvenvergleiche
+- Vergleich des letzten abgeschlossenen Abbrands mit historischen Referenzen
+- getrennte laufende Brennkurve mit atomischem Zwischenstand und eigener
+  Home-Assistant-Live-Entität
+
 Für spätere Versionen vorgesehen:
 
-- v0.13: robuste Medianreferenz, saisonale Kurvenvergleiche, letzter Abbrand
-  und getrennte laufende Brennkurve mit atomischem Zwischenstand
 - v0.14: Archivplätze oberhalb 23 lesend untersuchen, reales Golden Fixture,
   gemeinsame Vollimportlogik und weiter vereinheitlichte Protokollschnittstelle
 - Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
