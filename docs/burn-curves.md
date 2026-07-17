@@ -1,6 +1,6 @@
 # Digitale Brennkurven
 
-Dokumentversion: 1.1.0
+Dokumentversion: 1.2.0
 
 Die lokale Schema-2-Historie enthält den vollständigen Temperaturverlauf
 jeder abgeschlossenen Verbrennung. Seit Version 0.12.0 stellt die Bridge
@@ -24,10 +24,10 @@ Für jeden `sample_index` wird das arithmetische Mittel aller ausgewählten
 Kurven berechnet und auf eine Nachkommastelle gerundet. Der Export nennt
 zusätzlich die Anzahl der beitragenden Kurven.
 
-Der Durchschnitt bleibt als bestehende beschreibende Kennzahl erhalten. Für
-v0.13.0 ist zusätzlich eine punktweise Mediankurve als robustere typische
-Referenz vorgesehen. Ungewöhnliche Einzelabbrände beeinflussen den Median
-weniger stark.
+Der Durchschnitt bleibt als bestehende beschreibende Kennzahl erhalten. Seit
+v0.13.0 berechnet die Analyse zusätzlich eine punktweise Mediankurve als
+robustere typische Referenz. Ungewöhnliche Einzelabbrände beeinflussen den
+Median weniger stark.
 
 ## Repräsentativer Abbrand
 
@@ -38,6 +38,22 @@ RMSE in Grad Celsius berechnet. Die Kurve mit dem kleinsten RMSE wird als
 
 Bei gleichem Abstand entscheidet zuerst der frühere Startzeitpunkt und danach
 die stabile `burn_id`. Das Ergebnis ist dadurch reproduzierbar.
+
+Für die neue Mediankurve wird zusätzlich und unabhängig der reale Abbrand mit
+dem kleinsten RMSE zum Median bestimmt. Die bisherigen Export- und
+Home-Assistant-Schemata bleiben in diesem vorbereitenden Schritt unverändert;
+ihre spätere Migration erfolgt ausdrücklich versioniert.
+
+## Historische Referenzgruppe
+
+Eine Referenzgruppe enthält standardmäßig ausschließlich Kurven mit
+Qualitätsstatus `valid`. Sie kann zusätzlich auf eine Heizsaison, einen
+inklusiven Starttemperaturbereich und eine feste Messpunktanzahl begrenzt
+werden. Gemischte Messpunktanzahlen werden nicht stillschweigend angeglichen.
+
+Die Mindestgröße beträgt standardmäßig drei geeignete Abbrände. Wird sie nicht
+erreicht, lautet der maschinenlesbare Zustand `not_evaluable`; ungeeignete
+Datensätze werden nicht ersatzweise aufgenommen.
 
 ## Heißester Abbrand
 
@@ -95,11 +111,12 @@ Plotly-Beispiel steht in
 auch bei ausgeschaltetem Raspberry verfügbar, solange MQTT-Broker und Home
 Assistant weiterlaufen.
 
-## Geplanter Live-Vergleich
+## Vorbereiteter Live-Vergleich
 
-Version 0.13.0 erweitert die Analyse um Medianreferenzen, saisonale Gruppen,
-den letzten abgeschlossenen Abbrand und eine getrennte laufende Live-Kurve.
+Version 0.13.0 ergänzt schrittweise Medianreferenzen, saisonale Gruppen, den
+letzten abgeschlossenen Abbrand und eine getrennte laufende Live-Kurve. Die
+Medianberechnung und die Referenzgruppenauswahl sind bereits implementiert.
 Die Live-Reihe besitzt eigene Beobachtungszeitpunkte und darf nicht
 stillschweigend mit dem historischen `sample_index` gleichgesetzt werden.
-Details und Freigaberegeln stehen in
+Details, noch offene Schritte und Freigaberegeln stehen in
 [`live-curve-comparison.md`](live-curve-comparison.md).

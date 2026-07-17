@@ -1,6 +1,6 @@
 # Architektur
 
-Dokumentversion: 1.7.0
+Dokumentversion: 1.8.0
 
 Projektstand: WiFire-Kamin Home Assistant Bridge v0.12.5
 
@@ -51,6 +51,7 @@ wifire-kamin-ha/
 │   ├── period_statistics.py
 │   ├── curves.py
 │   ├── curve_analysis.py
+│   ├── curve_reference.py
 │   └── curve_export.py
 ├── operations/
 │   └── diagnostics.py
@@ -280,9 +281,19 @@ Messintervall nicht als gesicherte Protokolleigenschaft dokumentiert ist.
 
 ### `history/curve_analysis.py`
 
-Berechnet die Durchschnittskurve, den realen Abbrand mit dem kleinsten RMSE
-zur Durchschnittskurve und getrennt die Kurve mit der höchsten gemessenen
-Temperatur. Alle verglichenen Kurven benötigen dieselbe Messpunktanzahl.
+Berechnet parallel die bestehende Durchschnittskurve und eine robuste
+punktweise Mediankurve. Zu beiden Lagekurven wird deterministisch der reale
+Abbrand mit dem kleinsten RMSE bestimmt; die Kurve mit der höchsten gemessenen
+Temperatur bleibt eine getrennte Kennzahl. Alle verglichenen Kurven benötigen
+dieselbe Messpunktanzahl.
+
+### `history/curve_reference.py`
+
+Wählt reproduzierbare historische Referenzgruppen aus. Standardmäßig sind nur
+Abbrände mit Qualitätsstatus `valid` zugelassen. Optionale Filter begrenzen
+die Auswahl auf eine Heizsaison, einen Starttemperaturbereich und eine
+Messpunktanzahl. Zu kleine Gruppen werden als `not_evaluable` ausgewiesen;
+uneindeutige Gruppen mit gemischten Messpunktanzahlen werden abgewiesen.
 
 ### `history/curve_export.py`
 
