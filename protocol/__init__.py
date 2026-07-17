@@ -3,6 +3,15 @@
 
 """Protocol models and decoders for the WiFire-Kamin project."""
 
+from .device_diagnostics import (
+    AlarmEntry,
+    AlarmList,
+    ControllerTime,
+    DeviceDiagnosticsClient,
+    DeviceDiagnosticsReadError,
+    decode_alarm_list,
+    decode_controller_time,
+)
 from .duration import (
     DURATION_SOURCE_STAGE_0,
     DurationValueError,
@@ -24,8 +33,13 @@ from .quality import (
 )
 
 __all__ = [
+    "AlarmEntry",
+    "AlarmList",
     "BurnRecord",
+    "ControllerTime",
     "DURATION_SOURCE_STAGE_0",
+    "DeviceDiagnosticsClient",
+    "DeviceDiagnosticsReadError",
     "DurationValueError",
     "EXPECTED_MEASUREMENT_COUNT",
     "FIRST_RELIABLE_TIMESTAMP_YEAR",
@@ -37,6 +51,8 @@ __all__ = [
     "QualityReport",
     "QualitySeverity",
     "calculate_duration_minutes",
+    "decode_alarm_list",
+    "decode_controller_time",
     "decode_live_status",
     "unwrap_phase_minutes",
     "validate_burn_record",
