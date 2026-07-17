@@ -7,6 +7,34 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Gerätediagnose
+
+- ausschließlich lesende GET-Endpunkte `/direct/22` für die interne
+  Steuerungszeit und `/direct/04` für die Alarmliste aus einem App-Mitschnitt
+  reproduzierbar zugeordnet
+- Steuerungszeit einschließlich zusätzlicher Monatsbits dekodiert, ohne die
+  interne Uhr zu verändern oder zu synchronisieren
+- den letzten von sieben Alarmblöcken als zehn sichtbare Heizfehler-Plätze
+  verifiziert; Datum und Code `1` gegen die App-Anzeige abgeglichen
+- nicht angezeigte Alarmblöcke ausdrücklich nicht als reale Ereignisse
+  interpretiert
+- unbekannte Alarmcodes sowie noch nicht benannte Alarmbytes transparent als
+  Rohwerte erhalten
+- versioniertes, ausschließlich lesendes Werkzeug
+  `device_diagnostics_v1_0_0.py` mit Text- und JSON-Ausgabe ergänzt
+- Endpunkte `/direct/24`, `/direct/36` und `/direct/37` bewusst noch nicht
+  fachlich ausgewertet, da Firmware-, Profil- und Schließzeitfelder nicht
+  vollständig bytegenau belegt sind
+
+### Tests
+
+- reale Struktur von Steuerungszeit- und Alarmtelegramm mit deterministischen
+  Testwerten geprüft
+- Monatsbitmaske, Datumssortierung, leere Alarmplätze, unbekannte Codes und
+  beschädigte Datumswerte getestet
+- HTTP-Methode GET, fehlende Request-Nutzlast, feste Endpunktfreigabe und
+  begrenzte Wiederholungsversuche abgesichert
+
 ### Dokumentation
 
 - verifiziertes Referenzprofil `UNIVERSAL / UNI-80°C` mit WEB `w3.3.3`,
