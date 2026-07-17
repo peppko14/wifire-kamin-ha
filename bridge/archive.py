@@ -2,131 +2,16 @@
 # SPDX-FileCopyrightText: 2026 peppko14
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Lesender Zugriff auf die Archivdaten des WiFire-Kamins."""
+"""MQTT-Attribute für dekodierte WiFire-Archivdaten."""
 
 from __future__ import annotations
 
-import json
-import time
-from dataclasses import dataclass
-from typing import Any, Callable, ContextManager, Protocol
-from urllib.request import Request, urlopen
+from typing import Any
 
-from bridge.logging_setup import log_warning
 from protocol.duration import (
     DURATION_SOURCE_STAGE_0,
     calculate_duration_minutes,
 )
-from wifire_protocol import decode_archive_record
-
-
-
-
-class HttpResponse(Protocol):
-    """Benötigte Schnittstelle einer HTTP-Antwort."""
-
-    def read(self) -> bytes:
-        ...
-
-
-class UrlOpener(Protocol):
-    """Benötigte Schnittstelle zum Öffnen eines HTTP-Requests."""
-
-    def __call__(
-        self,
-        request: Request,
-        *,
-        timeout: int,
-    ) -> ContextManager[HttpResponse]:
-        ...
-
-
-def open_url(
-    request: Request,
-    *,
-    timeout: int,
-) -> ContextManager[HttpResponse]:
-    """Ruft den Standard-URL-Opener mit klarer Testschnittstelle auf."""
-    return urlopen(request, timeout=timeout)
-
-
-ArchiveDecoder = Callable[[str], Any]
-Sleeper = Callable[[int | float], None]
-Logger = Callable[[str], None]
-
-
-@dataclass(frozen=True, slots=True)
-class ArchiveReader:
-    """Liest und dekodiert Archivblöcke mit Wiederholungen."""
-
-    archive_url: str
-    request_timeout: int = 15
-    retry_count: int = 3
-    retry_delay: int | float = 5
-    sleeper: Sleeper = time.sleep
-    opener: UrlOpener = open_url
-    decoder: ArchiveDecoder = decode_archive_record
-    logger: Logger = print
-
-    def read_raw(self, command: str) -> str:
-        """Liest einen rohen Archivblock."""
-        last_error: Exception | None = None
-
-        for attempt in range(1, self.retry_count + 1):
-            try:
-                body = json.dumps(
-                    {"raw": command}
-                ).encode("utf-8")
-
-                request = Request(
-                    self.archive_url,
-                    data=body,
-                    headers={
-                        "Content-Type": "text/plain",
-                        "Accept": "application/json",
-                        "Connection": "close",
-                    },
-                    method="POST",
-                )
-
-                with self.opener(
-                    request,
-                    timeout=self.request_timeout,
-                ) as response:
-                    result = json.loads(
-                        response.read().decode("utf-8")
-                    )
-
-                raw = result.get("raw")
-                if not isinstance(raw, str):
-                    raise ValueError(
-                        "Archivantwort enthält kein gültiges "
-                        "Feld 'raw'."
-                    )
-
-                bytes.fromhex(raw)
-                return raw
-
-            except (OSError, ValueError) as error:
-                last_error = error
-
-                log_warning(
-                    self.logger,
-                    f"Archivversuch {attempt}/{self.retry_count} "
-                    f"fehlgeschlagen: {error}"
-                )
-
-                if attempt < self.retry_count:
-                    self.sleeper(self.retry_delay)
-
-        raise RuntimeError(
-            f"Archivabfrage nach {self.retry_count} Versuchen "
-            f"fehlgeschlagen: {last_error}"
-        )
-
-    def read_record(self, command: str) -> Any:
-        """Liest und dekodiert einen Archivblock."""
-        return self.decoder(self.read_raw(command))
 
 
 def build_archive_attributes(

@@ -92,9 +92,10 @@ Die bislang produktiv verwendete und beobachtete Scan-Grenze bleibt davon
 getrennt. Transport- und ungültige Antwortdaten werden begrenzt wiederholt;
 Programmierfehler werden nicht als Netzwerkfehler maskiert.
 
-In diesem ersten v0.14-Schritt ist die gemeinsame Schicht unabhängig getestet.
-Produktive Bridge und manueller Importer werden erst im folgenden Commit auf
-dieselbe Implementierung umgestellt.
+Produktive Ringpuffer-Synchronisation und manueller Vollimport verwenden
+dieselbe Implementierung. Die Scanstrategie bleibt davon getrennt: Die Bridge
+beendet den inkrementellen Scan bei einem bekannten Abbrand, während der
+manuelle Import einen explizit gewählten Bereich vollständig liest.
 
 ## Bridge
 
@@ -134,8 +135,9 @@ Abfrageintervall:
 
 ### `bridge/archive.py`
 
-Liest einen Archivblock über `/direct/35`, prüft die JSON-/Hex-Antwort
-und führt begrenzte Wiederholungsversuche aus.
+Erzeugt ausschließlich die MQTT-Attribute eines bereits dekodierten
+Archivdatensatzes. Der rohe Gerätezugriff liegt zentral in
+`protocol/archive.py`.
 
 ### `bridge/archive_sync.py`
 
@@ -280,9 +282,10 @@ vollständige Abbrände.
 ### `history/sync.py`
 
 Stellt die MQTT-unabhängige inkrementelle Ringpuffer-Synchronisation für die
-Bridge bereit. Die Archiv-URL wird aus der konfigurierten Live-URL abgeleitet.
-Der manuelle Vollimport besitzt derzeit bewusst ein anderes Scanverhalten;
-seine Umstellung auf gemeinsame Lesebausteine ist für v0.14.0 vorgesehen.
+Bridge bereit. Sie verwendet denselben lesenden `ArchiveClient` wie der
+manuelle Vollimport. Beide behalten bewusst ihr unterschiedliches
+Scanverhalten: inkrementeller Abbruch bei einem bekannten Abbrand gegenüber
+vollständigem Lesen eines explizit gewählten Bereichs.
 
 ### `history/ring_buffer.py`
 

@@ -64,7 +64,7 @@ class HistorySyncIntegrationTests(unittest.TestCase):
                 manager,
                 self.settings(last=3),
                 raw_reader=(
-                    lambda url, number: first_calls.append(number)
+                    lambda number: first_calls.append(number)
                     or str(number)
                 ),
                 decoder=lambda raw: int(raw),
@@ -88,7 +88,7 @@ class HistorySyncIntegrationTests(unittest.TestCase):
                 manager,
                 self.settings(last=3),
                 raw_reader=(
-                    lambda url, number: second_calls.append(number)
+                    lambda number: second_calls.append(number)
                     or str(number)
                 ),
                 decoder=lambda raw: int(raw),
@@ -117,7 +117,7 @@ class HistorySyncIntegrationTests(unittest.TestCase):
                 publisher=FailingArchivePublisher(),
                 sleeper=lambda seconds: None,
                 logger=messages.append,
-                raw_reader=lambda url, number: str(number),
+                raw_reader=lambda number: str(number),
                 decoder=lambda raw: int(raw),
                 record_adapter=simulated_burn,
                 attributes_builder=lambda record: {},

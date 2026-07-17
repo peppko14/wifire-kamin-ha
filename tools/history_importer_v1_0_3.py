@@ -6,14 +6,12 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 import time
 from pathlib import Path
-from urllib.request import Request, urlopen
 
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 # Das Werkzeug liegt unter tools/. Deshalb muss das Repository-Hauptverzeichnis
 # vor den projektinternen Imports in sys.path aufgenommen werden.
@@ -27,10 +25,11 @@ from history.manager import (  # noqa: E402
     create_default_history_manager,
 )
 from protocol.adapters import archive_record_to_burn_record  # noqa: E402
+from protocol.archive import ArchiveClient  # noqa: E402
 from wifire_protocol import decode_archive_record  # noqa: E402
 
 
-ARCHIVE_URL = "http://192.168.0.1/direct/35"
+WIFIRE_LIVE_URL = "http://192.168.0.1/direct/00"
 REQUEST_TIMEOUT = 15
 
 DEFAULT_FIRST_ARCHIVE = 1
@@ -39,67 +38,22 @@ DEFAULT_DELAY = 3.0
 DEFAULT_RETRIES = 3
 
 
-def build_archive_command(number: int) -> str:
-    """Erzeugt den bekannten lesenden Archivbefehl."""
-    if not 1 <= number <= 255:
-        raise ValueError("Archivnummer muss zwischen 1 und 255 liegen.")
-
-    return f"aacc33550235{number:02x}ffff"
+def _log_read_warning(message: str) -> None:
+    print(f"  {message}")
 
 
-def read_archive(
-    number: int,
+def create_archive_client(
     *,
     retries: int,
     retry_delay: float,
-) -> str:
-    """Liest einen Archivblock mit begrenzten Wiederholungsversuchen."""
-    last_error: Exception | None = None
-
-    for attempt in range(1, retries + 1):
-        try:
-            body = json.dumps(
-                {"raw": build_archive_command(number)}
-            ).encode("utf-8")
-
-            request = Request(
-                ARCHIVE_URL,
-                data=body,
-                headers={
-                    "Content-Type": "text/plain",
-                    "Accept": "application/json",
-                    "Connection": "close",
-                },
-                method="POST",
-            )
-
-            with urlopen(request, timeout=REQUEST_TIMEOUT) as response:
-                result = json.loads(
-                    response.read().decode("utf-8")
-                )
-
-            raw = result.get("raw")
-
-            if not isinstance(raw, str):
-                raise ValueError(
-                    "Archivantwort enthält kein gültiges raw-Feld."
-                )
-
-            bytes.fromhex(raw)
-            return raw
-
-        except (OSError, ValueError) as error:
-            last_error = error
-            print(
-                f"  Versuch {attempt}/{retries} fehlgeschlagen: "
-                f"{error}"
-            )
-
-            if attempt < retries:
-                time.sleep(retry_delay)
-
-    raise RuntimeError(
-        f"Archiv {number} konnte nicht gelesen werden: {last_error}"
+) -> ArchiveClient:
+    """Erzeugt den gemeinsamen, ausschließlich lesenden Archivclient."""
+    return ArchiveClient(
+        live_url=WIFIRE_LIVE_URL,
+        request_timeout=REQUEST_TIMEOUT,
+        retry_count=retries,
+        retry_delay_seconds=retry_delay,
+        logger=_log_read_warning,
     )
 
 
@@ -141,8 +95,15 @@ def main() -> None:
     if args.retries < 1:
         sys.exit("--retries muss mindestens 1 sein.")
 
+    if args.delay < 0:
+        sys.exit("--delay darf nicht negativ sein.")
+
     manager: HistoryManager = create_default_history_manager(
         PROJECT_DIR
+    )
+    archive_client = create_archive_client(
+        retries=args.retries,
+        retry_delay=max(1.0, args.delay),
     )
 
     records = []
@@ -159,11 +120,7 @@ def main() -> None:
         print(f"Archiv {number:03d}: ", end="", flush=True)
 
         try:
-            raw = read_archive(
-                number,
-                retries=args.retries,
-                retry_delay=max(1.0, args.delay),
-            )
+            raw = archive_client.read_raw(number)
             archive_record = decode_archive_record(raw)
             burn_record = archive_record_to_burn_record(
                 archive_record

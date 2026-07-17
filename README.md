@@ -284,7 +284,7 @@ Da die WiFire-Schnittstelle empfindlich auf schnelle Folgeanfragen
 reagiert, sollten konservative Pausen verwendet werden:
 
 ```bash
-python3 -u tools/history_importer_v1_0_2.py \
+python3 -u tools/history_importer_v1_0_3.py \
   --first 1 \
   --last 23 \
   --delay 10 \
@@ -305,13 +305,13 @@ Neue vollständige Abbrände werden zuerst atomisch lokal gespeichert. Erst
 danach folgt die optionale MQTT-Veröffentlichung. Ein MQTT-Ausfall kann daher
 keinen bereits gelesenen Abbrand aus der lokalen Historie entfernen.
 
-Für v0.14 wird die Gerätekommunikation schrittweise in
-`protocol/archive.py` vereinheitlicht. Die neue Schnittstelle nimmt nur eine
-Archivnummer entgegen und erzeugt daraus selbst den fest definierten
-lesenden `/direct/35`-Request. Beliebige Hex-Befehle können darüber nicht
-gesendet werden. Der technisch mögliche Ein-Byte-Bereich 1 bis 255 ist dabei
-keine bestätigte Aussage zur tatsächlichen Anzahl der Archivplätze. Die
-produktive Scan-Grenze bleibt bis zur kontrollierten Untersuchung unverändert.
+Die produktive Ringpuffer-Synchronisation und der manuelle Vollimport nutzen
+gemeinsam `protocol/archive.py`. Die Schnittstelle nimmt nur eine
+Archivnummer entgegen und erzeugt daraus selbst den fest definierten lesenden
+`/direct/35`-Request. Beliebige Hex-Befehle können darüber nicht gesendet
+werden. Der technisch mögliche Ein-Byte-Bereich 1 bis 255 ist dabei keine
+bestätigte Aussage zur tatsächlichen Anzahl der Archivplätze. Die produktive
+Scan-Grenze bleibt bis zur kontrollierten Untersuchung unverändert.
 
 ## Historienstatistik
 
@@ -483,7 +483,7 @@ Assistant ausführbar. Version 0.13.0 umfasst 424 automatisierte Tests.
 
 ## Werkzeuge
 
-- `tools/history_importer_v1_0_2.py`: lokale Historie importieren
+- `tools/history_importer_v1_0_3.py`: lokale Historie importieren
 - `tools/history_statistics_v1_2_0.py`: Gesamt-, Monats- und Saisonstatistik
 - `tools/history_audit_v1_0_0.py`: Historie und Diagnoseablage prüfen
 - `tools/history_backup_v1_0_0.py`: Historie sichern, prüfen und restaurieren

@@ -3,66 +3,49 @@
 
 """Tests für den lokalen Historien-Importer."""
 
-import unittest
-from unittest.mock import patch
+from __future__ import annotations
 
-from tools.history_importer_v1_0_2 import (
-    build_archive_command,
-    read_archive,
+import unittest
+from unittest.mock import ANY, patch
+
+from protocol.archive import ArchiveClient
+from tools.history_importer_v1_0_3 import (
+    REQUEST_TIMEOUT,
+    WIFIRE_LIVE_URL,
+    create_archive_client,
 )
 
 
 class HistoryImporterTests(unittest.TestCase):
-    def test_archive_command_is_built_correctly(self) -> None:
-        self.assertEqual(
-            build_archive_command(1),
-            "aacc3355023501ffff",
-        )
-        self.assertEqual(
-            build_archive_command(23),
-            "aacc3355023517ffff",
+    def test_client_uses_shared_read_only_archive_transport(self) -> None:
+        client = create_archive_client(
+            retries=4,
+            retry_delay=2.5,
         )
 
-    def test_invalid_archive_number_is_rejected(self) -> None:
-        with self.assertRaises(ValueError):
-            build_archive_command(0)
+        self.assertIsInstance(client, ArchiveClient)
+        self.assertEqual(client.live_url, WIFIRE_LIVE_URL)
+        self.assertEqual(client.request_timeout, REQUEST_TIMEOUT)
+        self.assertEqual(client.retry_count, 4)
+        self.assertEqual(client.retry_delay_seconds, 2.5)
+        self.assertEqual(
+            client.archive_url,
+            "http://192.168.0.1/direct/35",
+        )
 
-        with self.assertRaises(ValueError):
-            build_archive_command(256)
-
-    def test_oserror_is_retried(self) -> None:
-        with (
-            patch(
-                "tools.history_importer_v1_0_2.urlopen",
-                side_effect=OSError("Netzwerkfehler"),
-            ) as opener,
-            patch("tools.history_importer_v1_0_2.time.sleep") as sleeper,
-        ):
-            with self.assertRaises(RuntimeError):
-                read_archive(1, retries=2, retry_delay=0.25)
-
-        self.assertEqual(opener.call_count, 2)
-        sleeper.assert_called_once_with(0.25)
-
-    def test_invalid_payload_is_reported_as_read_failure(self) -> None:
-        with patch("tools.history_importer_v1_0_2.urlopen") as opener:
-            response = opener.return_value.__enter__.return_value
-            response.read.return_value = b"{}"
-
-            with self.assertRaises(RuntimeError):
-                read_archive(1, retries=1, retry_delay=0)
-
-        opener.assert_called_once()
-
-    def test_programming_error_is_not_retried(self) -> None:
+    def test_factory_delegates_configuration_to_archive_client(self) -> None:
         with patch(
-            "tools.history_importer_v1_0_2.urlopen",
-            side_effect=AttributeError("Programmierfehler"),
-        ) as opener:
-            with self.assertRaises(AttributeError):
-                read_archive(1, retries=3, retry_delay=0)
+            "tools.history_importer_v1_0_3.ArchiveClient"
+        ) as client_type:
+            create_archive_client(retries=2, retry_delay=0.25)
 
-        opener.assert_called_once()
+        client_type.assert_called_once_with(
+            live_url=WIFIRE_LIVE_URL,
+            request_timeout=REQUEST_TIMEOUT,
+            retry_count=2,
+            retry_delay_seconds=0.25,
+            logger=ANY,
+        )
 
 
 if __name__ == "__main__":
