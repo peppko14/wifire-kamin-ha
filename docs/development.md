@@ -106,6 +106,10 @@ lesende Archivabfrage transportiert.
   Temperaturmesspunkte, keine Phasenwerte und ist als aktiv oder
   unvollständig markiert. Er beendet den adaptiven Scan, wird aber weder in
   die Historie noch in die Diagnoseablage übernommen.
+- Reale Golden Fixtures unter `tests/fixtures/` bleiben bytegenau
+  unverändert. Eine fest im Test verankerte SHA-256-Prüfsumme schützt sie vor
+  unbeabsichtigter Bearbeitung oder Zeilenumwandlung. Sie dürfen keine
+  Zugangsdaten enthalten.
 
 ## Netzwerk und Fehlerbehandlung
 

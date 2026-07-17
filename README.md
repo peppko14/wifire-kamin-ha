@@ -485,8 +485,8 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Der Entwicklungsstand für v0.14.0 umfasst nach der
-adaptiven Scan-Grenze 444 automatisierte Tests.
+Assistant ausführbar. Der Entwicklungsstand für v0.14.0 umfasst einschließlich
+des realen Archiv-Golden-Fixtures 447 automatisierte Tests.
 
 ## Werkzeuge
 
@@ -515,8 +515,8 @@ Mit v0.13.0 umgesetzt:
 Für spätere Versionen vorgesehen:
 
 - v0.14: gemeinsame ausschließlich lesende Archivschnittstelle, adaptive
-  Leerer-Platz-Grenze und kontrollierte Untersuchung oberhalb von Platz 23;
-  anschließend einen realen Rohmitschnitt als Golden Fixture aufnehmen
+  Leerer-Platz-Grenze, kontrollierte Untersuchung oberhalb von Platz 23 und
+  reales unveränderliches Archivtelegramm als Golden Fixture
 - Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
   Beendigungssignal unmittelbar abbrechen
 

@@ -479,6 +479,20 @@ für diese Tests nicht erforderlich.
 python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
+## Reales Archiv-Golden-Fixture
+
+`tests/fixtures/archive_complete_real.hex` enthält ein unverändertes, am
+Gerät gelesenes vollständiges 506-Byte-Archivtelegramm. Seine binäre
+SHA-256-Prüfsumme ist im Test fest verankert. Der Golden-Test schützt damit
+nicht nur ein synthetisch erzeugtes Paket, sondern die tatsächlich
+beobachteten Byte-Offsets für Archivnummer, Zeitstempel, Phasenwerte und 121
+Temperaturmesspunkte. Zusätzlich werden Dauer und stabile Burn-ID nach der
+Modellkonvertierung geprüft.
+
+Das Fixture enthält historische Zeit- und Temperaturdaten, aber keine
+Zugangsdaten oder frei sendbaren Gerätebefehle. Änderungen daran sind nur bei
+einer bewusst dokumentierten neuen Protokollbeobachtung zulässig.
+
 ## Nächste Ausbaustufen
 
 Für v0.13.0 sind robuste historische Medianreferenzen, saisonale Vergleiche,
@@ -488,6 +502,6 @@ zeitgestempelten Live-Reihe und dem historischen `sample_index` durch einen
 echten Abbrand bestätigt ist. Die fachlichen Regeln stehen in
 [`live-curve-comparison.md`](live-curve-comparison.md).
 
-Für v0.14.0 bleibt nach der gemeinsamen Archivleselogik, der kontrollierten
-Untersuchung oberhalb von Platz 23 und der adaptiven Leerer-Platz-Grenze noch
-die Aufnahme eines realen, unveränderlichen Golden Fixtures vorgesehen.
+Die Archivleselogik, Untersuchung oberhalb von Platz 23, adaptive
+Leerer-Platz-Grenze und das reale Golden Fixture bilden gemeinsam die
+Protokollgrundlage von v0.14.0.

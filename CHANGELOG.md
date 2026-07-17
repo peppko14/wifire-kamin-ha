@@ -53,6 +53,10 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   atomische Berichtsausgabe der Archivplatz-Probe getestet
 - Leerer-Platz-Erkennung, adaptiven Scanabbruch, fehlende Historien- und
   Diagnoseausgabe sowie technische Lesefehlergrenze getestet
+- Vollständiges reales 506-Byte-Archivtelegramm als unveränderliches Golden
+  Fixture mit fester SHA-256-Prüfsumme aufgenommen
+- Reale Byte-Offsets, Zeitstempel, fünf Phasenwerte, 121 Temperaturen,
+  Maximum, Dauer und stabile Burn-ID gegen das Golden Fixture abgesichert
 
 ## [0.13.0] - 2026-07-17
 
