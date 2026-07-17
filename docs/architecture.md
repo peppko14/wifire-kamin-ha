@@ -287,6 +287,12 @@ manuelle Vollimport. Beide behalten bewusst ihr unterschiedliches
 Scanverhalten: inkrementeller Abbruch bei einem bekannten Abbrand gegenüber
 vollständigem Lesen eines explizit gewählten Bereichs.
 
+Das separate Werkzeug `tools/archive_slot_probe_v1_0_0.py` verwendet den
+gleichen Transport, übernimmt seine Ergebnisse aber bewusst weder in die
+Historie noch in MQTT. Pro Lauf sind nur kleine, ausdrücklich angegebene
+Bereiche oberhalb des bislang bestätigten Platzes 23 zulässig. Rohantworten
+bleiben als private Diagnose unter `data/archive-probe/`.
+
 ### `history/ring_buffer.py`
 
 Definiert die Strategie für die bekannten Archivplätze 1 bis 23. Der Scan

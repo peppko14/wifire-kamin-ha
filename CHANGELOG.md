@@ -25,6 +25,12 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   migriert
 - Doppelte HTTP-, Retry- und Befehlslogik aus `history/sync.py`,
   `bridge/archive.py` und dem Importwerkzeug entfernt
+- Begrenztes Diagnosewerkzeug `archive_slot_probe_v1_0_0.py` für explizite
+  Archivbereiche oberhalb von Platz 23 ergänzt
+- Probe auf höchstens 16 sequenzielle Plätze und mindestens zehn Sekunden
+  Request-Abstand begrenzt
+- Private Rohantworten atomisch ausschließlich unter `data/archive-probe/`
+  gespeichert und nicht an Historie oder MQTT weitergegeben
 
 ### Tests
 
@@ -33,6 +39,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 - Ungültige Archivnummern werden vor einem Netzwerkzugriff abgewiesen
 - Bridge-Synchronisation und Importer-Client gegen die gemeinsame
   Archivschnittstelle geprüft
+- Sicherheitsgrenzen, Reihenfolge, Pausen, Fehlerisolation, Hashvergleich und
+  atomische Berichtsausgabe der Archivplatz-Probe getestet
 
 ## [0.13.0] - 2026-07-17
 
