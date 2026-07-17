@@ -70,6 +70,13 @@ Raspberry- beziehungsweise Handyzeit abweichen. Eine Zeitabweichung verändert
 nicht die Temperaturkurve, kann aber den gespeicherten Startzeitpunkt
 verschieben.
 
+Für die geprüfte Installation wurde bestätigt, dass die Zeitsynchronisation
+für die alten Einträge nicht durchgeführt wurde. Die Archiv- und Alarmliste
+teilen deshalb zwar dieselbe interne Zeitbasis, belegen aber nicht, dass die
+angezeigten Kalenderdaten aus 2017 real sind. Die zugehörigen Temperaturkurven
+bleiben fachlich nutzbar; ihre zeitliche Zuordnung bleibt mit
+`timestamp_uncertain` gekennzeichnet.
+
 Die Bridge synchronisiert die Steuerungszeit nicht. Eine Synchronisation darf
 nur bewusst über die offizielle App erfolgen. Eine spätere rein lesende
 Plausibilitätsprüfung benötigt zunächst den zugehörigen Leseaufruf der App.

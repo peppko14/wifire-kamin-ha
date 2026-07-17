@@ -121,7 +121,10 @@ def validate_burn_record(record: BurnRecord) -> QualityReport:
             _issue(
                 "timestamp_uncertain",
                 QualitySeverity.WARNING,
-                "Der Zeitstempel liegt vor dem verlässlichen Zeitraum.",
+                (
+                    "Der Zeitstempel stammt aus einem Zeitraum ohne "
+                    "belegte Zeitsynchronisation der Steuerung."
+                ),
             )
         )
 
