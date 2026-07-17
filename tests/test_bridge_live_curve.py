@@ -15,6 +15,7 @@ from pathlib import Path
 from bridge.live_curve import (
     LIVE_CURVE_SCHEMA_VERSION,
     LiveCurvePoint,
+    LiveCurveRecorder,
     LiveCurveSession,
     LiveCurveStorageError,
     create_default_live_curve_storage,
@@ -90,6 +91,13 @@ class LiveCurveModelTests(unittest.TestCase):
                 session_id="unsorted",
                 started_at=later.observed_at,
                 points=(later, earlier),
+            )
+
+    def test_session_id_rejects_path_characters(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unzulässige Zeichen"):
+            LiveCurveSession.start(
+                session_id="../outside",
+                point=self.first,
             )
 
 
@@ -181,6 +189,128 @@ class LiveCurveStorageTests(unittest.TestCase):
 
         self.assertFalse(self.storage.path.exists())
         self.assertIsNone(self.storage.load())
+
+
+class LiveCurveRecorderTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary_directory.cleanup)
+        self.project_dir = Path(self.temporary_directory.name)
+        self.storage = create_default_live_curve_storage(self.project_dir)
+        self.started_at = datetime(2026, 11, 4, 18, 30, tzinfo=UTC)
+        self.messages: list[str] = []
+
+    def create_recorder(
+        self,
+        *clock_values: datetime,
+        end_after_inactive_samples: int = 3,
+    ) -> LiveCurveRecorder:
+        clock = iter(clock_values)
+        return LiveCurveRecorder(
+            storage=self.storage,
+            active_temperature_c=40,
+            end_after_inactive_samples=end_after_inactive_samples,
+            clock=lambda: next(clock),
+            session_id_factory=lambda: "live-session-1",
+            logger=self.messages.append,
+        )
+
+    def test_cold_status_does_not_start_session(self) -> None:
+        recorder = self.create_recorder(self.started_at)
+
+        result = recorder.observe(live_status(temperature_c=39))
+
+        self.assertIsNone(result)
+        self.assertFalse(self.storage.path.exists())
+
+    def test_active_status_starts_and_persists_session(self) -> None:
+        recorder = self.create_recorder(self.started_at)
+
+        result = recorder.observe(live_status(temperature_c=40))
+
+        self.assertIsNotNone(result)
+        self.assertEqual(self.storage.load(), result)
+        self.assertIn("Live-Brennkurve gestartet", self.messages[0])
+
+    def test_active_status_appends_to_existing_session(self) -> None:
+        recorder = self.create_recorder(
+            self.started_at,
+            self.started_at + timedelta(seconds=10),
+        )
+
+        recorder.observe(live_status(temperature_c=80))
+        result = recorder.observe(live_status(temperature_c=90))
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(len(result.points), 2)
+        self.assertEqual(result.points[-1].temperature_c, 90)
+
+    def test_transient_cold_sample_does_not_end_session(self) -> None:
+        recorder = self.create_recorder(
+            self.started_at,
+            self.started_at + timedelta(seconds=10),
+            self.started_at + timedelta(seconds=20),
+            end_after_inactive_samples=2,
+        )
+
+        recorder.observe(live_status(temperature_c=80))
+        recorder.observe(live_status(temperature_c=35))
+        result = recorder.observe(live_status(temperature_c=45))
+
+        self.assertIsNotNone(result)
+        self.assertEqual(recorder.inactive_samples, 0)
+        self.assertTrue(self.storage.path.exists())
+
+    def test_consecutive_cold_samples_finalize_session(self) -> None:
+        recorder = self.create_recorder(
+            self.started_at,
+            self.started_at + timedelta(seconds=10),
+            self.started_at + timedelta(seconds=20),
+            end_after_inactive_samples=2,
+        )
+
+        recorder.observe(live_status(temperature_c=80))
+        recorder.observe(live_status(temperature_c=35))
+        result = recorder.observe(live_status(temperature_c=34))
+
+        self.assertIsNone(result)
+        self.assertIsNone(recorder.current_session)
+        self.assertFalse(self.storage.path.exists())
+        completed = tuple(self.storage.completed_directory.glob("*.json"))
+        self.assertEqual(len(completed), 1)
+        payload = json.loads(completed[0].read_text(encoding="utf-8"))
+        self.assertEqual(payload["point_count"], 3)
+
+    def test_new_recorder_resumes_persisted_session(self) -> None:
+        first = self.create_recorder(self.started_at)
+        first.observe(live_status(temperature_c=80))
+        second = self.create_recorder(
+            self.started_at + timedelta(seconds=10)
+        )
+
+        result = second.observe(live_status(temperature_c=90))
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(len(result.points), 2)
+        self.assertTrue(
+            any("wiederaufgenommen" in message for message in self.messages)
+        )
+
+    def test_corrupted_snapshot_disables_only_curve_recording(self) -> None:
+        self.storage.path.parent.mkdir(parents=True)
+        self.storage.path.write_text("{broken", encoding="utf-8")
+        recorder = self.create_recorder(self.started_at)
+
+        result = recorder.observe(live_status(temperature_c=80))
+
+        self.assertIsNone(result)
+        self.assertFalse(recorder.enabled)
+        self.assertTrue(self.storage.path.exists())
+        self.assertTrue(
+            any("deaktiviert" in message for message in self.messages)
+        )
 
 
 if __name__ == "__main__":

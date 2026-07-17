@@ -1,6 +1,6 @@
 # Laufende und historische Brennkurvenvergleiche
 
-Dokumentversion: 1.4.0
+Dokumentversion: 1.5.0
 
 Dieses Dokument definiert den fachlichen Zielzustand für v0.13.0. Es ist eine
 Spezifikation und nimmt noch keine unbestätigte Zuordnung zwischen Live- und
@@ -8,7 +8,7 @@ Archivmesspunkten vorweg.
 
 ## Implementierungsstand
 
-Mit den Commits 2 bis 6 von v0.13.0 sind folgende Grundlagen umgesetzt:
+Mit den Commits 2 bis 7 von v0.13.0 sind folgende Grundlagen umgesetzt:
 
 - punktweise Mediankurve zusätzlich zum bestehenden Durchschnitt,
 - eigener realer Referenzabbrand mit kleinstem RMSE zur Mediankurve,
@@ -24,12 +24,17 @@ Mit den Commits 2 bis 6 von v0.13.0 sind folgende Grundlagen umgesetzt:
 - versioniertes Modell für zeitgestempelte Live-Messpunkte und Sitzungen,
 - atomische Ablage des laufenden Zwischenstands unter
   `data/live-curve/current.json`,
-- strenge Wiederaufnahme und Validierung des Zwischenstands nach Neustart.
+- strenge Wiederaufnahme und Validierung des Zwischenstands nach Neustart,
+- automatischer Sitzungsstart an der bestehenden Aktivtemperatur,
+- konfigurierbare Ende-Hysterese über aufeinanderfolgende kalte Messungen,
+- Wiederaufnahme einer laufenden und getrennte Ablage einer abgeschlossenen
+  Live-Sitzung,
+- lokale Erfassung vor der MQTT-Veröffentlichung.
 
 Die bisher verwendeten Dashboard-Schlüssel bleiben für bestehende Karten
-erhalten. Commit 6 stellt Datenmodell und Speicherung bereit. Die
-Start-/Ende-Erkennung, Verdrahtung in die Laufzeit und MQTT-Veröffentlichung
-werden in den folgenden Commits ergänzt.
+erhalten. Commit 7 verdrahtet Start, Fortschreibung und Ende mit jeder
+erfolgreichen Live-Abfrage. Die getrennte MQTT-Veröffentlichung wird im
+folgenden Commit ergänzt.
 
 ## Ziele
 
@@ -124,6 +129,12 @@ nicht stillschweigend als gültige Sitzung fortgesetzt.
 Eine Live-Sitzung und ein später aus dem Ringpuffer importierter Abbrand sind
 zunächst getrennte Datensätze. Eine automatische Zusammenführung benötigt
 eine deterministische Zuordnungsregel und passende Tests.
+
+Der Sitzungsstart verwendet dieselbe Aktivtemperatur wie das adaptive
+Polling. Das Ende wird erst nach standardmäßig drei aufeinanderfolgenden
+Messungen unter dieser Schwelle bestätigt. Abgeschlossene Live-Sitzungen
+bleiben unter `data/live-curve/completed/` für den späteren Praxistest
+erhalten.
 
 ## Achsengrenze
 

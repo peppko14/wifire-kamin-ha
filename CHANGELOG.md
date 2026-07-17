@@ -15,6 +15,12 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   gespeichert und nach einem Prozessneustart wieder ladbar gemacht
 - Live-Temperatur, Geräte-Abbrennzeit, Statusbyte, Klappenstellung und
   Türzustand je Messpunkt getrennt von der historischen Archivachse erfasst
+- Lokale Live-Sitzung ab der bestehenden Aktivtemperatur automatisch
+  gestartet und nach konfigurierbar vielen kalten Messungen abgeschlossen
+- Laufende Sitzung nach Prozessneustart fortgesetzt und abgeschlossene
+  Live-Sitzungen getrennt unter `data/live-curve/completed/` aufbewahrt
+- Live-Messpunkte vor der MQTT-Veröffentlichung lokal gespeichert, sodass ein
+  MQTT-Ausfall die laufende Kurve nicht verhindert
 - Aktuelle und zwei vorherige Heizsaisons als feste, vergleichbare
   Kurvenmomentaufnahme ergänzt
 - Für jede ausreichend große Heizsaison eine eigene Mediankurve und einen
@@ -68,6 +74,10 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   Brennkurven-Zwischenstände
 - Wiederaufnahme nach Neustart sowie erkennbare beschädigte und inkonsistente
   Live-Kurven-Dateien
+- Start an der Temperaturschwelle, Hysterese durch mehrere kalte Messungen,
+  Fortsetzung einer gespeicherten Sitzung und getrennte Finalisierung
+- Speicherfehler deaktivieren nur die Kurvenerfassung und überschreiben keine
+  beschädigte Zwischenstandsdatei
 - Abwärtskompatible Schlüssel und Dashboard-Schema-Version 2
 - Median-, letzter-Abbrand- und optionale Referenzreihen
 - Drei saisonale Einträge einschließlich `not_evaluable`

@@ -44,11 +44,13 @@ if "config" not in sys.modules:
 
 from bridge.application import (
     BridgeApplication,
+    LiveStateHandler,
     RunningState,
     build_archive_sync_settings,
     create_application,
     refresh_history_outputs,
 )
+from protocol.models import LiveStatus
 
 
 class FakeConnection:
@@ -84,6 +86,38 @@ class FakeReporter:
         if self.error is not None:
             raise self.error
         return None
+
+
+def live_status() -> LiveStatus:
+    return LiveStatus(
+        temperature_c=80,
+        flap_percent=75,
+        flap_moving=False,
+        burn_hours=0,
+        burn_minutes=12,
+        burn_total_minutes=12,
+        door_open=False,
+        fan_raw=1,
+        status_raw=32,
+        raw="aacc3355",
+    )
+
+
+class LiveStateHandlerTests(unittest.TestCase):
+    def test_state_is_remembered_before_curve_is_recorded(self) -> None:
+        calls: list[tuple[str, LiveStatus]] = []
+        state = live_status()
+        memory = types.SimpleNamespace(
+            remember_state=lambda value: calls.append(("memory", value))
+        )
+        recorder = types.SimpleNamespace(
+            observe=lambda value: calls.append(("curve", value))
+        )
+        handler = LiveStateHandler(memory, recorder)
+
+        handler(state)
+
+        self.assertEqual(calls, [("memory", state), ("curve", state)])
 
 
 class RunningStateTests(unittest.TestCase):
@@ -297,6 +331,11 @@ class ApplicationAssemblyTests(unittest.TestCase):
         self.assertIs(runtime.logger, logger)
         self.assertIs(runtime.live_poller.logger, logger)
         self.assertIs(runtime.archive_synchronizer.logger, logger)
+        self.assertIs(runtime.on_state.curve_recorder.logger, logger)
+        self.assertEqual(
+            runtime.on_state.curve_recorder.storage.path,
+            Path("data/live-curve/current.json").resolve(),
+        )
         self.assertIs(captured["connection_logger"], logger)
         self.assertIs(captured["storage_logger"], logger)
         self.assertIs(captured["statistics_logger"], logger)
