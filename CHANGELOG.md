@@ -7,6 +7,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-07-17
+
 ### Archivprotokoll
 
 - Gemeinsamen, ausschließlich lesenden Archivclient unter

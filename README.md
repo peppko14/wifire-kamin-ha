@@ -505,20 +505,26 @@ des realen Archiv-Golden-Fixtures 447 automatisierte Tests.
 
 ## Roadmap
 
-Mit v0.13.0 umgesetzt:
+Mit v0.14.0 umgesetzt:
 
 - robuste Medianreferenz und saisonale Kurvenvergleiche
 - Vergleich des letzten abgeschlossenen Abbrands mit historischen Referenzen
 - getrennte laufende Brennkurve mit atomischem Zwischenstand und eigener
   Home-Assistant-Live-Entität
+- gemeinsame ausschließlich lesende Archivschnittstelle für Bridge,
+  Vollimport und Diagnosewerkzeug
+- adaptive Ringpuffer-Synchronisation bis zum ersten leeren oder bereits
+  bekannten Archivplatz
+- kontrollierte Untersuchung oberhalb von Platz 23 und Bestätigung der
+  adressierbaren, derzeit leeren Plätze 24 bis 30
+- unveränderliches reales Archivtelegramm als Golden Fixture
 
 Für spätere Versionen vorgesehen:
 
-- v0.14: gemeinsame ausschließlich lesende Archivschnittstelle, adaptive
-  Leerer-Platz-Grenze, kontrollierte Untersuchung oberhalb von Platz 23 und
-  reales unveränderliches Archivtelegramm als Golden Fixture
 - Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
   Beendigungssignal unmittelbar abbrechen
+- Backlog: Zuordnung zwischen Live-Zeitachse und historischem
+  `sample_index` beim nächsten echten Abbrand fachlich bestätigen
 
 Die Sicherheitsgrenzen und der Ablauf der Untersuchung oberhalb von Platz 23
 sind in [`docs/archive-slot-probe.md`](docs/archive-slot-probe.md)

@@ -2,7 +2,7 @@
 
 Dokumentversion: 1.13.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.13.0
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.14.0
 
 ## Ziele
 
@@ -495,13 +495,14 @@ einer bewusst dokumentierten neuen Protokollbeobachtung zulässig.
 
 ## Nächste Ausbaustufen
 
-Für v0.13.0 sind robuste historische Medianreferenzen, saisonale Vergleiche,
-die Erfassung einer laufenden Brennkurve und eine getrennte Live-Darstellung
-geplant. Eine Live-Bewertung bleibt gesperrt, bis die Zuordnung zwischen der
-zeitgestempelten Live-Reihe und dem historischen `sample_index` durch einen
-echten Abbrand bestätigt ist. Die fachlichen Regeln stehen in
+Historische Medianreferenzen, saisonale Vergleiche, laufende Brennkurve und
+getrennte Live-Darstellung sind umgesetzt. Die Live-Bewertung bleibt jedoch
+gesperrt, bis die Zuordnung zwischen der zeitgestempelten Live-Reihe und dem
+historischen `sample_index` durch einen echten Abbrand bestätigt ist. Die
+fachlichen Regeln stehen in
 [`live-curve-comparison.md`](live-curve-comparison.md).
 
-Die Archivleselogik, Untersuchung oberhalb von Platz 23, adaptive
-Leerer-Platz-Grenze und das reale Golden Fixture bilden gemeinsam die
-Protokollgrundlage von v0.14.0.
+Die gemeinsame Archivleselogik, Untersuchung oberhalb von Platz 23, adaptive
+Leerer-Platz-Grenze und das reale Golden Fixture bilden die abgeschlossene
+Protokollgrundlage von v0.14.0. Als technisches Backlog bleiben unmittelbar
+abbrechbare Archiv- und Retry-Wartezeiten bestehen.
