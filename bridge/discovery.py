@@ -130,6 +130,16 @@ def build_discovery_payload(
             "entity_category": "diagnostic",
             "icon": "mdi:valve",
         },
+        f"{config.DEVICE_ID}_live_curve": {
+            "platform": "sensor",
+            "name": "Laufende Brennkurve",
+            "unique_id": f"{config.DEVICE_ID}_live_curve",
+            "state_topic": topics.live_curve,
+            "value_template": "{{ value_json.status }}",
+            "json_attributes_topic": topics.live_curve,
+            "entity_category": "diagnostic",
+            "icon": "mdi:chart-line",
+        },
     }
 
     live_component_ids = [
@@ -139,6 +149,7 @@ def build_discovery_payload(
         f"{config.DEVICE_ID}_burn_minutes",
         f"{config.DEVICE_ID}_door",
         f"{config.DEVICE_ID}_flap_moving",
+        f"{config.DEVICE_ID}_live_curve",
     ]
 
     if config.ENABLE_FAN_ENTITY:

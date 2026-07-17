@@ -145,6 +145,9 @@ Der Recorder startet an der bestehenden Aktivtemperatur, verwendet mehrere
 aufeinanderfolgende kalte Messungen als Ende-Hysterese und verschiebt
 abgeschlossene Sitzungen nach `data/live-curve/completed/`. Speicherfehler
 werden isoliert; MQTT- und Live-Statusverarbeitung laufen weiter.
+Für Home Assistant entsteht eine getrennte, nicht-retained Momentaufnahme
+mit Zeitstempelachse. Sie ist auf 121 Punkte und 16 KiB begrenzt und verwendet
+die Live-Verfügbarkeit einschließlich Ablaufzeit.
 
 ### `bridge/statistics.py`
 

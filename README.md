@@ -219,6 +219,7 @@ Entitäten für:
 - Luftklappenstellung und Bewegung
 - Türstatus
 - Abbrenndauer
+- laufende, zeitgestempelte Brennkurve als Diagnoseentität
 - Verfügbarkeit
 - drei aktuelle Archivplätze als Diagnoseentitäten
 - Anzahl berücksichtigter historischer Abbrände
@@ -238,8 +239,8 @@ Ein Eintrag in `configuration.yaml` ist nicht erforderlich.
 
 Nur die Live-Entitäten verwenden die MQTT-Verfügbarkeit der Bridge. Wird die
 Bridge beendet oder der Raspberry ausgeschaltet, zeigt Home Assistant daher
-Temperatur, Luftklappe, Tür, Abbrenndauer und den optionalen Lüfter als
-**nicht verfügbar** an.
+Temperatur, Luftklappe, Tür, Abbrenndauer, laufende Brennkurve und den
+optionalen Lüfter als **nicht verfügbar** an.
 
 Zusätzlich besitzen diese Live-Entitäten eine Ablaufzeit. Bleibt eine neue
 Live-Nachricht aus, markiert Home Assistant die Werte nach standardmäßig drei
@@ -416,9 +417,12 @@ eine gemeinsame retained Diagnoseentität bereit. Ein Beispiel für ein
 interaktives Diagramm steht in
 [`docs/home-assistant-dashboard.md`](docs/home-assistant-dashboard.md).
 
-Die lokale Erfassung laufender Brennkurven ist vorbereitet und in die
-erfolgreichen Live-Abfragen eingebunden. Die noch folgende MQTT-Darstellung,
-Live-Vergleiche und neutralen Bewertungsbegriffe sind in
+Die lokale Erfassung laufender Brennkurven ist in die erfolgreichen
+Live-Abfragen eingebunden. Home Assistant erhält dafür eine getrennte
+nicht-retained Diagnoseentität mit Zeitzonen-Zeitstempeln und Temperaturen.
+Lange Sitzungen werden gleichmäßig auf höchstens 121 veröffentlichte Punkte
+verdichtet; die vollständige lokale Sitzung bleibt unverändert. Die noch
+folgenden Live-Vergleiche und neutralen Bewertungsbegriffe sind in
 [`docs/live-curve-comparison.md`](docs/live-curve-comparison.md) spezifiziert.
 
 ## Betriebsresilienz

@@ -56,6 +56,13 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Home Assistant
 
+- Eigene Diagnoseentität `Laufende Brennkurve` auf einem getrennten
+  nicht-retained MQTT-Topic ergänzt
+- Laufende Kurve an Live-Verfügbarkeit und `LIVE_EXPIRE_AFTER` gebunden,
+  damit eine alte Sitzung nicht als aktueller Kaminzustand erscheint
+- Zeitgestempelte Live-Kurve gleichmäßig auf höchstens 121 veröffentlichte
+  Punkte und insgesamt 16 KiB begrenzt
+- Inaktiven Zustand ausdrücklich mit leeren Kurvenarrays veröffentlicht
 - Retained Brennkurven-Momentaufnahme auf Dashboard-Schema 2 angehoben
 - Bestehende Reihen `average`, `representative` und `hottest` kompatibel
   beibehalten
@@ -70,6 +77,10 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Getestet
 
+- Eigenes Live-Kurven-Topic, Discovery-Availability, Ablaufzeit und
+  nicht-retained Veröffentlichung
+- Begrenzung langer Live-Sitzungen auf 121 Punkte bei Erhalt des ersten und
+  letzten Messpunkts sowie Einhaltung der 16-KiB-Grenze
 - Roundtrip, Schema-Validierung und atomischer Austausch laufender
   Brennkurven-Zwischenstände
 - Wiederaufnahme nach Neustart sowie erkennbare beschädigte und inkonsistente

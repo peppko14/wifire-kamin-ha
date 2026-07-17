@@ -113,11 +113,23 @@ class LiveStateHandlerTests(unittest.TestCase):
         recorder = types.SimpleNamespace(
             observe=lambda value: calls.append(("curve", value))
         )
-        handler = LiveStateHandler(memory, recorder)
+        publisher = types.SimpleNamespace(
+            publish_live_curve=lambda value: calls.append(
+                ("publish", state)
+            )
+        )
+        handler = LiveStateHandler(memory, recorder, publisher)
 
         handler(state)
 
-        self.assertEqual(calls, [("memory", state), ("curve", state)])
+        self.assertEqual(
+            calls,
+            [
+                ("memory", state),
+                ("curve", state),
+                ("publish", state),
+            ],
+        )
 
 
 class RunningStateTests(unittest.TestCase):
@@ -332,6 +344,7 @@ class ApplicationAssemblyTests(unittest.TestCase):
         self.assertIs(runtime.live_poller.logger, logger)
         self.assertIs(runtime.archive_synchronizer.logger, logger)
         self.assertIs(runtime.on_state.curve_recorder.logger, logger)
+        self.assertIs(runtime.on_state.curve_publisher, publisher)
         self.assertEqual(
             runtime.on_state.curve_recorder.storage.path,
             Path("data/live-curve/current.json").resolve(),
