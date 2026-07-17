@@ -1,6 +1,6 @@
 # Architektur
 
-Dokumentversion: 1.12.0
+Dokumentversion: 1.13.0
 
 Projektstand: WiFire-Kamin Home Assistant Bridge v0.13.0
 
@@ -75,6 +75,26 @@ wifire-kamin-ha/
 ├── VERSION
 └── CHANGELOG.md
 ```
+
+## Protokoll
+
+### `protocol/archive.py`
+
+Kapselt den gemeinsamen, ausschließlich lesenden Transport für rohe
+Archivtelegramme. Aufrufer übergeben nur eine Archivnummer; URL und der fest
+definierte `/direct/35`-Lesebefehl werden intern erzeugt. Die Schnittstelle
+akzeptiert bewusst keine beliebigen Hex-Befehle.
+
+Die Archivnummer besitzt im bekannten Telegramm genau ein Byte. Deshalb
+validiert das Modul technisch den Bereich 1 bis 255. Das ist keine Aussage
+darüber, wie viele Plätze die konkrete WiFire-Firmware tatsächlich speichert.
+Die bislang produktiv verwendete und beobachtete Scan-Grenze bleibt davon
+getrennt. Transport- und ungültige Antwortdaten werden begrenzt wiederholt;
+Programmierfehler werden nicht als Netzwerkfehler maskiert.
+
+In diesem ersten v0.14-Schritt ist die gemeinsame Schicht unabhängig getestet.
+Produktive Bridge und manueller Importer werden erst im folgenden Commit auf
+dieselbe Implementierung umgestellt.
 
 ## Bridge
 

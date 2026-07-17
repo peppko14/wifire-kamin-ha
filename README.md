@@ -305,6 +305,14 @@ Neue vollständige Abbrände werden zuerst atomisch lokal gespeichert. Erst
 danach folgt die optionale MQTT-Veröffentlichung. Ein MQTT-Ausfall kann daher
 keinen bereits gelesenen Abbrand aus der lokalen Historie entfernen.
 
+Für v0.14 wird die Gerätekommunikation schrittweise in
+`protocol/archive.py` vereinheitlicht. Die neue Schnittstelle nimmt nur eine
+Archivnummer entgegen und erzeugt daraus selbst den fest definierten
+lesenden `/direct/35`-Request. Beliebige Hex-Befehle können darüber nicht
+gesendet werden. Der technisch mögliche Ein-Byte-Bereich 1 bis 255 ist dabei
+keine bestätigte Aussage zur tatsächlichen Anzahl der Archivplätze. Die
+produktive Scan-Grenze bleibt bis zur kontrollierten Untersuchung unverändert.
+
 ## Historienstatistik
 
 Die Statistik wird aus den lokalen JSON-Dateien berechnet. Sie benötigt
@@ -497,8 +505,9 @@ Mit v0.13.0 umgesetzt:
 
 Für spätere Versionen vorgesehen:
 
-- v0.14: Archivplätze oberhalb 23 lesend untersuchen, reales Golden Fixture,
-  gemeinsame Vollimportlogik und weiter vereinheitlichte Protokollschnittstelle
+- v0.14: gemeinsame ausschließlich lesende Archivschnittstelle, danach Bridge
+  und Vollimport darauf umstellen, Archivplätze oberhalb 23 kontrolliert
+  untersuchen und einen realen Rohmitschnitt als Golden Fixture aufnehmen
 - Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
   Beendigungssignal unmittelbar abbrechen
 
