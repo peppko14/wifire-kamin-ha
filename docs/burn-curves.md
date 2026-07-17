@@ -1,6 +1,6 @@
 # Digitale Brennkurven
 
-Dokumentversion: 1.3.0
+Dokumentversion: 1.4.0
 
 Die lokale Schema-2-Historie enthält den vollständigen Temperaturverlauf
 jeder abgeschlossenen Verbrennung. Seit Version 0.12.0 stellt die Bridge
@@ -71,6 +71,19 @@ Der Vergleich liefert noch keine fachliche Einordnung als `typisch` oder
 `auffällig`. Dafür fehlen bewusst noch dokumentierte und konfigurierbare
 Grenzwerte.
 
+## Vergleich der Heizsaisons
+
+Die Kurvenanalyse erzeugt immer die aktuelle und die beiden vorherigen
+Heizsaisons in fester Reihenfolge. Für jede Saison wird aus den geeigneten
+Abbränden eine eigene Mediankurve sowie ein realer Median-Referenzabbrand
+bestimmt.
+
+Leere oder zu kleine Saisons bleiben mit `not_evaluable` sichtbar und werden
+nicht durch Daten aus anderen Zeiträumen ersetzt. Alle drei Saisons verwenden
+dieselbe Messpunktanzahl. Treten ohne expliziten Filter unterschiedliche
+Anzahlen auf, wird der Vergleich abgewiesen statt Kurven zu kürzen oder
+aufzufüllen.
+
 ## Heißester Abbrand
 
 Die Kurve mit der höchsten Einzeltemperatur wird getrennt als
@@ -131,9 +144,10 @@ Assistant weiterlaufen.
 
 Version 0.13.0 ergänzt schrittweise Medianreferenzen, saisonale Gruppen, den
 letzten abgeschlossenen Abbrand und eine getrennte laufende Live-Kurve. Die
-Medianberechnung, Referenzgruppenauswahl und der selbstbezugfreie Vergleich
-des letzten Abbrands sind bereits implementiert. Die Live-Reihe besitzt
-eigene Beobachtungszeitpunkte und darf nicht
+Medianberechnung, Referenzgruppenauswahl, der selbstbezugfreie Vergleich des
+letzten Abbrands und drei rollierende saisonale Mediananalysen sind bereits
+implementiert. Die Live-Reihe besitzt eigene Beobachtungszeitpunkte und darf
+nicht
 stillschweigend mit dem historischen `sample_index` gleichgesetzt werden.
 Details, noch offene Schritte und Freigaberegeln stehen in
 [`live-curve-comparison.md`](live-curve-comparison.md).

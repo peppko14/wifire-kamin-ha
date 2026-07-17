@@ -1,6 +1,6 @@
 # Architektur
 
-Dokumentversion: 1.9.0
+Dokumentversion: 1.10.0
 
 Projektstand: WiFire-Kamin Home Assistant Bridge v0.12.5
 
@@ -53,6 +53,7 @@ wifire-kamin-ha/
 │   ├── curve_analysis.py
 │   ├── curve_reference.py
 │   ├── curve_comparison.py
+│   ├── curve_seasons.py
 │   └── curve_export.py
 ├── operations/
 │   └── diagnostics.py
@@ -303,6 +304,14 @@ vor der Referenzberechnung aus der historischen Vergleichsgruppe. Das Modul
 berechnet seinen RMSE zur Mediankurve und optional zu einem über die stabile
 `burn_id` ausgewählten realen Referenzabbrand. Ein Abbrand mit Warnstatus oder
 eine zu kleine Referenzgruppe ergeben ausdrücklich `not_evaluable`.
+
+### `history/curve_seasons.py`
+
+Erzeugt in fester Reihenfolge die aktuelle und zwei vorherige Heizsaisons.
+Jede ausreichend große Saison erhält eine eigene Mediananalyse und einen
+realen Median-Referenzabbrand. Leere oder zu kleine Saisons bleiben als
+`not_evaluable` sichtbar. Ein gemeinsamer Messpunktfilter verhindert
+scheinbar vergleichbare Kurven auf unterschiedlichen Achsen.
 
 ### `history/curve_export.py`
 

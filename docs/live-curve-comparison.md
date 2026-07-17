@@ -1,6 +1,6 @@
 # Laufende und historische Brennkurvenvergleiche
 
-Dokumentversion: 1.2.0
+Dokumentversion: 1.3.0
 
 Dieses Dokument definiert den fachlichen Zielzustand für v0.13.0. Es ist eine
 Spezifikation und nimmt noch keine unbestätigte Zuordnung zwischen Live- und
@@ -8,7 +8,7 @@ Archivmesspunkten vorweg.
 
 ## Implementierungsstand
 
-Mit den Commits 2 und 3 von v0.13.0 sind folgende historische Grundlagen
+Mit den Commits 2 bis 4 von v0.13.0 sind folgende historische Grundlagen
 umgesetzt:
 
 - punktweise Mediankurve zusätzlich zum bestehenden Durchschnitt,
@@ -18,11 +18,13 @@ umgesetzt:
 - expliziter Zustand `not_evaluable` bei einer zu kleinen Referenzgruppe,
 - letzter abgeschlossener Abbrand ohne Selbstbezug in der Referenzgruppe,
 - RMSE des letzten Abbrands zur Mediankurve,
-- optionaler Vergleich zu einem über `burn_id` ausgewählten Referenzabbrand.
+- optionaler Vergleich zu einem über `burn_id` ausgewählten Referenzabbrand,
+- eigene Mediananalyse für aktuelle und zwei vorherige Heizsaisons,
+- sichtbarer Zustand `not_evaluable` für leere oder zu kleine Saisons.
 
-Die MQTT-/Dashboard-Schemata, saisonale Vergleichsausgaben und die laufende
-Live-Erfassung werden erst in den folgenden Commits angepasst. Dadurch bleibt
-das bisherige Verhalten in diesem Schritt rückwärtskompatibel.
+Die MQTT-/Dashboard-Schemata und die laufende Live-Erfassung werden erst in
+den folgenden Commits angepasst. Dadurch bleibt das bisherige Verhalten in
+diesem Schritt rückwärtskompatibel.
 
 ## Ziele
 
@@ -95,7 +97,8 @@ Referenzgruppe gehören und darf nicht der letzte Abbrand selbst sein.
 Saisonvergleiche verwenden die bestehende Heizsaison vom 1. Juli bis zum
 30. Juni des Folgejahres. Jede Saison erhält ihre eigene Mediankurve und
 offengelegte Anzahl beitragender Abbrände. Leere Saisons erzeugen keine
-erfundene Kurve.
+erfundene Kurve. Die Momentaufnahme umfasst immer aktuelle, vorherige und
+vorvorherige Heizsaison in dieser Reihenfolge.
 
 ## Laufende Live-Kurve
 
