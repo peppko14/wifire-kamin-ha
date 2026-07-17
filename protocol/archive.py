@@ -24,6 +24,10 @@ class ArchiveReadError(RuntimeError):
     """Ein Archiv konnte nach allen Versuchen nicht gelesen werden."""
 
 
+class ArchiveReadCancelled(RuntimeError):
+    """Ein Archivzugriff wurde wegen eines Stoppsignals beendet."""
+
+
 class HttpResponse(Protocol):
     """Für die Archivantwort benötigte minimale Schnittstelle."""
 
@@ -45,6 +49,7 @@ class UrlOpener(Protocol):
 
 Sleeper = Callable[[int | float], None]
 Logger = Callable[[str], None]
+RunningCheck = Callable[[], bool]
 
 
 def open_url(
@@ -115,6 +120,7 @@ class ArchiveClient:
     sleeper: Sleeper = time.sleep
     opener: UrlOpener = open_url
     logger: Logger = print
+    is_running: RunningCheck = lambda: True
 
     def __post_init__(self) -> None:
         build_archive_url(self.live_url)
@@ -152,6 +158,12 @@ class ArchiveClient:
         last_error: OSError | ValueError | None = None
 
         for attempt in range(1, self.retry_count + 1):
+            if not self.is_running():
+                raise ArchiveReadCancelled(
+                    f"Archiv {number} wurde vor Versuch {attempt} "
+                    "kontrolliert abgebrochen."
+                )
+
             try:
                 request = build_archive_request(self.archive_url, number)
                 with self.opener(
@@ -183,6 +195,11 @@ class ArchiveClient:
                 )
                 if attempt < self.retry_count:
                     self.sleeper(self.retry_delay_seconds)
+                    if not self.is_running():
+                        raise ArchiveReadCancelled(
+                            f"Archiv {number} wurde während der "
+                            "Retry-Wartezeit kontrolliert abgebrochen."
+                        )
 
         raise ArchiveReadError(
             f"Archiv {number} konnte nach {self.retry_count} Versuchen "
