@@ -7,12 +7,12 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from history.manager import HistorySyncResult
 from history.sync import (
     ArchiveSyncSettings,
-    build_archive_command,
-    build_archive_url,
     synchronize_archives,
 )
 from protocol.models import BurnRecord
@@ -47,38 +47,51 @@ def burn(number: int, *, incomplete: bool = False) -> BurnRecord:
     )
 
 
+def empty_archive(number: int) -> SimpleNamespace:
+    return SimpleNamespace(
+        archive_number=number,
+        timestamp=None,
+        stage_90_minute=None,
+        stage_75_minute=None,
+        stage_50_minute=None,
+        stage_25_minute=None,
+        stage_0_minute=None,
+        temperatures=[],
+        active_or_incomplete=True,
+        raw="aacc3355",
+    )
+
+
+def archive_record(number: int) -> SimpleNamespace:
+    return SimpleNamespace(
+        archive_number=number,
+        timestamp=datetime(2026, 4, number, 20, 0),
+        stage_90_minute=5,
+        stage_75_minute=30,
+        stage_50_minute=60,
+        stage_25_minute=120,
+        stage_0_minute=180,
+        temperatures=[20, 100, 300],
+        active_or_incomplete=False,
+        raw="aacc3355",
+    )
+
+
 class ArchiveSyncTests(unittest.TestCase):
-    def settings(self, *, last: int = 3) -> ArchiveSyncSettings:
+    def settings(
+        self,
+        *,
+        first: int = 1,
+        last: int = 3,
+        max_read_errors: int = 3,
+    ) -> ArchiveSyncSettings:
         return ArchiveSyncSettings(
             live_url="http://192.168.0.1/direct/00",
-            first_archive=1,
+            first_archive=first,
             last_archive=last,
             archive_delay_seconds=10,
+            max_consecutive_read_errors=max_read_errors,
         )
-
-    def test_archive_url_is_derived_from_live_url(self) -> None:
-        self.assertEqual(
-            build_archive_url("http://192.168.0.1/direct/00"),
-            "http://192.168.0.1/direct/35",
-        )
-
-    def test_archive_url_preserves_host_and_port(self) -> None:
-        self.assertEqual(
-            build_archive_url("http://wifire.local:8080/direct/00"),
-            "http://wifire.local:8080/direct/35",
-        )
-
-    def test_invalid_live_url_is_rejected(self) -> None:
-        with self.assertRaises(ValueError):
-            build_archive_url("192.168.0.1/direct/00")
-
-    def test_non_direct_url_is_rejected(self) -> None:
-        with self.assertRaises(ValueError):
-            build_archive_url("http://192.168.0.1/status/00")
-
-    def test_archive_command_is_correct(self) -> None:
-        self.assertEqual(build_archive_command(1), "aacc3355023501ffff")
-        self.assertEqual(build_archive_command(23), "aacc3355023517ffff")
 
     def test_settings_reject_invalid_range(self) -> None:
         with self.assertRaises(ValueError):
@@ -95,6 +108,37 @@ class ArchiveSyncTests(unittest.TestCase):
                 archive_delay_seconds=9.9,
             ).validate()
 
+    def test_default_reader_uses_shared_archive_client(self) -> None:
+        manager = FakeManager([result(existing=("id-1",))])
+
+        def sleeper(seconds: float) -> None:
+            pass
+
+        def logger(message: str) -> None:
+            pass
+
+        with patch("history.sync.ArchiveClient") as client_type:
+            client_type.return_value.read_raw.return_value = "1"
+
+            synchronize_archives(
+                manager,  # type: ignore[arg-type]
+                self.settings(last=1),
+                decoder=lambda raw: archive_record(int(raw)),
+                record_adapter=lambda record: burn(record.archive_number),
+                sleeper=sleeper,
+                logger=logger,
+            )
+
+        client_type.assert_called_once_with(
+            live_url="http://192.168.0.1/direct/00",
+            request_timeout=15,
+            retry_count=3,
+            retry_delay_seconds=10.0,
+            sleeper=sleeper,
+            logger=logger,
+        )
+        client_type.return_value.read_raw.assert_called_once_with(1)
+
     def test_new_records_are_saved_immediately_and_scan_continues(self) -> None:
         manager = FakeManager([
             result(imported=("id-1",)),
@@ -106,9 +150,9 @@ class ArchiveSyncTests(unittest.TestCase):
         sync = synchronize_archives(
             manager,  # type: ignore[arg-type]
             self.settings(last=2),
-            raw_reader=lambda url, number: calls.append(number) or str(number),
-            decoder=lambda raw: int(raw),
-            record_adapter=lambda number: burn(number),
+            raw_reader=lambda number: calls.append(number) or str(number),
+            decoder=lambda raw: archive_record(int(raw)),
+            record_adapter=lambda record: burn(record.archive_number),
             sleeper=sleeps.append,
             logger=lambda message: None,
         )
@@ -129,9 +173,9 @@ class ArchiveSyncTests(unittest.TestCase):
         sync = synchronize_archives(
             manager,  # type: ignore[arg-type]
             self.settings(last=3),
-            raw_reader=lambda url, number: calls.append(number) or str(number),
-            decoder=lambda raw: int(raw),
-            record_adapter=lambda number: burn(number),
+            raw_reader=lambda number: calls.append(number) or str(number),
+            decoder=lambda raw: archive_record(int(raw)),
+            record_adapter=lambda record: burn(record.archive_number),
             sleeper=sleeps.append,
             logger=lambda message: None,
         )
@@ -151,9 +195,12 @@ class ArchiveSyncTests(unittest.TestCase):
         sync = synchronize_archives(
             manager,  # type: ignore[arg-type]
             self.settings(last=2),
-            raw_reader=lambda url, number: str(number),
-            decoder=lambda raw: int(raw),
-            record_adapter=lambda number: burn(number, incomplete=True),
+            raw_reader=lambda number: str(number),
+            decoder=lambda raw: archive_record(int(raw)),
+            record_adapter=lambda record: burn(
+                record.archive_number,
+                incomplete=True,
+            ),
             sleeper=lambda seconds: None,
             logger=messages.append,
         )
@@ -161,10 +208,36 @@ class ArchiveSyncTests(unittest.TestCase):
         self.assertEqual(sync.sync_result.skipped_incomplete, 1)
         self.assertTrue(any("unvollständig" in message for message in messages))
 
+    def test_first_empty_slot_stops_without_diagnostic_or_delay(self) -> None:
+        manager = FakeManager([])
+        calls: list[int] = []
+        sleeps: list[float] = []
+
+        sync = synchronize_archives(
+            manager,  # type: ignore[arg-type]
+            self.settings(first=24, last=30),
+            raw_reader=lambda number: calls.append(number) or str(number),
+            decoder=lambda raw: empty_archive(int(raw)),
+            record_adapter=lambda record: self.fail(
+                "Ein leerer Platz darf nicht adaptiert werden."
+            ),
+            sleeper=sleeps.append,
+            logger=lambda message: None,
+        )
+
+        self.assertEqual(calls, [24])
+        self.assertEqual(sleeps, [])
+        self.assertEqual(manager.records, [])
+        self.assertEqual(sync.records_read, 0)
+        self.assertEqual(sync.empty_archives, 1)
+        self.assertTrue(sync.stopped_on_empty)
+        self.assertFalse(sync.stopped_on_existing)
+        self.assertEqual(sync.sync_result.skipped_incomplete, 0)
+
     def test_read_error_does_not_discard_already_saved_record(self) -> None:
         manager = FakeManager([result(imported=("id-1",))])
 
-        def reader(url: str, number: int) -> str:
+        def reader(number: int) -> str:
             if number == 2:
                 raise RuntimeError("WLAN unterbrochen")
             return str(number)
@@ -173,8 +246,8 @@ class ArchiveSyncTests(unittest.TestCase):
             manager,  # type: ignore[arg-type]
             self.settings(last=2),
             raw_reader=reader,
-            decoder=lambda raw: int(raw),
-            record_adapter=lambda number: burn(number),
+            decoder=lambda raw: archive_record(int(raw)),
+            record_adapter=lambda record: burn(record.archive_number),
             sleeper=lambda seconds: None,
             logger=lambda message: None,
         )
@@ -182,6 +255,28 @@ class ArchiveSyncTests(unittest.TestCase):
         self.assertEqual(sync.sync_result.imported_count, 1)
         self.assertEqual(sync.read_failures, 1)
         self.assertEqual(len(manager.records), 1)
+
+    def test_consecutive_read_error_limit_stops_the_scan(self) -> None:
+        manager = FakeManager([])
+        calls: list[int] = []
+        sleeps: list[float] = []
+
+        def reader(number: int) -> str:
+            calls.append(number)
+            raise RuntimeError("offline")
+
+        sync = synchronize_archives(
+            manager,  # type: ignore[arg-type]
+            self.settings(last=10, max_read_errors=3),
+            raw_reader=reader,
+            sleeper=sleeps.append,
+            logger=lambda message: None,
+        )
+
+        self.assertEqual(calls, [1, 2, 3])
+        self.assertEqual(sleeps, [10, 10])
+        self.assertEqual(sync.read_failures, 3)
+        self.assertTrue(sync.stopped_on_read_error_limit)
 
     def test_stop_request_prevents_the_next_archive_request(self) -> None:
         manager = FakeManager([result(imported=("id-1",))])
@@ -195,9 +290,9 @@ class ArchiveSyncTests(unittest.TestCase):
         synchronize_archives(
             manager,  # type: ignore[arg-type]
             self.settings(last=3),
-            raw_reader=lambda url, number: calls.append(number) or str(number),
-            decoder=lambda raw: int(raw),
-            record_adapter=lambda number: burn(number),
+            raw_reader=lambda number: calls.append(number) or str(number),
+            decoder=lambda raw: archive_record(int(raw)),
+            record_adapter=lambda record: burn(record.archive_number),
             sleeper=stop_during_delay,
             logger=lambda message: None,
             is_running=lambda: running,

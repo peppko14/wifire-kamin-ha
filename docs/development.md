@@ -71,7 +71,8 @@ lesende Archivabfrage transportiert.
 - MQTT-Client, Callbacks und Verbindungslebenszyklus gehören nach
   `bridge/mqtt_client.py`.
 - Live-Polling und Intervallwahl gehören nach `bridge/polling.py`.
-- Archivzugriff und -koordination gehören nach `bridge/archive.py` und
+- Die rohe Archivkommunikation gehört nach `protocol/archive.py`.
+- Archivkoordination und MQTT-Veröffentlichung gehören nach
   `bridge/archive_sync.py`.
 - Zeitplanung gehört nach `bridge/scheduler.py`.
 - Die zyklische Ablaufsteuerung gehört nach `bridge/runtime.py`.
@@ -96,6 +97,19 @@ lesende Archivabfrage transportiert.
   `data/history-incomplete/` und dürfen nicht in Statistiken einfließen.
 - Beobachtete Ringpuffergrenzen dürfen nicht als gesicherte Protokollgrenzen
   dokumentiert oder als fachliche Validierungsgrenze verwendet werden.
+- Archivschnittstellen akzeptieren Archivnummern und erzeugen den bekannten
+  lesenden Befehl intern; beliebige Hex-Befehle gehören nicht in produktive
+  APIs.
+- Der technisch durch ein Byte darstellbare Bereich 1 bis 255 ist getrennt
+  von der durch Tests bestätigten Scan-Grenze zu behandeln.
+- Ein eindeutig leerer Archivplatz besitzt keinen Startzeitpunkt, keine
+  Temperaturmesspunkte, keine Phasenwerte und ist als aktiv oder
+  unvollständig markiert. Er beendet den adaptiven Scan, wird aber weder in
+  die Historie noch in die Diagnoseablage übernommen.
+- Reale Golden Fixtures unter `tests/fixtures/` bleiben bytegenau
+  unverändert. Eine fest im Test verankerte SHA-256-Prüfsumme schützt sie vor
+  unbeabsichtigter Bearbeitung oder Zeilenumwandlung. Sie dürfen keine
+  Zugangsdaten enthalten.
 
 ## Netzwerk und Fehlerbehandlung
 
@@ -273,6 +287,11 @@ Konventionsprüfung stellt sicher, dass Werkzeugversion und Dateiname
 Eigenständige Werkzeuge unter `tools/` tragen ihre Version im Dateinamen
 und zusätzlich als `__version__` im Quellcode. Beide Angaben müssen
 übereinstimmen.
+
+Werkzeuge zur Protokolluntersuchung dürfen produktive Scan-Grenzen nicht
+stillschweigend erweitern. Sie müssen kleine explizite Bereiche, konservative
+Pausen, ausschließlich lesende Befehle und eine private Ausgabe unter
+`data/` erzwingen. Rohtelegramme dürfen nicht ungeprüft versioniert werden.
 
 ## Release-Prozess
 

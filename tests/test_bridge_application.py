@@ -222,7 +222,7 @@ class BridgeApplicationTests(unittest.TestCase):
 
 
 class ArchiveSettingsTests(unittest.TestCase):
-    def test_defaults_cover_the_complete_known_ring_buffer(self) -> None:
+    def test_defaults_use_the_technical_scan_limit(self) -> None:
         config = types.SimpleNamespace(
             WIFIRE_URL="http://192.0.2.1/direct/00"
         )
@@ -230,8 +230,9 @@ class ArchiveSettingsTests(unittest.TestCase):
         settings = build_archive_sync_settings(config)
 
         self.assertEqual(settings.first_archive, 1)
-        self.assertEqual(settings.last_archive, 23)
+        self.assertEqual(settings.last_archive, 255)
         self.assertEqual(settings.archive_delay_seconds, 10)
+        self.assertEqual(settings.max_consecutive_read_errors, 3)
         settings.validate()
 
     def test_explicit_archive_settings_are_preserved(self) -> None:
@@ -243,6 +244,7 @@ class ArchiveSettingsTests(unittest.TestCase):
             ARCHIVE_RETRY_COUNT=4,
             ARCHIVE_RETRY_DELAY=12,
             ARCHIVE_REQUEST_DELAY=15,
+            ARCHIVE_MAX_CONSECUTIVE_READ_ERRORS=2,
         )
 
         settings = build_archive_sync_settings(config)
@@ -253,6 +255,7 @@ class ArchiveSettingsTests(unittest.TestCase):
         self.assertEqual(settings.retry_count, 4)
         self.assertEqual(settings.retry_delay_seconds, 12)
         self.assertEqual(settings.archive_delay_seconds, 15)
+        self.assertEqual(settings.max_consecutive_read_errors, 2)
 
 
 class HistoryOutputRefreshTests(unittest.TestCase):

@@ -7,6 +7,59 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-07-17
+
+### Archivprotokoll
+
+- Gemeinsamen, ausschließlich lesenden Archivclient unter
+  `protocol/archive.py` ergänzt
+- Archiv-URL und bekannten `/direct/35`-Lesebefehl zentral aus Live-URL und
+  Archivnummer erzeugt
+- Beliebige Hex-Befehle aus der öffentlichen Archivschnittstelle
+  ausgeschlossen
+- JSON- und Hex-Antworten validiert sowie Transportfehler mit begrenzten
+  Wiederholungsversuchen behandelt
+- Technischen Ein-Byte-Adressraum von 1 bis 255 von der noch zu
+  untersuchenden tatsächlichen Gerätegrenze getrennt
+- Produktive Ringpuffer-Synchronisation auf den gemeinsamen Archivclient
+  umgestellt
+- Manuellen Historien-Importer als Version 1.1.0 auf denselben Client
+  migriert und auf einen adaptiven Scan umgestellt
+- Doppelte HTTP-, Retry- und Befehlslogik aus `history/sync.py`,
+  `bridge/archive.py` und dem Importwerkzeug entfernt
+- Begrenztes Diagnosewerkzeug `archive_slot_probe_v1_0_0.py` für explizite
+  Archivbereiche oberhalb von Platz 23 ergänzt
+- Probe auf höchstens 16 sequenzielle Plätze und mindestens zehn Sekunden
+  Request-Abstand begrenzt
+- Private Rohantworten atomisch ausschließlich unter `data/archive-probe/`
+  gespeichert und nicht an Historie oder MQTT weitergegeben
+- Archivplätze 24 bis 30 am realen Gerät als adressierbare, syntaktisch
+  gültige, aber derzeit leere 506-Byte-Telegramme bestätigt
+- Produktiven Scan und Vollimport auf eine technische Sicherheitsgrenze von
+  255 erweitert; der erste eindeutig leere Platz oder ein bereits bekannter
+  Abbrand beendet den Scan frühzeitig
+- Leere Plätze werden weder als unvollständige Abbrände noch als
+  Diagnosedateien gespeichert
+- Scan nach drei aufeinanderfolgenden Lesefehlern begrenzt, damit ein
+  getrenntes WiFire-WLAN keinen stundenlangen Lauf bis zur Sicherheitsgrenze
+  auslöst
+
+### Tests
+
+- URL-Ableitung, Befehlsbildung und vollständigen HTTP-Request geprüft
+- Antwortvalidierung, Retry-Verhalten und enge Exception-Grenzen getestet
+- Ungültige Archivnummern werden vor einem Netzwerkzugriff abgewiesen
+- Bridge-Synchronisation und Importer-Client gegen die gemeinsame
+  Archivschnittstelle geprüft
+- Sicherheitsgrenzen, Reihenfolge, Pausen, Fehlerisolation, Hashvergleich und
+  atomische Berichtsausgabe der Archivplatz-Probe getestet
+- Leerer-Platz-Erkennung, adaptiven Scanabbruch, fehlende Historien- und
+  Diagnoseausgabe sowie technische Lesefehlergrenze getestet
+- Vollständiges reales 506-Byte-Archivtelegramm als unveränderliches Golden
+  Fixture mit fester SHA-256-Prüfsumme aufgenommen
+- Reale Byte-Offsets, Zeitstempel, fünf Phasenwerte, 121 Temperaturen,
+  Maximum, Dauer und stabile Burn-ID gegen das Golden Fixture abgesichert
+
 ## [0.13.0] - 2026-07-17
 
 ### Brennkurvenanalyse
