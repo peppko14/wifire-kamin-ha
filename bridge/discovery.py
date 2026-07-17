@@ -187,6 +187,49 @@ def build_discovery_payload(
         "icon": "mdi:chart-multiple",
     }
 
+    device_diagnostic_components: dict[str, dict[str, object]] = {
+        "controller_time": {
+            "name": "Steuerungszeit",
+            "state_topic": topics.controller_diagnostics,
+            "value_template": "{{ value_json.controller_time }}",
+            "json_attributes_topic": topics.controller_diagnostics,
+            "device_class": "timestamp",
+            "icon": "mdi:clock-check-outline",
+        },
+        "controller_time_offset": {
+            "name": "Zeitabweichung Steuerung",
+            "state_topic": topics.controller_diagnostics,
+            "value_template": "{{ value_json.offset_minutes }}",
+            "unit_of_measurement": "min",
+            "state_class": "measurement",
+            "suggested_display_precision": 1,
+            "icon": "mdi:clock-alert-outline",
+        },
+        "heating_failure_latest": {
+            "name": "Letzter Heizfehler",
+            "state_topic": topics.heating_failures,
+            "value_template": (
+                "{{ value_json.latest_date or 'keiner' }}"
+            ),
+            "json_attributes_topic": topics.heating_failures,
+            "icon": "mdi:alert-circle-outline",
+        },
+        "heating_failure_count": {
+            "name": "Gespeicherte Heizfehler",
+            "state_topic": topics.heating_failures,
+            "value_template": "{{ value_json.count }}",
+            "icon": "mdi:counter",
+        },
+    }
+    for key, component in device_diagnostic_components.items():
+        component_id = f"{config.DEVICE_ID}_{key}"
+        components[component_id] = {
+            "platform": "sensor",
+            "unique_id": component_id,
+            "entity_category": "diagnostic",
+            **component,
+        }
+
     for number in archive_numbers:
         components[f"{config.DEVICE_ID}_archive_{number}"] = {
             "platform": "sensor",

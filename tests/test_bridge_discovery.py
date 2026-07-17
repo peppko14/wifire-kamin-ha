@@ -192,6 +192,8 @@ class DiscoveryTests(unittest.TestCase):
             if component_id.startswith("wifire_kamin_archive_")
             or component_id.startswith("wifire_kamin_statistics_")
             or component_id.startswith("wifire_kamin_period_")
+            or component_id.startswith("wifire_kamin_controller_")
+            or component_id.startswith("wifire_kamin_heating_failure_")
             or component_id == "wifire_kamin_dashboard_curves"
         }
 
@@ -202,6 +204,41 @@ class DiscoveryTests(unittest.TestCase):
             self.assertNotIn("payload_available", component)
             self.assertNotIn("payload_not_available", component)
             self.assertNotIn("expire_after", component)
+
+    def test_payload_contains_retained_device_diagnostics(self) -> None:
+        components = self.build_payload()["components"]
+        expected_topics = {
+            "wifire_kamin_controller_time": (
+                "wifire_kamin/wifire_kamin/controller_diagnostics"
+            ),
+            "wifire_kamin_controller_time_offset": (
+                "wifire_kamin/wifire_kamin/controller_diagnostics"
+            ),
+            "wifire_kamin_heating_failure_latest": (
+                "wifire_kamin/wifire_kamin/heating_failures"
+            ),
+            "wifire_kamin_heating_failure_count": (
+                "wifire_kamin/wifire_kamin/heating_failures"
+            ),
+        }
+
+        for component_id, topic in expected_topics.items():
+            component = components[component_id]
+            self.assertEqual(component["state_topic"], topic)
+            self.assertEqual(component["entity_category"], "diagnostic")
+            self.assertNotIn("availability_topic", component)
+            self.assertNotIn("expire_after", component)
+
+        self.assertEqual(
+            components["wifire_kamin_controller_time"]["device_class"],
+            "timestamp",
+        )
+        self.assertEqual(
+            components["wifire_kamin_controller_time_offset"][
+                "unit_of_measurement"
+            ],
+            "min",
+        )
 
     def test_payload_contains_dashboard_curve_component(self) -> None:
         components = self.build_payload()["components"]

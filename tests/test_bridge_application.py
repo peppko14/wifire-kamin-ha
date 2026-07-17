@@ -48,6 +48,7 @@ from bridge.application import (
     RunningState,
     build_archive_sync_settings,
     create_application,
+    refresh_archive_outputs,
     refresh_history_outputs,
 )
 from protocol.models import LiveStatus
@@ -276,6 +277,37 @@ class HistoryOutputRefreshTests(unittest.TestCase):
             any("Statistik defekt" in message for message in messages)
         )
 
+    def test_device_diagnostics_isolated_from_history_reporters(self) -> None:
+        statistics = FakeReporter(RuntimeError("Statistik defekt"))
+        dashboard = FakeReporter()
+        diagnostics = FakeReporter()
+
+        refresh_archive_outputs(
+            statistics,
+            dashboard,
+            diagnostics,
+            logger=lambda message: None,
+        )
+
+        self.assertEqual(statistics.calls, 1)
+        self.assertEqual(dashboard.calls, 1)
+        self.assertEqual(diagnostics.calls, 1)
+
+    def test_device_diagnostics_failure_does_not_escape(self) -> None:
+        diagnostics = FakeReporter(RuntimeError("Diagnose defekt"))
+        messages: list[str] = []
+
+        refresh_archive_outputs(
+            FakeReporter(),
+            FakeReporter(),
+            diagnostics,
+            logger=messages.append,
+        )
+
+        self.assertTrue(
+            any("Diagnose defekt" in message for message in messages)
+        )
+
 
 class ApplicationAssemblyTests(unittest.TestCase):
     def test_one_central_logger_is_injected_into_runtime_components(
@@ -311,6 +343,10 @@ class ApplicationAssemblyTests(unittest.TestCase):
             captured["dashboard_logger"] = kwargs["logger"]
             return FakeReporter()
 
+        def diagnostics_factory(*args: Any, **kwargs: Any) -> FakeReporter:
+            captured["diagnostics_logger"] = kwargs["logger"]
+            return FakeReporter()
+
         config = types.SimpleNamespace(
             LOG_LEVEL="DEBUG",
             DEVICE_ID="wifire_kamin",
@@ -333,6 +369,9 @@ class ApplicationAssemblyTests(unittest.TestCase):
         ), patch(
             "bridge.application.DashboardCurveReporter",
             side_effect=dashboard_factory,
+        ), patch(
+            "bridge.application.DeviceDiagnosticsReporter",
+            side_effect=diagnostics_factory,
         ):
             application = create_application(
                 config,
@@ -356,6 +395,7 @@ class ApplicationAssemblyTests(unittest.TestCase):
         self.assertIs(captured["storage_logger"], logger)
         self.assertIs(captured["statistics_logger"], logger)
         self.assertIs(captured["dashboard_logger"], logger)
+        self.assertIs(captured["diagnostics_logger"], logger)
 
 
 if __name__ == "__main__":

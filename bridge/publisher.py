@@ -144,3 +144,35 @@ class MqttPublisher:
             qos=1,
             retain=True,
         )
+
+    def publish_controller_diagnostics(
+        self,
+        payload: dict[str, object],
+    ) -> None:
+        """Veröffentlicht die gelesene Steuerungszeit retained."""
+        self.client.publish(
+            self.topics.controller_diagnostics,
+            payload=json.dumps(
+                payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            qos=1,
+            retain=True,
+        )
+
+    def publish_heating_failures(
+        self,
+        payload: dict[str, object],
+    ) -> None:
+        """Veröffentlicht die gelesene Heizfehlerliste retained."""
+        self.client.publish(
+            self.topics.heating_failures,
+            payload=json.dumps(
+                payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            qos=1,
+            retain=True,
+        )

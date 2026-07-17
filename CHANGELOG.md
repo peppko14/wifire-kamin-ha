@@ -7,6 +7,24 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Home Assistant
+
+- interne Steuerungszeit und signierte Abweichung zur Raspberry-Zeit als
+  eigene Diagnoseentitäten ergänzt
+- letzten sichtbaren Heizfehler, Anzahl und vollständige verifizierte Liste
+  als retained Diagnosewerte veröffentlicht
+- Gerätediagnose bewusst von Live-Verfügbarkeit und `expire_after` getrennt,
+  damit zuletzt gültige Werte bei saisonal ausgeschaltetem Raspberry sichtbar
+  bleiben
+- `/direct/22` und `/direct/04` unabhängig behandelt; ein Fehler löscht oder
+  blockiert nicht den zuletzt gültigen retained Wert des anderen Endpunkts
+
+### Effizienz
+
+- Gerätediagnose an den seltenen Archivzyklus gekoppelt statt einen weiteren
+  häufigen Zeitplan einzuführen
+- kurze konfigurierbare Pause zwischen den beiden Diagnoseabfragen ergänzt
+
 ### Gerätediagnose
 
 - ausschließlich lesende GET-Endpunkte `/direct/22` für die interne
@@ -34,6 +52,9 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
   beschädigte Datumswerte getestet
 - HTTP-Methode GET, fehlende Request-Nutzlast, feste Endpunktfreigabe und
   begrenzte Wiederholungsversuche abgesichert
+- realen Gerätelauf gegen Steuerungszeit und alle zehn App-Heizfehler geprüft;
+  kurzzeitig ohne Antwort geschlossener Alarmzugriff wurde beim zweiten
+  Versuch erfolgreich wiederholt
 
 ### Dokumentation
 

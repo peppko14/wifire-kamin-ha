@@ -16,6 +16,7 @@ from bridge.dashboard_reporter import (
     DashboardCurveReporter,
     parse_dashboard_since,
 )
+from bridge.device_diagnostics import DeviceDiagnosticsReporter
 from bridge.logging_setup import configure_logging, log_warning
 from bridge.live_curve import (
     LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES,
@@ -40,6 +41,7 @@ from history.ring_buffer import (
 )
 from history.sync import ArchiveSyncSettings
 from protocol.live import decode_live_status
+from protocol.device_diagnostics import DeviceDiagnosticsClient
 from protocol.models import LiveStatus
 
 
@@ -201,6 +203,29 @@ def refresh_history_outputs(
             )
 
 
+def refresh_archive_outputs(
+    statistics_reporter: HistoryReporterLike,
+    dashboard_reporter: HistoryReporterLike,
+    device_diagnostics_reporter: HistoryReporterLike,
+    *,
+    logger: Logger = print,
+) -> None:
+    """Aktualisiert Historie und Gerätediagnose unabhängig voneinander."""
+    refresh_history_outputs(
+        statistics_reporter,
+        dashboard_reporter,
+        logger=logger,
+    )
+    try:
+        device_diagnostics_reporter.refresh()
+    except (OSError, RuntimeError, ValueError) as error:
+        log_warning(
+            logger,
+            "Gerätediagnose konnte nicht aktualisiert werden: "
+            f"{error}",
+        )
+
+
 def create_application(
     config_module: Any,
     *,
@@ -229,7 +254,6 @@ def create_application(
             polling_settings.live_retry_delay_seconds
         ),
         sleeper=sleeper,
-        is_running=running_state,
         logger=logger,
     )
     connection = MqttConnection(
@@ -282,6 +306,38 @@ def create_application(
         ),
         logger=logger,
     )
+    device_diagnostics_client = DeviceDiagnosticsClient(
+        live_url=config_module.WIFIRE_URL,
+        request_timeout=getattr(
+            config_module,
+            "DEVICE_DIAGNOSTICS_REQUEST_TIMEOUT",
+            getattr(config_module, "REQUEST_TIMEOUT", 5),
+        ),
+        retry_count=getattr(
+            config_module,
+            "DEVICE_DIAGNOSTICS_RETRY_COUNT",
+            2,
+        ),
+        retry_delay_seconds=getattr(
+            config_module,
+            "DEVICE_DIAGNOSTICS_RETRY_DELAY",
+            2,
+        ),
+        sleeper=sleeper,
+        logger=logger,
+    )
+    device_diagnostics_reporter = DeviceDiagnosticsReporter(
+        client=device_diagnostics_client,
+        publisher=connection.publisher,
+        request_delay_seconds=getattr(
+            config_module,
+            "DEVICE_DIAGNOSTICS_REQUEST_DELAY",
+            2,
+        ),
+        sleeper=sleeper,
+        is_running=running_state,
+        logger=logger,
+    )
 
     archive_settings = build_archive_sync_settings(config_module)
     archive_synchronizer = RingBufferArchiveSynchronizer(
@@ -291,9 +347,10 @@ def create_application(
         sleeper=sleeper,
         is_running=running_state,
         logger=logger,
-        on_complete=lambda: refresh_history_outputs(
+        on_complete=lambda: refresh_archive_outputs(
             statistics_reporter,
             dashboard_reporter,
+            device_diagnostics_reporter,
             logger=logger,
         ),
     )

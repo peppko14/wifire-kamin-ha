@@ -1,6 +1,6 @@
 # Verifiziertes WiFire-Geräteprofil
 
-Dokumentversion: 1.0.0
+Dokumentversion: 1.1.0
 
 Dieses Dokument beschreibt die konkrete WiFire-Variante, gegen die die
 WiFire-Kamin Home Assistant Bridge entwickelt und geprüft wird. Die Angaben
@@ -116,6 +116,40 @@ liest beide Endpunkte ohne schreibende Nutzlast. Mit `--json` ist eine
 maschinenlesbare Ausgabe möglich. Der PCAP-Mitschnitt selbst enthält private
 Geräte- und Zeitdaten und gehört nicht in Git.
 
+Ein realer Diagnoselauf am 17. Juli 2026 bestätigte alle zehn in der App
+sichtbaren Heizfehler einschließlich Reihenfolge und doppelter Tageswerte. Die
+Steuerungszeit betrug 13:28 bei einer Raspberry-Zeit von 14:19:26 und lag damit
+rund 51,4 Minuten zurück. Der erste Zugriff auf `/direct/04` wurde vom Gerät
+ohne Antwort geschlossen; der begrenzte zweite Versuch war erfolgreich. Damit
+ist auch das Retry-Verhalten gegen einen typischen kurzen WiFire-Aussetzer am
+Referenzgerät praktisch bestätigt.
+
+## Home-Assistant-Diagnose
+
+Die Bridge aktualisiert die verifizierten Diagnosewerte gemeinsam mit dem
+seltenen Archivzyklus. Damit werden keine häufigen zusätzlichen Abfragen an
+das schwache WiFire-Webmodul gestellt. Zwischen `/direct/22` und `/direct/04`
+liegt außerdem eine kurze konfigurierbare Pause.
+
+Home Assistant erhält vier Diagnoseentitäten:
+
+- `Steuerungszeit`,
+- `Zeitabweichung Steuerung`,
+- `Letzter Heizfehler`,
+- `Gespeicherte Heizfehler`.
+
+Die Zeitabweichung ist `Steuerungszeit minus Raspberry-Zeit` in Minuten. Ein
+negativer Wert bedeutet somit, dass die Steuerungsuhr zurückliegt. Die Liste
+der sichtbaren Heizfehler wird als Attribute der Entität `Letzter Heizfehler`
+mitgegeben. Unbekannte Rohbytes werden nicht an Home Assistant veröffentlicht.
+
+Beide Diagnose-Payloads werden retained und bewusst nicht an die
+Live-Verfügbarkeit oder `expire_after` gebunden. Die zuletzt erfolgreich
+gelesenen Werte bleiben daher sichtbar, wenn der Raspberry saisonal
+ausgeschaltet ist oder eine spätere Diagnoseabfrage fehlschlägt. Uhr und
+Heizfehler werden unabhängig behandelt: Der Fehler eines Endpunkts löscht oder
+blockiert nicht den zuletzt gültigen Wert des anderen Endpunkts.
+
 Zusätzlich beobachtet wurden `/direct/24`, `/direct/36` und `/direct/37`.
 Teilwerte passen zu Firmware-, Profil- und Herstellerinformationen. Ihre
 vollständige Bytebedeutung ist noch nicht reproduzierbar belegt. Insbesondere
@@ -125,8 +159,8 @@ vorschnell eine Schließzeitverzögerung abgeleitet.
 ## Diagnoseinformationen
 
 Die App besitzt eine Alarmliste sowie getrennte Symbole für Rauchgassauger und
-Dunstabzugshaube. Steuerungszeit und Alarmliste sind nun lesend dekodierbar,
-werden aber erst nach einem manuellen Vergleich des Diagnosewerkzeugs mit der
-App als Home-Assistant-Entitäten angeboten. Rauchgassauger und
-Dunstabzugshaube sind weiterhin nicht eindeutig zugeordnet. Der heutige
-Rohwert `fan_raw` wird bis dahin nicht fachlich umbenannt.
+Dunstabzugshaube. Steuerungszeit und sichtbare Heizfehler wurden manuell gegen
+App und Diagnosewerkzeug abgeglichen und werden als Home-Assistant-Entitäten
+angeboten. Rauchgassauger und Dunstabzugshaube sind weiterhin nicht eindeutig
+zugeordnet. Der heutige Rohwert `fan_raw` wird bis dahin nicht fachlich
+umbenannt.

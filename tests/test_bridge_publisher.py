@@ -283,6 +283,44 @@ class MqttPublisherTests(unittest.TestCase):
         self.assertEqual(payload["comparison"]["status"], "not_evaluable")
         self.assertEqual(len(payload["heating_seasons"]), 3)
 
+    def test_publish_controller_diagnostics_is_retained(self) -> None:
+        self.publisher.publish_controller_diagnostics(
+            {
+                "controller_time": "2026-07-17T13:28+02:00",
+                "offset_minutes": -51.4,
+            }
+        )
+
+        message = self.client.messages[0]
+        self.assertEqual(
+            message["topic"],
+            "wifire_kamin/wifire_kamin/controller_diagnostics",
+        )
+        self.assertEqual(message["qos"], 1)
+        self.assertTrue(message["retain"])
+        self.assertEqual(
+            json.loads(message["payload"])["offset_minutes"],
+            -51.4,
+        )
+
+    def test_publish_heating_failures_is_retained(self) -> None:
+        self.publisher.publish_heating_failures(
+            {
+                "count": 10,
+                "latest_date": "2026-03-05",
+                "entries": [],
+            }
+        )
+
+        message = self.client.messages[0]
+        self.assertEqual(
+            message["topic"],
+            "wifire_kamin/wifire_kamin/heating_failures",
+        )
+        self.assertEqual(message["qos"], 1)
+        self.assertTrue(message["retain"])
+        self.assertEqual(json.loads(message["payload"])["count"], 10)
+
 
 if __name__ == "__main__":
     unittest.main()
