@@ -1,6 +1,6 @@
 # Historienmodell und Datenqualität
 
-Dokumentversion: 1.0.0
+Dokumentversion: 1.1.0
 
 Dieses Dokument beschreibt das ab WiFire-Kamin Home Assistant Bridge v0.9.0
 verwendete Historienmodell. Die Historien-Schema-Version ist unabhängig von
@@ -62,13 +62,22 @@ durch neu erzeugte Schema-2-Dateien ersetzt.
 Bedeutungen:
 
 - `measurement_count` ist ausschließlich die Anzahl der Temperaturmesspunkte.
-- `duration_minutes` ist der rekonstruierte Zeitpunkt, an dem die Luftklappe
-  0 % erreicht.
+- `duration_minutes` ist die rekonstruierte S5-/0-%-Phasenmarke der
+  Steuerung und damit der fachliche Endpunkt des aktiven Abbrands.
 - `duration_source` lautet `stage_0_unwrapped`.
 - Überläufe der als Byte gespeicherten Phasenminuten werden entrollt.
 - Fehlt `stage_0_minute`, ist die Dauer unbekannt und bleibt `null`.
 
-Der letzte Temperaturmesspunkt definiert nicht die Abbrenndauer.
+Der letzte Temperaturmesspunkt definiert nicht die Abbrenndauer. Eine
+konfigurierte Schließzeitverzögerung kann den tatsächlichen mechanischen
+Klappenschluss über die gespeicherte S5-Phasenmarke hinaus verzögern. Das
+Historienmodell interpretiert `duration_minutes` deshalb nicht als Messung des
+mechanischen Klappenschlusses.
+
+Die Prozentwerte der Abbrandphasen können vom gewählten Heizgeräteprofil
+abhängen. Die historischen Feldnamen bleiben aus Kompatibilitätsgründen
+erhalten, bis die Phasen des verifizierten Profils `UNIVERSAL / UNI-80°C`
+eindeutig mit einem realen Archivtelegramm abgeglichen wurden.
 
 ## Qualitätsstatus
 

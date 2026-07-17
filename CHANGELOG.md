@@ -7,6 +7,18 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Dokumentation
+
+- verifiziertes Referenzprofil `UNIVERSAL / UNI-80°C` mit WEB `w3.3.3`,
+  MCU `ver.37 B368` und Firmwarestand November 2024 dokumentiert
+- WiFire H2O einschließlich Kessel-, Puffertemperaturen und Umwälzpumpe
+  ausdrücklich vom unterstützten Geräteprofil abgegrenzt
+- Abbrenndauer als gespeicherte S5-/0-%-Phasenmarke präzisiert und vom durch
+  die Schließzeitverzögerung möglicherweise späteren mechanischen
+  Klappenschluss unterschieden
+- Klappenpositionen der Abbrandphasen als heizgeräteprofilabhängig
+  dokumentiert; bestehende Archivfeldnamen bleiben vorerst kompatibel
+
 ## [0.14.1] - 2026-07-17
 
 ### Zuverlässigkeit
