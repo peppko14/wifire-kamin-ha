@@ -101,7 +101,7 @@ class RingBufferArchiveSynchronizer:
             is_running=self.is_running,
         )
 
-        if self.on_complete is not None:
+        if self.on_complete is not None and not result.stopped_on_request:
             try:
                 self.on_complete()
             except Exception as error:  # optionale nachgelagerte Integration
@@ -111,8 +111,13 @@ class RingBufferArchiveSynchronizer:
                     f"{error}"
                 )
 
+        status = (
+            "kontrolliert abgebrochen"
+            if result.stopped_on_request
+            else "beendet"
+        )
         self.logger(
-            "Ringpuffer-Synchronisation beendet: "
+            f"Ringpuffer-Synchronisation {status}: "
             f"{result.sync_result.imported_count} neu, "
             f"{result.sync_result.existing_count} vorhanden, "
             f"{result.sync_result.skipped_incomplete} unvollständig, "

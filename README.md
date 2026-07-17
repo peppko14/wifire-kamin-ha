@@ -17,6 +17,7 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
 - automatische lokale Historisierung unter `data/history/`
 - adaptive, schonende Synchronisation bis zum ersten leeren oder bereits
   bekannten Ringpufferplatz
+- kontrolliertes Beenden ohne zusätzliche Archiv- oder Retry-Anfrage
 - stabile SHA-256-ID und Duplikaterkennung
 - atomisches Speichern der JSON-Dateien
 - Historien-Schema 2 mit zentraler Dauer- und Qualitätsdefinition
@@ -485,8 +486,8 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Der Entwicklungsstand für v0.14.0 umfasst einschließlich
-des realen Archiv-Golden-Fixtures 447 automatisierte Tests.
+Assistant ausführbar. Der Entwicklungsstand für v0.14.1 umfasst einschließlich
+des kontrollierten Archivabbruchs 451 automatisierte Tests.
 
 ## Werkzeuge
 
@@ -519,10 +520,16 @@ Mit v0.14.0 umgesetzt:
   adressierbaren, derzeit leeren Plätze 24 bis 30
 - unveränderliches reales Archivtelegramm als Golden Fixture
 
+Mit v0.14.1 umgesetzt:
+
+- Stoppsignale brechen Archiv- und Retry-Wartezeiten kontrolliert ab
+- nach einem Abbruch werden weder weitere Archivrequests noch nachgelagerte
+  Historienauswertungen gestartet
+- ein bereits laufender HTTP-Aufruf bleibt durch seinen Request-Timeout
+  begrenzt
+
 Für spätere Versionen vorgesehen:
 
-- Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
-  Beendigungssignal unmittelbar abbrechen
 - Backlog: Zuordnung zwischen Live-Zeitachse und historischem
   `sample_index` beim nächsten echten Abbrand fachlich bestätigen
 

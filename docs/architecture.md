@@ -2,7 +2,7 @@
 
 Dokumentversion: 1.13.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.14.0
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.14.1
 
 ## Ziele
 
@@ -504,5 +504,8 @@ fachlichen Regeln stehen in
 
 Die gemeinsame Archivleselogik, Untersuchung oberhalb von Platz 23, adaptive
 Leerer-Platz-Grenze und das reale Golden Fixture bilden die abgeschlossene
-Protokollgrundlage von v0.14.0. Als technisches Backlog bleiben unmittelbar
-abbrechbare Archiv- und Retry-Wartezeiten bestehen.
+Protokollgrundlage von v0.14.0. Seit v0.14.1 prüft der Archivclient vor jedem
+Versuch und nach jeder Retry-Wartezeit den gemeinsamen Laufzustand. Ein
+Stoppsignal verhindert weitere Requests und nachgelagerte
+Historienauswertungen. Ein bereits laufender HTTP-Aufruf bleibt bis zu seinem
+konfigurierten Timeout aktiv.

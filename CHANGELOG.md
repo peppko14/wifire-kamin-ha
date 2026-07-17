@@ -7,6 +7,25 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-07-17
+
+### Zuverlässigkeit
+
+- Archivclient prüft den gemeinsamen Laufzustand vor jedem HTTP-Versuch und
+  nach jeder Retry-Wartezeit
+- Stoppsignale verhindern weitere Archivrequests und werden als
+  kontrollierter Abbruch statt als Lesefehler behandelt
+- Ringpuffer-Synchronisation startet nach einem Abbruch keine nachgelagerte
+  Statistik- oder Dashboard-Aktualisierung mehr
+- Bereits laufende HTTP-Aufrufe bleiben weiterhin durch den konfigurierten
+  Request-Timeout begrenzt
+
+### Tests
+
+- Stopp vor dem ersten HTTP-Versuch und während einer Retry-Wartezeit geprüft
+- Kontrollierter Abbruch bleibt ohne Lesefehler und ohne nachgelagerte
+  Aktualisierung
+
 ## [0.14.0] - 2026-07-17
 
 ### Archivprotokoll
