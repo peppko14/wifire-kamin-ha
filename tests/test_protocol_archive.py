@@ -12,6 +12,7 @@ from urllib.request import Request
 
 from protocol.archive import (
     ArchiveClient,
+    ArchiveReadCancelled,
     ArchiveReadError,
     build_archive_command,
     build_archive_request,
@@ -127,6 +128,62 @@ class ArchiveProtocolTests(unittest.TestCase):
         self.assertEqual(attempts, 2)
         self.assertEqual(sleeps, [4])
         self.assertTrue(any("Versuch 1/2" in item for item in messages))
+
+    def test_stop_before_first_attempt_prevents_http_request(self) -> None:
+        calls = 0
+
+        def opener(request: Request, *, timeout: int) -> FakeResponse:
+            nonlocal calls
+            calls += 1
+            return json_response({"raw": "aacc3355"})
+
+        client = ArchiveClient(
+            "http://192.168.0.1/direct/00",
+            opener=opener,
+            is_running=lambda: False,
+        )
+
+        with self.assertRaisesRegex(
+            ArchiveReadCancelled,
+            "vor Versuch 1",
+        ):
+            client.read_raw(1)
+
+        self.assertEqual(calls, 0)
+
+    def test_stop_during_retry_delay_prevents_next_attempt(self) -> None:
+        running = True
+        attempts = 0
+        sleeps: list[int | float] = []
+
+        def opener(request: Request, *, timeout: int) -> FakeResponse:
+            nonlocal attempts
+            attempts += 1
+            raise TimeoutError("kurzer WLAN-Aussetzer")
+
+        def stop_during_sleep(seconds: int | float) -> None:
+            nonlocal running
+            sleeps.append(seconds)
+            running = False
+
+        client = ArchiveClient(
+            "http://192.168.0.1/direct/00",
+            retry_count=3,
+            retry_delay_seconds=10,
+            sleeper=stop_during_sleep,
+            opener=opener,
+            logger=lambda message: None,
+            is_running=lambda: running,
+        )
+
+        with self.assertRaisesRegex(
+            ArchiveReadCancelled,
+            "Retry-Wartezeit",
+        ):
+            client.read_raw(1)
+
+        self.assertEqual(attempts, 1)
+        self.assertEqual(sleeps, [10])
 
     def test_invalid_responses_fail_after_all_attempts(self) -> None:
         invalid_payloads: tuple[Any, ...] = (

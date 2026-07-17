@@ -116,6 +116,11 @@ lesende Archivabfrage transportiert.
 - Der WiFire-Webserver darf nicht durch parallele Anfragen belastet werden.
 - Wiederholungsversuche sind begrenzt.
 - Zwischen Archivzugriffen werden konservative Pausen eingehalten.
+- Vor jedem Archivversuch und nach jeder Retry-Pause muss der gemeinsame
+  Laufzustand geprüft werden. Ein Stoppsignal ist kein Lesefehler und darf
+  keinen weiteren Request oder nachgelagerten Bericht auslösen.
+- Bereits laufende synchrone HTTP-Aufrufe sind über einen endlichen Timeout
+  begrenzt; sie werden nicht unsicher aus einem anderen Thread beendet.
 - Fehler werden verständlich protokolliert und nicht still ignoriert.
 - SIGINT und SIGTERM müssen die Bridge kontrolliert beenden.
 - Keine Zugangsdaten oder vollständigen privaten Payloads protokollieren.

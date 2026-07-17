@@ -14,6 +14,7 @@ from typing import Any
 from bridge.archive_sync import RingBufferArchiveSynchronizer
 from history.manager import HistorySyncResult
 from history.sync import ArchiveSyncSettings
+from protocol.archive import ArchiveReadCancelled
 from protocol.models import BurnRecord
 
 
@@ -219,6 +220,34 @@ class RingBufferArchiveSynchronizerTests(unittest.TestCase):
                 "Historienausgaben konnten nicht aktualisiert" in message
                 for message in messages
             )
+        )
+
+    def test_cancelled_scan_skips_completion_callback(self) -> None:
+        events: list[str] = []
+        messages: list[str] = []
+
+        def cancelled_reader(number: int) -> str:
+            raise ArchiveReadCancelled("Dienst wird beendet")
+
+        synchronizer = RingBufferArchiveSynchronizer(
+            settings=self.settings(),
+            history_manager=FakeHistoryManager(
+                HistorySyncResult((), (), 0, 0)
+            ),  # type: ignore[arg-type]
+            publisher=FakePublisher(),
+            sleeper=lambda seconds: None,
+            logger=messages.append,
+            raw_reader=cancelled_reader,
+            on_complete=lambda: events.append("statistics"),
+        )
+
+        result = synchronizer.synchronize()
+
+        self.assertTrue(result.stopped_on_request)
+        self.assertEqual(result.read_failures, 0)
+        self.assertEqual(events, [])
+        self.assertTrue(
+            any("kontrolliert abgebrochen" in item for item in messages)
         )
 
 
