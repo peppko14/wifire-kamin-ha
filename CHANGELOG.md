@@ -9,6 +9,16 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Brennkurvenanalyse
 
+- Aktuelle und zwei vorherige Heizsaisons als feste, vergleichbare
+  Kurvenmomentaufnahme ergänzt
+- Für jede ausreichend große Heizsaison eine eigene Mediankurve und einen
+  realen Median-Referenzabbrand berechnet
+- Leere und zu kleine Saisons als `not_evaluable` beibehalten, ohne Daten aus
+  anderen Zeiträumen einzusetzen
+- Gemeinsame Messpunktanzahl über alle Saisonkurven erzwungen und uneindeutige
+  Achsen ohne expliziten Filter abgewiesen
+- Qualitätswarnungen aus den saisonalen Referenzgruppen ausgeschlossen und
+  Quell- sowie Eignungsanzahl getrennt offengelegt
 - Letzten abgeschlossenen Abbrand deterministisch bestimmt und vor der
   Referenzberechnung aus seiner eigenen Vergleichsgruppe entfernt
 - RMSE des letzten Abbrands zur historischen Mediankurve berechnet
@@ -34,6 +44,11 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Getestet
 
+- Feste Reihenfolge von aktueller und zwei vorherigen Heizsaisons
+- Eigene Medianberechnung je Saison und korrekte Grenze am 1. Juli
+- Leere, zu kleine und durch Qualitätswarnungen unzureichende Saisons
+- Gemeinsame sowie explizit gefilterte Messpunktanzahlen über Saisonkurven
+- Stabile Saisonabfrage und Ablehnung doppelter Abbrand-IDs
 - Ausschluss des letzten Abbrands aus seiner eigenen Referenzgruppe
 - Vergleich mit Median und explizit ausgewähltem realen Referenzabbrand
 - Ablehnung unbekannter, ungeeigneter und selbstreferenzierender `burn_id`
