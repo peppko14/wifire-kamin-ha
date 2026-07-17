@@ -9,6 +9,7 @@ import unittest
 from history.curve_analysis import (
     CurveAnalysisError,
     analyze_curves,
+    curve_rmse_between,
     curve_rmse,
     curve_rmse_to_median,
 )
@@ -144,6 +145,14 @@ class CurveAnalysisTests(unittest.TestCase):
             curve_rmse_to_median(first, analysis.median_points),
             5.0,
         )
+        self.assertEqual(curve_rmse_between(first, second), 10.0)
+
+    def test_curve_rmse_rejects_different_sample_counts(self) -> None:
+        short = make_curve((10, 20), start=datetime(2026, 1, 1))
+        long = make_curve((10, 20, 30), start=datetime(2026, 1, 2))
+
+        with self.assertRaisesRegex(CurveAnalysisError, "verschiedene"):
+            curve_rmse_between(short, long)
 
     def test_empty_input_is_rejected(self) -> None:
         with self.assertRaisesRegex(CurveAnalysisError, "fehlen"):

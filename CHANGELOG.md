@@ -9,6 +9,15 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Brennkurvenanalyse
 
+- Letzten abgeschlossenen Abbrand deterministisch bestimmt und vor der
+  Referenzberechnung aus seiner eigenen Vergleichsgruppe entfernt
+- RMSE des letzten Abbrands zur historischen Mediankurve berechnet
+- Optionalen realen Referenzabbrand ausschließlich über seine stabile
+  `burn_id` ausgewählt und mit getrenntem RMSE verglichen
+- Warnstatus des letzten Abbrands und zu kleine Referenzgruppen transparent
+  als `not_evaluable` statt als scheinbar belastbares Ergebnis behandelt
+- Messpunktanzahl des letzten Abbrands automatisch als Kompatibilitätsfilter
+  für seine Referenzgruppe verwendet
 - Punktweise Mediankurve als robuste Ergänzung zur bestehenden
   Durchschnittskurve implementiert
 - Realen Referenzabbrand getrennt und deterministisch über den kleinsten RMSE
@@ -25,6 +34,11 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ### Getestet
 
+- Ausschluss des letzten Abbrands aus seiner eigenen Referenzgruppe
+- Vergleich mit Median und explizit ausgewähltem realen Referenzabbrand
+- Ablehnung unbekannter, ungeeigneter und selbstreferenzierender `burn_id`
+- Nicht bewertbare Vergleiche bei Warnstatus oder zu kleiner Referenzgruppe
+- Automatische Begrenzung auf kompatible Messpunktanzahlen
 - Medianberechnung für gerade und ungerade Gruppengrößen sowie Ausreißer
 - Deterministische Auswahl des realen Median-Referenzabbrands
 - Qualitäts-, Heizsaison-, Starttemperatur- und Messpunktfilter

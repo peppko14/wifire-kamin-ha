@@ -1,6 +1,6 @@
 # Laufende und historische Brennkurvenvergleiche
 
-Dokumentversion: 1.1.0
+Dokumentversion: 1.2.0
 
 Dieses Dokument definiert den fachlichen Zielzustand für v0.13.0. Es ist eine
 Spezifikation und nimmt noch keine unbestätigte Zuordnung zwischen Live- und
@@ -8,17 +8,21 @@ Archivmesspunkten vorweg.
 
 ## Implementierungsstand
 
-Mit Commit 2 von v0.13.0 sind folgende historische Grundlagen umgesetzt:
+Mit den Commits 2 und 3 von v0.13.0 sind folgende historische Grundlagen
+umgesetzt:
 
 - punktweise Mediankurve zusätzlich zum bestehenden Durchschnitt,
 - eigener realer Referenzabbrand mit kleinstem RMSE zur Mediankurve,
 - reproduzierbare Auswahl ausschließlich gültiger Referenzkurven,
 - optionale Filter nach Heizsaison, Starttemperatur und Messpunktanzahl,
-- expliziter Zustand `not_evaluable` bei einer zu kleinen Referenzgruppe.
+- expliziter Zustand `not_evaluable` bei einer zu kleinen Referenzgruppe,
+- letzter abgeschlossener Abbrand ohne Selbstbezug in der Referenzgruppe,
+- RMSE des letzten Abbrands zur Mediankurve,
+- optionaler Vergleich zu einem über `burn_id` ausgewählten Referenzabbrand.
 
-Die MQTT-/Dashboard-Schemata und die laufende Live-Erfassung werden erst in
-den folgenden Commits angepasst. Dadurch bleibt das bisherige Verhalten in
-diesem Schritt rückwärtskompatibel.
+Die MQTT-/Dashboard-Schemata, saisonale Vergleichsausgaben und die laufende
+Live-Erfassung werden erst in den folgenden Commits angepasst. Dadurch bleibt
+das bisherige Verhalten in diesem Schritt rückwärtskompatibel.
 
 ## Ziele
 
@@ -83,6 +87,10 @@ Für den letzten abgeschlossenen Abbrand werden mindestens dokumentiert:
 - Position des Maximums als `sample_index`,
 - Start- und Endtemperatur,
 - neutrale Einordnung oder `noch nicht bewertbar`.
+
+Der letzte Abbrand wird nicht in seine eigene Medianreferenz aufgenommen.
+Eine optional ausgewählte reale Referenz muss nach allen Filtern zur
+Referenzgruppe gehören und darf nicht der letzte Abbrand selbst sein.
 
 Saisonvergleiche verwenden die bestehende Heizsaison vom 1. Juli bis zum
 30. Juni des Folgejahres. Jede Saison erhält ihre eigene Mediankurve und

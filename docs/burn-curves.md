@@ -1,6 +1,6 @@
 # Digitale Brennkurven
 
-Dokumentversion: 1.2.0
+Dokumentversion: 1.3.0
 
 Die lokale Schema-2-Historie enthält den vollständigen Temperaturverlauf
 jeder abgeschlossenen Verbrennung. Seit Version 0.12.0 stellt die Bridge
@@ -54,6 +54,22 @@ werden. Gemischte Messpunktanzahlen werden nicht stillschweigend angeglichen.
 Die Mindestgröße beträgt standardmäßig drei geeignete Abbrände. Wird sie nicht
 erreicht, lautet der maschinenlesbare Zustand `not_evaluable`; ungeeignete
 Datensätze werden nicht ersatzweise aufgenommen.
+
+## Letzter abgeschlossener Abbrand
+
+Der chronologisch letzte gespeicherte Abbrand ist der Gegenstand des
+historischen Vergleichs. Er wird vor der Medianberechnung aus der
+Referenzgruppe entfernt und beeinflusst seine eigene Referenz daher nicht.
+
+Veröffentlicht werden in einem späteren Schemamigrationsschritt mindestens
+seine stabile `burn_id`, Start- und Endtemperatur, Maximum mit `sample_index`
+sowie der RMSE zur historischen Mediankurve. Ein zusätzlicher realer
+Referenzabbrand kann ausschließlich über seine stabile `burn_id` ausgewählt
+werden; sein RMSE wird getrennt berechnet.
+
+Der Vergleich liefert noch keine fachliche Einordnung als `typisch` oder
+`auffällig`. Dafür fehlen bewusst noch dokumentierte und konfigurierbare
+Grenzwerte.
 
 ## Heißester Abbrand
 
@@ -115,8 +131,9 @@ Assistant weiterlaufen.
 
 Version 0.13.0 ergänzt schrittweise Medianreferenzen, saisonale Gruppen, den
 letzten abgeschlossenen Abbrand und eine getrennte laufende Live-Kurve. Die
-Medianberechnung und die Referenzgruppenauswahl sind bereits implementiert.
-Die Live-Reihe besitzt eigene Beobachtungszeitpunkte und darf nicht
+Medianberechnung, Referenzgruppenauswahl und der selbstbezugfreie Vergleich
+des letzten Abbrands sind bereits implementiert. Die Live-Reihe besitzt
+eigene Beobachtungszeitpunkte und darf nicht
 stillschweigend mit dem historischen `sample_index` gleichgesetzt werden.
 Details, noch offene Schritte und Freigaberegeln stehen in
 [`live-curve-comparison.md`](live-curve-comparison.md).
