@@ -51,6 +51,9 @@ LIVE_EXPIRE_AFTER = NORMAL_UPDATE_INTERVAL * 3
 # Gesamtzahl der Versuche pro Live-Zyklus; 1 entspricht altem Verhalten.
 LIVE_RETRY_COUNT = 2
 LIVE_RETRY_DELAY = 2
+# Eine Live-Brennkurve endet erst nach so vielen aufeinanderfolgenden
+# Messungen unter ACTIVE_FIRE_TEMPERATURE_C.
+LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES = 3
 
 # Archivabfrage in Sekunden
 ARCHIVE_UPDATE_INTERVAL = 21600

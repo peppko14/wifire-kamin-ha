@@ -9,7 +9,9 @@ import unittest
 from history.curve_analysis import (
     CurveAnalysisError,
     analyze_curves,
+    curve_rmse_between,
     curve_rmse,
+    curve_rmse_to_median,
 )
 from history.curves import BurnCurve, CurvePoint
 from history.identifiers import build_burn_id
@@ -66,6 +68,52 @@ class CurveAnalysisTests(unittest.TestCase):
         self.assertEqual(analysis.representative_curve, middle)
         self.assertEqual(analysis.representative_rmse_c, 3.0)
 
+    def test_median_curve_is_robust_against_outlier(self) -> None:
+        low = make_curve((10, 20), start=datetime(2026, 1, 1))
+        middle = make_curve((11, 21), start=datetime(2026, 1, 2))
+        outlier = make_curve((100, 200), start=datetime(2026, 1, 3))
+
+        analysis = analyze_curves((low, middle, outlier))
+
+        self.assertEqual(
+            tuple(
+                point.median_temperature_c
+                for point in analysis.median_points
+            ),
+            (11.0, 21.0),
+        )
+        self.assertTrue(
+            all(
+                point.contributing_curve_count == 3
+                for point in analysis.median_points
+            )
+        )
+
+    def test_even_median_uses_middle_pair(self) -> None:
+        first = make_curve((10, 20), start=datetime(2026, 1, 1))
+        second = make_curve((20, 30), start=datetime(2026, 1, 2))
+
+        analysis = analyze_curves((first, second))
+
+        self.assertEqual(
+            tuple(
+                point.median_temperature_c
+                for point in analysis.median_points
+            ),
+            (15.0, 25.0),
+        )
+
+    def test_median_representative_is_selected_separately(self) -> None:
+        low = make_curve((0, 0), start=datetime(2026, 1, 1))
+        middle = make_curve((10, 10), start=datetime(2026, 1, 2))
+        high = make_curve((11, 11), start=datetime(2026, 1, 3))
+
+        analysis = analyze_curves((low, middle, high))
+
+        self.assertEqual(analysis.median_representative_curve, middle)
+        self.assertEqual(analysis.median_representative_rmse_c, 0.0)
+        self.assertEqual(analysis.representative_rmse_c, 3.0)
+
     def test_hottest_curve_is_separate_from_representative(self) -> None:
         normal = make_curve((20, 200), start=datetime(2026, 1, 1))
         hottest = make_curve((20, 600), start=datetime(2026, 1, 2))
@@ -93,6 +141,18 @@ class CurveAnalysisTests(unittest.TestCase):
         analysis = analyze_curves((first, second))
 
         self.assertEqual(curve_rmse(first, analysis.average_points), 5.0)
+        self.assertEqual(
+            curve_rmse_to_median(first, analysis.median_points),
+            5.0,
+        )
+        self.assertEqual(curve_rmse_between(first, second), 10.0)
+
+    def test_curve_rmse_rejects_different_sample_counts(self) -> None:
+        short = make_curve((10, 20), start=datetime(2026, 1, 1))
+        long = make_curve((10, 20, 30), start=datetime(2026, 1, 2))
+
+        with self.assertRaisesRegex(CurveAnalysisError, "verschiedene"):
+            curve_rmse_between(short, long)
 
     def test_empty_input_is_rejected(self) -> None:
         with self.assertRaisesRegex(CurveAnalysisError, "fehlen"):

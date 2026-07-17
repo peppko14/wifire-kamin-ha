@@ -9,6 +9,10 @@ import json
 from typing import Any, Protocol
 
 from bridge.dashboard import DashboardCurveSnapshot
+from bridge.live_curve import (
+    LiveCurveSession,
+    build_live_curve_mqtt_payload,
+)
 from bridge.topics import MqttTopics
 from history.period_statistics import CurrentPeriodStatistics
 from history.statistics import HistoryStatistics
@@ -57,6 +61,22 @@ class MqttPublisher:
             payload=json.dumps(
                 data.to_mqtt_dict(),
                 ensure_ascii=False,
+            ),
+            qos=1,
+            retain=False,
+        )
+
+    def publish_live_curve(
+        self,
+        session: LiveCurveSession | None,
+    ) -> None:
+        """Veröffentlicht die begrenzte laufende Brennkurve nicht retained."""
+        self.client.publish(
+            self.topics.live_curve,
+            payload=json.dumps(
+                build_live_curve_mqtt_payload(session),
+                ensure_ascii=False,
+                separators=(",", ":"),
             ),
             qos=1,
             retain=False,
