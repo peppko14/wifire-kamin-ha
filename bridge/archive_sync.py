@@ -116,6 +116,7 @@ class RingBufferArchiveSynchronizer:
             f"{result.sync_result.imported_count} neu, "
             f"{result.sync_result.existing_count} vorhanden, "
             f"{result.sync_result.skipped_incomplete} unvollständig, "
+            f"{result.empty_archives} leer, "
             f"{result.read_failures} Lesefehler."
         )
         return result

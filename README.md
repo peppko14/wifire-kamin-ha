@@ -15,7 +15,8 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
   - 5 Minuten nach Kommunikationsfehlern
 - lesender Zugriff auf archivierte Abbrände
 - automatische lokale Historisierung unter `data/history/`
-- schonende Synchronisation der bekannten Ringpufferplätze 1 bis 23
+- adaptive, schonende Synchronisation bis zum ersten leeren oder bereits
+  bekannten Ringpufferplatz
 - stabile SHA-256-ID und Duplikaterkennung
 - atomisches Speichern der JSON-Dateien
 - Historien-Schema 2 mit zentraler Dauer- und Qualitätsdefinition
@@ -284,9 +285,9 @@ Da die WiFire-Schnittstelle empfindlich auf schnelle Folgeanfragen
 reagiert, sollten konservative Pausen verwendet werden:
 
 ```bash
-python3 -u tools/history_importer_v1_0_2.py \
+python3 -u tools/history_importer_v1_1_0.py \
   --first 1 \
-  --last 23 \
+  --last 255 \
   --delay 10 \
   --retries 5
 ```
@@ -298,12 +299,25 @@ gestoppt sein, damit nicht mehrere Prozesse gleichzeitig zugreifen.
 
 Die Bridge prüft den Ringpuffer nur im konfigurierten, langen
 Archivintervall. Die Plätze werden nacheinander mit mindestens zehn Sekunden
-Abstand gelesen. Bereits bekannte Abbrände beenden den Scan frühzeitig;
-unvollständige oder vorübergehend nicht lesbare Plätze werden protokolliert.
+Abstand gelesen. Der erste eindeutig leere Platz oder ein bereits bekannter
+Abbrand beendet den Scan frühzeitig. Leere Plätze werden nicht als
+unvollständige Abbrände oder Diagnosen gespeichert. Unvollständige Plätze
+werden protokolliert; nach drei aufeinanderfolgenden Lesefehlern endet der
+Lauf kontrolliert.
 
 Neue vollständige Abbrände werden zuerst atomisch lokal gespeichert. Erst
 danach folgt die optionale MQTT-Veröffentlichung. Ein MQTT-Ausfall kann daher
 keinen bereits gelesenen Abbrand aus der lokalen Historie entfernen.
+
+Die produktive Ringpuffer-Synchronisation und der manuelle Vollimport nutzen
+gemeinsam `protocol/archive.py`. Die Schnittstelle nimmt nur eine
+Archivnummer entgegen und erzeugt daraus selbst den fest definierten lesenden
+`/direct/35`-Request. Beliebige Hex-Befehle können darüber nicht gesendet
+werden. Die Plätze 24 bis 30 antworteten am untersuchten Gerät mit
+syntaktisch gültigen, leeren Telegrammen. Deshalb nutzt der adaptive Scan den
+Ein-Byte-Bereich bis 255 nur als technische Sicherheitsgrenze und beendet
+sich normalerweise bereits am ersten leeren Platz. Dies ist weiterhin kein
+Nachweis für 255 physisch vorhandene Speicherplätze.
 
 ## Historienstatistik
 
@@ -471,16 +485,19 @@ python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Die vollständige Testsuite ist ohne echten Kamin, MQTT-Broker und Home
-Assistant ausführbar. Version 0.13.0 umfasst 424 automatisierte Tests.
+Assistant ausführbar. Der Entwicklungsstand für v0.14.0 umfasst einschließlich
+des realen Archiv-Golden-Fixtures 447 automatisierte Tests.
 
 ## Werkzeuge
 
-- `tools/history_importer_v1_0_2.py`: lokale Historie importieren
+- `tools/history_importer_v1_1_0.py`: lokale Historie adaptiv importieren
 - `tools/history_statistics_v1_2_0.py`: Gesamt-, Monats- und Saisonstatistik
 - `tools/history_audit_v1_0_0.py`: Historie und Diagnoseablage prüfen
 - `tools/history_backup_v1_0_0.py`: Historie sichern, prüfen und restaurieren
 - `tools/system_diagnostics_v1_0_0.py`: Betriebszustand zusammengefasst prüfen
 - `tools/burn_curve_export_v1_0_0.py`: Brennkurven und Referenzen exportieren
+- `tools/archive_slot_probe_v1_0_0.py`: kleine explizite Bereiche oberhalb
+  von Archivplatz 23 ausschließlich lesend untersuchen
 - `tools/archive_importer_v1.0.0.py`: Archivdaten untersuchen
 - `tools/archive_mapper_v1.0.0.py`: Archivfelder zuordnen
 - `tools/endpoint_scanner_v1.0.0.py`: bekannte Endpunkte prüfen
@@ -488,19 +505,32 @@ Assistant ausführbar. Version 0.13.0 umfasst 424 automatisierte Tests.
 
 ## Roadmap
 
-Mit v0.13.0 umgesetzt:
+Mit v0.14.0 umgesetzt:
 
 - robuste Medianreferenz und saisonale Kurvenvergleiche
 - Vergleich des letzten abgeschlossenen Abbrands mit historischen Referenzen
 - getrennte laufende Brennkurve mit atomischem Zwischenstand und eigener
   Home-Assistant-Live-Entität
+- gemeinsame ausschließlich lesende Archivschnittstelle für Bridge,
+  Vollimport und Diagnosewerkzeug
+- adaptive Ringpuffer-Synchronisation bis zum ersten leeren oder bereits
+  bekannten Archivplatz
+- kontrollierte Untersuchung oberhalb von Platz 23 und Bestätigung der
+  adressierbaren, derzeit leeren Plätze 24 bis 30
+- unveränderliches reales Archivtelegramm als Golden Fixture
 
 Für spätere Versionen vorgesehen:
 
-- v0.14: Archivplätze oberhalb 23 lesend untersuchen, reales Golden Fixture,
-  gemeinsame Vollimportlogik und weiter vereinheitlichte Protokollschnittstelle
 - Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
   Beendigungssignal unmittelbar abbrechen
+- Backlog: Zuordnung zwischen Live-Zeitachse und historischem
+  `sample_index` beim nächsten echten Abbrand fachlich bestätigen
+
+Die Sicherheitsgrenzen und der Ablauf der Untersuchung oberhalb von Platz 23
+sind in [`docs/archive-slot-probe.md`](docs/archive-slot-probe.md)
+dokumentiert. Die Untersuchung bestätigte die technische Adressierbarkeit
+der Plätze 24 bis 30, aber dort noch keinen zusätzlichen abgeschlossenen
+Abbrand.
 
 ## Lizenz
 

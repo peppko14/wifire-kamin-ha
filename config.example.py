@@ -58,11 +58,14 @@ LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES = 3
 # Archivabfrage in Sekunden
 ARCHIVE_UPDATE_INTERVAL = 21600
 ARCHIVE_FIRST_SLOT = 1
-ARCHIVE_LAST_SLOT = 23
+# Reine Sicherheitsobergrenze, keine behauptete Gerätekapazität. Der Scan
+# endet vorher am ersten bekannten Abbrand oder eindeutig leeren Platz.
+ARCHIVE_LAST_SLOT = 255
 ARCHIVE_REQUEST_DELAY = 10
 ARCHIVE_REQUEST_TIMEOUT = 15
 ARCHIVE_RETRY_COUNT = 3
 ARCHIVE_RETRY_DELAY = 10
+ARCHIVE_MAX_CONSECUTIVE_READ_ERRORS = 3
 
 # Statistikfilter; None berücksichtigt alle gespeicherten Datensätze.
 # Beispiel zum Ausschließen falsch datierter Altbestände: "2026-01-01"

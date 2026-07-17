@@ -104,7 +104,7 @@ class RingBufferArchiveSynchronizerTests(unittest.TestCase):
             publisher=OrderedPublisher(),
             sleeper=lambda seconds: None,
             logger=lambda message: None,
-            raw_reader=lambda url, number: str(number),
+            raw_reader=lambda number: str(number),
             decoder=lambda raw: make_record(
                 int(raw),
                 datetime(2026, 4, 22, 21, 23),
@@ -142,7 +142,7 @@ class RingBufferArchiveSynchronizerTests(unittest.TestCase):
             publisher=FailingPublisher(),
             sleeper=lambda seconds: None,
             logger=messages.append,
-            raw_reader=lambda url, number: str(number),
+            raw_reader=lambda number: str(number),
             decoder=lambda raw: make_record(
                 int(raw),
                 datetime(2026, 4, 22, 21, 23),
@@ -170,7 +170,7 @@ class RingBufferArchiveSynchronizerTests(unittest.TestCase):
             publisher=publisher,
             sleeper=lambda seconds: None,
             logger=lambda message: None,
-            raw_reader=lambda url, number: str(number),
+            raw_reader=lambda number: str(number),
             decoder=lambda raw: make_record(
                 int(raw),
                 datetime(2026, 4, 22, 21, 23),
@@ -199,7 +199,7 @@ class RingBufferArchiveSynchronizerTests(unittest.TestCase):
             publisher=FakePublisher(),
             sleeper=lambda seconds: None,
             logger=messages.append,
-            raw_reader=lambda url, number: str(number),
+            raw_reader=lambda number: str(number),
             decoder=lambda raw: make_record(
                 int(raw),
                 datetime(2026, 4, 22, 21, 23),

@@ -1,8 +1,8 @@
 # Architektur
 
-Dokumentversion: 1.12.0
+Dokumentversion: 1.13.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.13.0
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.14.0
 
 ## Ziele
 
@@ -76,6 +76,29 @@ wifire-kamin-ha/
 └── CHANGELOG.md
 ```
 
+## Protokoll
+
+### `protocol/archive.py`
+
+Kapselt den gemeinsamen, ausschließlich lesenden Transport für rohe
+Archivtelegramme. Aufrufer übergeben nur eine Archivnummer; URL und der fest
+definierte `/direct/35`-Lesebefehl werden intern erzeugt. Die Schnittstelle
+akzeptiert bewusst keine beliebigen Hex-Befehle.
+
+Die Archivnummer besitzt im bekannten Telegramm genau ein Byte. Deshalb
+validiert das Modul technisch den Bereich 1 bis 255. Das ist keine Aussage
+darüber, wie viele Plätze die konkrete WiFire-Firmware tatsächlich speichert.
+Die Plätze 24 bis 30 wurden als adressierbar, aber leer beobachtet. Die
+produktive Sicherheitsgrenze bleibt von dieser Beobachtung getrennt.
+Transport- und ungültige Antwortdaten werden begrenzt wiederholt;
+Programmierfehler werden nicht als Netzwerkfehler maskiert.
+
+Produktive Ringpuffer-Synchronisation und manueller Vollimport verwenden
+dieselbe Implementierung. Die Scanstrategie bleibt davon getrennt: Beide
+beenden den Lauf am ersten eindeutig leeren Platz; die Bridge zusätzlich bei
+einem bekannten Abbrand. Die Obergrenze 255 verhindert nur einen unendlichen
+oder unkontrollierten Scan.
+
 ## Bridge
 
 ### `bridge/topics.py`
@@ -114,8 +137,9 @@ Abfrageintervall:
 
 ### `bridge/archive.py`
 
-Liest einen Archivblock über `/direct/35`, prüft die JSON-/Hex-Antwort
-und führt begrenzte Wiederholungsversuche aus.
+Erzeugt ausschließlich die MQTT-Attribute eines bereits dekodierten
+Archivdatensatzes. Der rohe Gerätezugriff liegt zentral in
+`protocol/archive.py`.
 
 ### `bridge/archive_sync.py`
 
@@ -260,15 +284,25 @@ vollständige Abbrände.
 ### `history/sync.py`
 
 Stellt die MQTT-unabhängige inkrementelle Ringpuffer-Synchronisation für die
-Bridge bereit. Die Archiv-URL wird aus der konfigurierten Live-URL abgeleitet.
-Der manuelle Vollimport besitzt derzeit bewusst ein anderes Scanverhalten;
-seine Umstellung auf gemeinsame Lesebausteine ist für v0.14.0 vorgesehen.
+Bridge bereit. Sie verwendet denselben lesenden `ArchiveClient` wie der
+manuelle Vollimport. Beide beenden den Scan am ersten eindeutig leeren Platz;
+die Bridge zusätzlich beim ersten bereits lokal bekannten vollständigen
+Abbrand. Nach drei aufeinanderfolgenden Lesefehlern endet ein Scan
+kontrolliert.
+
+Das separate Werkzeug `tools/archive_slot_probe_v1_0_0.py` verwendet den
+gleichen Transport, übernimmt seine Ergebnisse aber bewusst weder in die
+Historie noch in MQTT. Pro Lauf sind nur kleine, ausdrücklich angegebene
+Bereiche oberhalb des bislang bestätigten Platzes 23 zulässig. Rohantworten
+bleiben als private Diagnose unter `data/archive-probe/`.
 
 ### `history/ring_buffer.py`
 
-Definiert die Strategie für die bekannten Archivplätze 1 bis 23. Der Scan
-läuft sequenziell, hält mindestens zehn Sekunden Abstand und kann bei einem
-bereits bekannten vollständigen Abbrand frühzeitig enden.
+Definiert die adaptive Strategie für den Ein-Byte-Adressbereich 1 bis 255.
+Der Wert 255 ist ausschließlich eine technische Sicherheitsgrenze und keine
+behauptete Gerätekapazität. Der Scan läuft sequenziell, hält mindestens zehn
+Sekunden Abstand und endet beim ersten leeren Platz, einem bereits bekannten
+vollständigen Abbrand oder nach drei aufeinanderfolgenden Lesefehlern.
 
 ### `history/statistics.py`
 
@@ -445,15 +479,30 @@ für diese Tests nicht erforderlich.
 python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
+## Reales Archiv-Golden-Fixture
+
+`tests/fixtures/archive_complete_real.hex` enthält ein unverändertes, am
+Gerät gelesenes vollständiges 506-Byte-Archivtelegramm. Seine binäre
+SHA-256-Prüfsumme ist im Test fest verankert. Der Golden-Test schützt damit
+nicht nur ein synthetisch erzeugtes Paket, sondern die tatsächlich
+beobachteten Byte-Offsets für Archivnummer, Zeitstempel, Phasenwerte und 121
+Temperaturmesspunkte. Zusätzlich werden Dauer und stabile Burn-ID nach der
+Modellkonvertierung geprüft.
+
+Das Fixture enthält historische Zeit- und Temperaturdaten, aber keine
+Zugangsdaten oder frei sendbaren Gerätebefehle. Änderungen daran sind nur bei
+einer bewusst dokumentierten neuen Protokollbeobachtung zulässig.
+
 ## Nächste Ausbaustufen
 
-Für v0.13.0 sind robuste historische Medianreferenzen, saisonale Vergleiche,
-die Erfassung einer laufenden Brennkurve und eine getrennte Live-Darstellung
-geplant. Eine Live-Bewertung bleibt gesperrt, bis die Zuordnung zwischen der
-zeitgestempelten Live-Reihe und dem historischen `sample_index` durch einen
-echten Abbrand bestätigt ist. Die fachlichen Regeln stehen in
+Historische Medianreferenzen, saisonale Vergleiche, laufende Brennkurve und
+getrennte Live-Darstellung sind umgesetzt. Die Live-Bewertung bleibt jedoch
+gesperrt, bis die Zuordnung zwischen der zeitgestempelten Live-Reihe und dem
+historischen `sample_index` durch einen echten Abbrand bestätigt ist. Die
+fachlichen Regeln stehen in
 [`live-curve-comparison.md`](live-curve-comparison.md).
 
-Für v0.14.0 bleiben die weitere Vereinheitlichung der Protokollschnittstelle,
-ein reales Golden Fixture, die lesende Untersuchung von Archivplätzen über 23
-und die gemeinsame Archivleselogik für Bridge und Vollimport vorgesehen.
+Die gemeinsame Archivleselogik, Untersuchung oberhalb von Platz 23, adaptive
+Leerer-Platz-Grenze und das reale Golden Fixture bilden die abgeschlossene
+Protokollgrundlage von v0.14.0. Als technisches Backlog bleiben unmittelbar
+abbrechbare Archiv- und Retry-Wartezeiten bestehen.
