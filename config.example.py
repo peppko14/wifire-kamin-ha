@@ -67,6 +67,14 @@ ARCHIVE_RETRY_COUNT = 3
 ARCHIVE_RETRY_DELAY = 10
 ARCHIVE_MAX_CONSECUTIVE_READ_ERRORS = 3
 
+# Seltene, ausschließlich lesende Gerätediagnose. Die Aktualisierung läuft
+# zusammen mit ARCHIVE_UPDATE_INTERVAL und erzeugt daher keinen eigenen
+# häufigen Zeitplan. Zwischen Steuerungszeit und Alarmliste liegt eine Pause.
+DEVICE_DIAGNOSTICS_REQUEST_TIMEOUT = REQUEST_TIMEOUT
+DEVICE_DIAGNOSTICS_RETRY_COUNT = 2
+DEVICE_DIAGNOSTICS_RETRY_DELAY = 2
+DEVICE_DIAGNOSTICS_REQUEST_DELAY = 2
+
 # Statistikfilter; None berücksichtigt alle gespeicherten Datensätze.
 # Beispiel zum Ausschließen falsch datierter Altbestände: "2026-01-01"
 STATISTICS_SINCE = None
