@@ -1,6 +1,6 @@
 # Home-Assistant-Dashboard für Brennkurven
 
-Dokumentversion: 1.1.0
+Dokumentversion: 1.2.0
 
 ## Datenquelle
 
@@ -13,11 +13,18 @@ wifire_kamin/<device_id>/dashboard_curves
 
 MQTT Discovery erzeugt daraus genau eine Diagnoseentität
 `Brennkurven-Vergleich`. Ihr Zustand ist der Erstellungszeitpunkt. Ihre
-Attribute enthalten ausschließlich:
+Attribute nach Schema 2 enthalten:
 
 - die Durchschnittskurve,
 - den repräsentativen realen Abbrand,
-- den heißesten realen Abbrand.
+- den heißesten realen Abbrand,
+- den letzten abgeschlossenen Abbrand,
+- die historische Mediankurve und ihren realen Referenzabbrand,
+- Status, Größe und Abweichung des historischen Vergleichs,
+- Mediankurven der aktuellen und zwei vorherigen Heizsaisons.
+
+Bei einer zu kleinen Referenzgruppe bleibt der Zustand `not_evaluable`
+sichtbar. In diesem Fall wird keine Mediankurve erfunden.
 
 Jede Reihe verwendet ein kompaktes Temperaturarray. Die Achse ist
 `sample_index`; sie wird nicht ohne Protokollnachweis als Minute bezeichnet.
@@ -78,6 +85,56 @@ title: WiFire-Kamin Brennkurven
 refresh_interval: auto
 raw_plotly_config: true
 entities:
+  - entity: sensor.wifire_kamin_brennkurven_vergleich
+    name: Historischer Median
+    mode: lines
+    line:
+      width: 4
+    x: |
+      $fn ({hass}) => {
+        const values = hass.states[
+          "sensor.wifire_kamin_brennkurven_vergleich"
+        ]?.attributes?.series?.median?.temperatures_c ?? [];
+        return values.map((_, index) => index);
+      }
+    y: |
+      $fn ({hass}) => hass.states[
+        "sensor.wifire_kamin_brennkurven_vergleich"
+      ]?.attributes?.series?.median?.temperatures_c ?? []
+  - entity: sensor.wifire_kamin_brennkurven_vergleich
+    name: Letzter Abbrand
+    mode: lines
+    line:
+      width: 3
+    x: |
+      $fn ({hass}) => {
+        const values = hass.states[
+          "sensor.wifire_kamin_brennkurven_vergleich"
+        ]?.attributes?.series?.latest?.temperatures_c ?? [];
+        return values.map((_, index) => index);
+      }
+    y: |
+      $fn ({hass}) => hass.states[
+        "sensor.wifire_kamin_brennkurven_vergleich"
+      ]?.attributes?.series?.latest?.temperatures_c ?? []
+  - entity: sensor.wifire_kamin_brennkurven_vergleich
+    name: Vorherige Heizsaison
+    mode: lines
+    line:
+      width: 2
+      dash: dash
+    x: |
+      $fn ({hass}) => {
+        const values = hass.states[
+          "sensor.wifire_kamin_brennkurven_vergleich"
+        ]?.attributes?.heating_seasons?.[1]
+          ?.median_temperatures_c ?? [];
+        return values.map((_, index) => index);
+      }
+    y: |
+      $fn ({hass}) => hass.states[
+        "sensor.wifire_kamin_brennkurven_vergleich"
+      ]?.attributes?.heating_seasons?.[1]?.median_temperatures_c ?? []
   - entity: sensor.wifire_kamin_brennkurven_vergleich
     name: Durchschnitt
     mode: lines
@@ -148,4 +205,3 @@ config:
 
 Die Karte liest nur den aktuellen retained MQTT-Zustand. Sie erzeugt keine
 zusätzlichen WiFire-Abfragen und verändert keine Daten am Kamin.
-

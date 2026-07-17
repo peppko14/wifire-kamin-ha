@@ -68,7 +68,7 @@ def parse_dashboard_since(value: object) -> datetime | None:
 
 @dataclass(frozen=True, slots=True)
 class DashboardCurveReporter:
-    """Liest die Historie und veröffentlicht genau drei Referenzkurven."""
+    """Liest die Historie und veröffentlicht das begrenzte Kurvenschema."""
 
     history_directory: Path
     publisher: DashboardPublisherLike
@@ -127,6 +127,7 @@ class DashboardCurveReporter:
         self.publisher.publish_dashboard_snapshot(snapshot)
         self.logger(
             "Brennkurven-Vergleich veröffentlicht: "
+            f"Schema {snapshot.schema_version}, "
             f"{snapshot.source_curve_count} Abbrände, "
             f"{snapshot.sample_count} Messpunkte, "
             f"{snapshot.payload_size_bytes} Bytes."

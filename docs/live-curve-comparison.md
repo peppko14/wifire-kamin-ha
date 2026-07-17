@@ -1,6 +1,6 @@
 # Laufende und historische Brennkurvenvergleiche
 
-Dokumentversion: 1.3.0
+Dokumentversion: 1.4.0
 
 Dieses Dokument definiert den fachlichen Zielzustand für v0.13.0. Es ist eine
 Spezifikation und nimmt noch keine unbestätigte Zuordnung zwischen Live- und
@@ -20,11 +20,12 @@ umgesetzt:
 - RMSE des letzten Abbrands zur Mediankurve,
 - optionaler Vergleich zu einem über `burn_id` ausgewählten Referenzabbrand,
 - eigene Mediananalyse für aktuelle und zwei vorherige Heizsaisons,
-- sichtbarer Zustand `not_evaluable` für leere oder zu kleine Saisons.
+- sichtbarer Zustand `not_evaluable` für leere oder zu kleine Saisons,
+- retained Dashboard-Schema 2 mit Median, letztem Abbrand und Saisonkurven.
 
-Die MQTT-/Dashboard-Schemata und die laufende Live-Erfassung werden erst in
-den folgenden Commits angepasst. Dadurch bleibt das bisherige Verhalten in
-diesem Schritt rückwärtskompatibel.
+Die bisher verwendeten Dashboard-Schlüssel bleiben für bestehende Karten
+erhalten. Die laufende Live-Erfassung wird erst in den folgenden Commits
+ergänzt.
 
 ## Ziele
 

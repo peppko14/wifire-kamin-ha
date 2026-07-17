@@ -1,6 +1,6 @@
 # Digitale Brennkurven
 
-Dokumentversion: 1.4.0
+Dokumentversion: 1.5.0
 
 Die lokale Schema-2-Historie enthält den vollständigen Temperaturverlauf
 jeder abgeschlossenen Verbrennung. Seit Version 0.12.0 stellt die Bridge
@@ -133,9 +133,14 @@ Die Datei liegt unter `data/` und wird nicht in Git aufgenommen.
 
 ## Home Assistant
 
-Die Bridge veröffentlicht Durchschnitt, repräsentativen realen Abbrand und
-heißesten Abbrand als eine kompakte retained Diagnoseentität. Ein
-Plotly-Beispiel steht in
+Die Bridge veröffentlicht eine kompakte retained Diagnoseentität nach
+Dashboard-Schema 2. Die bestehenden Schlüssel für Durchschnitt,
+repräsentativen realen Abbrand und heißesten Abbrand bleiben erhalten.
+Zusätzlich enthält sie den letzten Abbrand, die historische Mediankurve, den
+realen Median-Referenzabbrand, den Vergleichsstatus und drei Heizsaisons.
+
+Nicht auswertbare Vergleiche oder Saisons enthalten einen maschinenlesbaren
+Grund, aber keine erfundene Kurve. Ein Plotly-Beispiel steht in
 [`home-assistant-dashboard.md`](home-assistant-dashboard.md). Die Werte bleiben
 auch bei ausgeschaltetem Raspberry verfügbar, solange MQTT-Broker und Home
 Assistant weiterlaufen.
