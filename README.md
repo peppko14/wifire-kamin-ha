@@ -489,6 +489,8 @@ Assistant ausführbar. Version 0.13.0 umfasst 424 automatisierte Tests.
 - `tools/history_backup_v1_0_0.py`: Historie sichern, prüfen und restaurieren
 - `tools/system_diagnostics_v1_0_0.py`: Betriebszustand zusammengefasst prüfen
 - `tools/burn_curve_export_v1_0_0.py`: Brennkurven und Referenzen exportieren
+- `tools/archive_slot_probe_v1_0_0.py`: kleine explizite Bereiche oberhalb
+  von Archivplatz 23 ausschließlich lesend untersuchen
 - `tools/archive_importer_v1.0.0.py`: Archivdaten untersuchen
 - `tools/archive_mapper_v1.0.0.py`: Archivfelder zuordnen
 - `tools/endpoint_scanner_v1.0.0.py`: bekannte Endpunkte prüfen
@@ -510,6 +512,11 @@ Für spätere Versionen vorgesehen:
   untersuchen und einen realen Rohmitschnitt als Golden Fixture aufnehmen
 - Backlog: laufende Archivabfragen und Retry-Wartezeiten bei einem
   Beendigungssignal unmittelbar abbrechen
+
+Die Sicherheitsgrenzen und der Ablauf der Untersuchung oberhalb von Platz 23
+sind in [`docs/archive-slot-probe.md`](docs/archive-slot-probe.md)
+dokumentiert. Ein lesbarer Platz wird erst nach Auswertung der privaten
+Rohdaten als tatsächlicher zusätzlicher Archivplatz bewertet.
 
 ## Lizenz
 

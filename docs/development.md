@@ -280,6 +280,11 @@ Eigenständige Werkzeuge unter `tools/` tragen ihre Version im Dateinamen
 und zusätzlich als `__version__` im Quellcode. Beide Angaben müssen
 übereinstimmen.
 
+Werkzeuge zur Protokolluntersuchung dürfen produktive Scan-Grenzen nicht
+stillschweigend erweitern. Sie müssen kleine explizite Bereiche, konservative
+Pausen, ausschließlich lesende Befehle und eine private Ausgabe unter
+`data/` erzwingen. Rohtelegramme dürfen nicht ungeprüft versioniert werden.
+
 ## Release-Prozess
 
 1. Funktionsumfang einfrieren.
