@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 import json
+from pathlib import Path
 import sys
 import types
 import unittest
@@ -245,9 +246,9 @@ class MqttConnectionTests(unittest.TestCase):
         self.assertEqual(
             client.tls,
             (
-                "certificates/ca.pem",
-                "certificates/client.pem",
-                "certificates/client.key",
+                str(Path("certificates/ca.pem")),
+                str(Path("certificates/client.pem")),
+                str(Path("certificates/client.key")),
             ),
         )
 

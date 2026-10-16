@@ -46,6 +46,18 @@ class MqttTopics:
         return f"{self.base}/live_curve"
 
     @property
+    def controller_diagnostics(self) -> str:
+        return f"{self.base}/controller_diagnostics"
+
+    @property
+    def heating_failures(self) -> str:
+        return f"{self.base}/heating_failures"
+
+    @property
+    def heating_failure_event(self) -> str:
+        return f"{self.base}/heating_failure_event"
+
+    @property
     def home_assistant_status(self) -> str:
         return f"{self.discovery_prefix}/status"
 

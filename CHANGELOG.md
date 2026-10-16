@@ -7,6 +7,89 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-07-17
+
+### Home Assistant
+
+- neue retained Diagnoseentität `Heizfehler-Ereignis` für Automationen und
+  mobile Benachrichtigungen ergänzt
+- Beispielautomation für eine Push-Nachricht bei neu erkanntem Heizfehler
+  dokumentiert
+- interne Steuerungszeit und signierte Abweichung zur Raspberry-Zeit als
+  eigene Diagnoseentitäten ergänzt
+- letzten sichtbaren Heizfehler, Anzahl und vollständige verifizierte Liste
+  als retained Diagnosewerte veröffentlicht
+- Gerätediagnose bewusst von Live-Verfügbarkeit und `expire_after` getrennt,
+  damit zuletzt gültige Werte bei saisonal ausgeschaltetem Raspberry sichtbar
+  bleiben
+- `/direct/22` und `/direct/04` unabhängig behandelt; ein Fehler löscht oder
+  blockiert nicht den zuletzt gültigen retained Wert des anderen Endpunkts
+
+### Effizienz
+
+- Steuerungszeit weiterhin an den seltenen Archivzyklus gekoppelt
+- Alarmliste mit eigenem konfigurierbarem Fünf-Minuten-Intervall überwacht,
+  ohne parallele HTTP-Anfragen zu erzeugen; erste Prüfung bis nach dem
+  Startintervall verzögert, um das WiFire-Webmodul beim Dienststart zu schonen
+
+### Gerätediagnose
+
+- restart-sicheren lokalen Ausgangszustand und SHA-256-Fingerabdruck der
+  geordneten Alarmplätze eingeführt
+- beim ersten erfolgreichen Abruf vorhandene Alarme nur als Ausgangszustand
+  übernommen, damit alte Fehler nach Neustart keine Push-Nachricht auslösen
+- neue Alarme einschließlich mehrfacher Heizfehler am selben Kalendertag
+  erkannt; Lesefehler verändern weder Ausgangszustand noch retained Ereignis
+- ausschließlich lesende GET-Endpunkte `/direct/22` für die interne
+  Steuerungszeit und `/direct/04` für die Alarmliste aus einem App-Mitschnitt
+  reproduzierbar zugeordnet
+- Steuerungszeit einschließlich zusätzlicher Monatsbits dekodiert, ohne die
+  interne Uhr zu verändern oder zu synchronisieren
+- den letzten von sieben Alarmblöcken als zehn sichtbare Heizfehler-Plätze
+  verifiziert; Datum und Code `1` gegen die App-Anzeige abgeglichen
+- nicht angezeigte Alarmblöcke ausdrücklich nicht als reale Ereignisse
+  interpretiert
+- unbekannte Alarmcodes sowie noch nicht benannte Alarmbytes transparent als
+  Rohwerte erhalten
+- versioniertes, ausschließlich lesendes Werkzeug
+  `device_diagnostics_v1_0_0.py` mit Text- und JSON-Ausgabe ergänzt
+- Endpunkte `/direct/24`, `/direct/36` und `/direct/37` bewusst noch nicht
+  fachlich ausgewertet, da Firmware-, Profil- und Schließzeitfelder nicht
+  vollständig bytegenau belegt sind
+
+### Tests
+
+- reale Struktur von Steuerungszeit- und Alarmtelegramm mit deterministischen
+  Testwerten geprüft
+- Monatsbitmaske, Datumssortierung, leere Alarmplätze, unbekannte Codes und
+  beschädigte Datumswerte getestet
+- HTTP-Methode GET, fehlende Request-Nutzlast, feste Endpunktfreigabe und
+  begrenzte Wiederholungsversuche abgesichert
+- realen Gerätelauf gegen Steuerungszeit und alle zehn App-Heizfehler geprüft;
+  kurzzeitig ohne Antwort geschlossener Alarmzugriff wurde beim zweiten
+  Versuch erfolgreich wiederholt
+
+### Dokumentation
+
+- verifiziertes Referenzprofil `UNIVERSAL / UNI-80°C` mit WEB `w3.3.3`,
+  MCU `ver.37 B368` und Firmwarestand November 2024 dokumentiert
+- WiFire H2O einschließlich Kessel-, Puffertemperaturen und Umwälzpumpe
+  ausdrücklich vom unterstützten Geräteprofil abgegrenzt
+- Abbrenndauer als gespeicherte S5-/0-%-Phasenmarke präzisiert und vom durch
+  die Schließzeitverzögerung möglicherweise späteren mechanischen
+  Klappenschluss unterschieden
+- Klappenpositionen der Abbrandphasen als heizgeräteprofilabhängig
+  dokumentiert; bestehende Archivfeldnamen bleiben vorerst kompatibel
+
+### Datenqualität
+
+- Warnung `timestamp_uncertain` auf eine fehlende belegte
+  Zeitsynchronisation der Steuerung präzisiert
+- Archiv- und Alarmlisteneinträge mit derselben internen Gerätezeit werden
+  nicht mehr als Nachweis eines realen Kalenderjahres interpretiert
+- bestehende Zeitstempel bleiben unverändert; es erfolgt keine automatische
+  Schätzung oder Verschiebung historischer Datensätze
+
 ## [0.14.1] - 2026-07-17
 
 ### Zuverlässigkeit

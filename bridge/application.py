@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import signal
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Protocol
@@ -15,6 +16,11 @@ from bridge.archive_sync import RingBufferArchiveSynchronizer
 from bridge.dashboard_reporter import (
     DashboardCurveReporter,
     parse_dashboard_since,
+)
+from bridge.device_diagnostics import ControllerDiagnosticsReporter
+from bridge.heating_failure_monitor import (
+    HeatingFailureMonitor,
+    create_default_heating_failure_storage,
 )
 from bridge.logging_setup import configure_logging, log_warning
 from bridge.live_curve import (
@@ -40,6 +46,7 @@ from history.ring_buffer import (
 )
 from history.sync import ArchiveSyncSettings
 from protocol.live import decode_live_status
+from protocol.device_diagnostics import DeviceDiagnosticsClient
 from protocol.models import LiveStatus
 
 
@@ -85,6 +92,11 @@ class LiveCurvePublisherLike(Protocol):
         ...
 
 
+class HeatingFailureMonitorLike(Protocol):
+    def refresh_if_due(self) -> object:
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class LiveStateHandler:
     """Speichert den Live-Zustand für MQTT und lokale Brennkurve."""
@@ -92,11 +104,13 @@ class LiveStateHandler:
     state_memory: StateMemoryLike
     curve_recorder: LiveCurveRecorderLike
     curve_publisher: LiveCurvePublisherLike
+    heating_failure_monitor: HeatingFailureMonitorLike
 
     def __call__(self, state: LiveStatus) -> None:
         self.state_memory.remember_state(state)
         session = self.curve_recorder.observe(state)
         self.curve_publisher.publish_live_curve(session)
+        self.heating_failure_monitor.refresh_if_due()
 
 
 @dataclass(slots=True)
@@ -201,6 +215,29 @@ def refresh_history_outputs(
             )
 
 
+def refresh_archive_outputs(
+    statistics_reporter: HistoryReporterLike,
+    dashboard_reporter: HistoryReporterLike,
+    controller_diagnostics_reporter: HistoryReporterLike,
+    *,
+    logger: Logger = print,
+) -> None:
+    """Aktualisiert Historie und Gerätediagnose unabhängig voneinander."""
+    refresh_history_outputs(
+        statistics_reporter,
+        dashboard_reporter,
+        logger=logger,
+    )
+    try:
+        controller_diagnostics_reporter.refresh()
+    except (OSError, RuntimeError, ValueError) as error:
+        log_warning(
+            logger,
+            "Gerätediagnose konnte nicht aktualisiert werden: "
+            f"{error}",
+        )
+
+
 def create_application(
     config_module: Any,
     *,
@@ -229,7 +266,6 @@ def create_application(
             polling_settings.live_retry_delay_seconds
         ),
         sleeper=sleeper,
-        is_running=running_state,
         logger=logger,
     )
     connection = MqttConnection(
@@ -282,6 +318,49 @@ def create_application(
         ),
         logger=logger,
     )
+    device_diagnostics_client = DeviceDiagnosticsClient(
+        live_url=config_module.WIFIRE_URL,
+        request_timeout=getattr(
+            config_module,
+            "DEVICE_DIAGNOSTICS_REQUEST_TIMEOUT",
+            getattr(config_module, "REQUEST_TIMEOUT", 5),
+        ),
+        retry_count=getattr(
+            config_module,
+            "DEVICE_DIAGNOSTICS_RETRY_COUNT",
+            2,
+        ),
+        retry_delay_seconds=getattr(
+            config_module,
+            "DEVICE_DIAGNOSTICS_RETRY_DELAY",
+            2,
+        ),
+        sleeper=sleeper,
+        logger=logger,
+    )
+    controller_diagnostics_reporter = ControllerDiagnosticsReporter(
+        client=device_diagnostics_client,
+        publisher=connection.publisher,
+        logger=logger,
+    )
+    heating_failure_monitor = HeatingFailureMonitor(
+        client=device_diagnostics_client,
+        publisher=connection.publisher,
+        storage=create_default_heating_failure_storage(
+            project_dir,
+            logger=logger,
+        ),
+        schedule=IntervalSchedule(
+            getattr(
+                config_module,
+                "HEATING_FAILURE_POLL_INTERVAL",
+                300,
+            ),
+            last_update=time.monotonic(),
+        ),
+        is_running=running_state,
+        logger=logger,
+    )
 
     archive_settings = build_archive_sync_settings(config_module)
     archive_synchronizer = RingBufferArchiveSynchronizer(
@@ -291,9 +370,10 @@ def create_application(
         sleeper=sleeper,
         is_running=running_state,
         logger=logger,
-        on_complete=lambda: refresh_history_outputs(
+        on_complete=lambda: refresh_archive_outputs(
             statistics_reporter,
             dashboard_reporter,
+            controller_diagnostics_reporter,
             logger=logger,
         ),
     )
@@ -320,6 +400,7 @@ def create_application(
             state_memory=connection,
             curve_recorder=live_curve_recorder,
             curve_publisher=connection.publisher,
+            heating_failure_monitor=heating_failure_monitor,
         ),
         logger=logger,
     )
