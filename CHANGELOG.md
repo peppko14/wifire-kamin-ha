@@ -7,7 +7,30 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-16
+
+### Hinzugefügt
+
+- **Automatische wöchentliche Zeitsynchronisation**: Wöchentlicher Termin auf
+  Dienstag 06:00 Uhr lokaler Zeit (`TIME_SYNC_WEEKDAY = 1`) gelegt
+- **Nachhol-Prinzip (Catch-Up)**: Verpasste Termine (z. B. durch aktiven Kamin,
+  ausgeschalteten Raspberry Pi oder Netzwerkausfall) verfallen nicht, sondern
+  werden beim ersten erkannten Ruhezustand in der Kalenderwoche nachgeholt
+- **Drift-Guard**: Zusätzlicher Ausgleich bei einer Zeitdrift von mehr als
+  60 Sekunden nach mindestens 7 Tagen seit der letzten Synchronisation
+- **Home-Assistant-Button `button.wifire_kamin_zeitsynchronisation`**: Manueller
+  Trigger zur sofortigen Zeitsynchronisation direkt aus der Bedienoberfläche
+- **Home-Assistant-Sensoren**:
+  - `sensor.wifire_kamin_time_sync_status` (Zustand: idle, blocked, completed, error)
+  - `sensor.wifire_kamin_time_sync_last` (Zeitstempel der letzten erfolgreichen Synchronisation)
+- **Strenge Sicherheitsprüfungen**: Luftklappe 0 %, keine Klappenbewegung,
+  keine aktive Brennkurve, NTP-Synchronisation des Raspberry Pi
+- **Verifizierter Schreib-Endpunkt**: Protokollierung und Implementierung von
+  `POST /direct/23` mit 16-Bit-Little-Endian-Prüfsumme und Rückleseprüfung via
+  `GET /direct/22`
+
 ## [0.14.3] - 2026-10-16
+
 
 ### Werkzeuge
 

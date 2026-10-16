@@ -16,6 +16,7 @@ from urllib.request import Request, urlopen
 
 PACKET_HEADER = bytes.fromhex("aacc3355")
 CLOCK_ENDPOINT = "22"
+SET_CLOCK_ENDPOINT = "23"
 ALARMS_ENDPOINT = "04"
 CLOCK_PACKET_LENGTH = 13
 ALARM_PACKET_LENGTH = 429
@@ -23,7 +24,9 @@ ALARM_RECORD_COUNT = 10
 ALARM_RECORD_LENGTH = 6
 ALARM_RECORD_BYTES = ALARM_RECORD_COUNT * ALARM_RECORD_LENGTH
 KNOWN_ALARM_LABELS = {1: "Heizfehler"}
-ALLOWED_ENDPOINTS = frozenset({CLOCK_ENDPOINT, ALARMS_ENDPOINT})
+ALLOWED_ENDPOINTS = frozenset(
+    {CLOCK_ENDPOINT, SET_CLOCK_ENDPOINT, ALARMS_ENDPOINT}
+)
 
 
 class DeviceDiagnosticsReadError(RuntimeError):
@@ -151,6 +154,64 @@ def build_read_request(live_url: str, endpoint: str) -> Request:
         },
         method="GET",
     )
+
+
+def encode_controller_time_packet(target_time: datetime) -> str:
+    """
+    Erzeugt das hexadezimale Schreib-Telegramm für POST /direct/23.
+
+    Format:
+    - Header: aacc3355
+    - Länge:  06
+    - Endpunkt: 23
+    - Jahr:   ab 2000 (z. B. 26 für 2026)
+    - Monat:  1..12
+    - Tag:    1..31
+    - Stunde: 0..23
+    - Minute: 0..59
+    - Checksumme: 16-Bit Little-Endian Summe von [0x23, yy, MM, dd, HH, mm]
+    """
+    if target_time.year < 2000 or target_time.year > 2099:
+        raise ValueError("Jahr muss zwischen 2000 und 2099 liegen.")
+
+    payload_bytes = bytes([
+        0x23,
+        target_time.year - 2000,
+        target_time.month,
+        target_time.day,
+        target_time.hour,
+        target_time.minute,
+    ])
+    checksum = sum(payload_bytes) & 0xFFFF
+    checksum_bytes = checksum.to_bytes(2, "little")
+
+    full_packet = (
+        PACKET_HEADER
+        + bytes([len(payload_bytes)])
+        + payload_bytes
+        + checksum_bytes
+    )
+    return full_packet.hex()
+
+
+def build_write_request(
+    live_url: str,
+    endpoint: str,
+    raw_payload: str,
+) -> Request:
+    """Erzeugt einen POST-Request mit der JSON-Nutzlast {"raw": ...}."""
+    body = json.dumps({"raw": raw_payload}).encode("utf-8")
+    return Request(
+        build_direct_url(live_url, endpoint),
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Connection": "close",
+        },
+        method="POST",
+    )
+
 
 
 def _decode_hex(raw: str) -> bytes:
@@ -319,6 +380,51 @@ class DeviceDiagnosticsClient:
         """Liest und dekodiert die interne Steuerungszeit."""
         return decode_controller_time(self._read_raw(CLOCK_ENDPOINT))
 
+    def set_controller_time(self, target_time: datetime) -> ControllerTime:
+        """Schreibt die neue Uhrzeit auf Endpunkt 23 und prüft das Echo."""
+        raw_packet = encode_controller_time_packet(target_time)
+        request = build_write_request(
+            self.live_url,
+            SET_CLOCK_ENDPOINT,
+            raw_packet,
+        )
+        last_error: OSError | ValueError | None = None
+
+        for attempt in range(1, self.retry_count + 1):
+            try:
+                with self.opener(
+                    request,
+                    timeout=self.request_timeout,
+                ) as response:
+                    result = json.loads(response.read().decode("utf-8"))
+
+                if not isinstance(result, dict):
+                    raise ValueError("Schreibantwort ist kein JSON-Objekt.")
+                echo_raw = result.get("raw")
+                if (
+                    not isinstance(echo_raw, str)
+                    or echo_raw.lower() != raw_packet.lower()
+                ):
+                    raise ValueError(
+                        f"Schreib-Echo stimmt nicht überein: {echo_raw!r} != {raw_packet!r}"
+                    )
+                # Nach erfolgreichem Schreiben die Steuerungszeit verifizierend rücklesen
+                return self.read_controller_time()
+            except (OSError, ValueError) as error:
+                last_error = error
+                self.logger(
+                    f"Zeitsynchronisation POST /direct/{SET_CLOCK_ENDPOINT}, "
+                    f"Versuch {attempt}/{self.retry_count} fehlgeschlagen: {error}"
+                )
+                if attempt < self.retry_count:
+                    self.sleeper(self.retry_delay_seconds)
+
+        raise DeviceDiagnosticsReadError(
+            f"Zeitsynchronisation fehlgeschlagen nach "
+            f"{self.retry_count} Versuchen: {last_error}"
+        )
+
     def read_alarms(self) -> AlarmList:
         """Liest den verifizierten Heizfehler-Block der Alarmliste."""
         return decode_alarm_list(self._read_raw(ALARMS_ENDPOINT))
+

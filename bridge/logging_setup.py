@@ -67,6 +67,11 @@ def _log_with_level(
     logger(message)
 
 
+def log_info(logger: Logger, message: str) -> None:
+    """Schreibt eine Info-Meldung und unterstützt einfache Test-Callables."""
+    _log_with_level(logger, "info", message)
+
+
 def log_warning(logger: Logger, message: str) -> None:
     """Schreibt eine Warnung und unterstützt einfache Test-Callables."""
     _log_with_level(logger, "warning", message)
@@ -75,6 +80,7 @@ def log_warning(logger: Logger, message: str) -> None:
 def log_error(logger: Logger, message: str) -> None:
     """Schreibt einen Fehler und unterstützt einfache Test-Callables."""
     _log_with_level(logger, "error", message)
+
 
 
 def configure_logging(

@@ -342,6 +342,27 @@ class MqttPublisherTests(unittest.TestCase):
             "a" * 64,
         )
 
+    def test_publish_time_sync_state_is_retained(self) -> None:
+        self.publisher.publish_time_sync_state(
+            {
+                "status": "completed",
+                "message": "Erfolgreich",
+                "last_synced_week": "2026-W42",
+            }
+        )
+
+        message = self.client.messages[0]
+        self.assertEqual(
+            message["topic"],
+            "wifire_kamin/wifire_kamin/time_sync/state",
+        )
+        self.assertEqual(message["qos"], 1)
+        self.assertTrue(message["retain"])
+        payload = json.loads(message["payload"])
+        self.assertEqual(payload["status"], "completed")
+        self.assertEqual(payload["last_synced_week"], "2026-W42")
+
 
 if __name__ == "__main__":
     unittest.main()
+

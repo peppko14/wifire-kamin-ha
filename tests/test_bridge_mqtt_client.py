@@ -171,6 +171,7 @@ class MqttConnectionTests(unittest.TestCase):
         username: str = "mqtt-user",
         running: bool = True,
         config: SimpleNamespace | None = None,
+        on_time_sync_command: Any = None,
     ) -> tuple[MqttConnection, FakeClient, list[str], list[float]]:
         client = FakeClient()
         messages: list[str] = []
@@ -187,6 +188,7 @@ class MqttConnectionTests(unittest.TestCase):
             app_name="WiFire Bridge",
             app_version="0.6.1",
             is_running=lambda: running,
+            on_time_sync_command=on_time_sync_command,
             client_factory=client_factory,
             logger=messages.append,
             sleep=sleeps.append,
@@ -349,7 +351,10 @@ class MqttConnectionTests(unittest.TestCase):
 
         self.assertEqual(
             client.subscriptions,
-            [("homeassistant/status", 1)],
+            [
+                ("homeassistant/status", 1),
+                ("wifire_kamin/wifire_kamin/time_sync/set", 1),
+            ],
         )
         published_topics = [item[0] for item in client.published]
         self.assertIn(
@@ -363,6 +368,23 @@ class MqttConnectionTests(unittest.TestCase):
         discovery = json.loads(client.published[0][1])
         self.assertEqual(discovery["device"]["sw_version"], "0.6.1")
         self.assertIn("Mit MQTT verbunden.", messages)
+
+    def test_time_sync_command_triggers_callback(self) -> None:
+        triggered: list[bool] = []
+        connection, client, messages, _ = self.create_connection(
+            on_time_sync_command=lambda: triggered.append(True),
+        )
+        message = SimpleNamespace(
+            topic="wifire_kamin/wifire_kamin/time_sync/set",
+            payload=b"PRESS",
+        )
+
+        connection.on_message(client, None, message)
+
+        self.assertEqual(triggered, [True])
+        self.assertTrue(
+            any("Zeitsynchronisation" in message for message in messages)
+        )
 
     def test_remember_state_uses_stable_snapshot(self) -> None:
         connection, _, _, _ = self.create_connection()

@@ -243,8 +243,26 @@ Entitäten für:
   - gesamter und mittlerer Abbrenndauer
   - mittlerer Maximaltemperatur und Höchsttemperatur
 - optionaler Lüfter-Rohwert
+- Zeitsynchronisation über Button-Entität (`button.wifire_kamin_zeitsynchronisation`)
+- Status (`sensor.wifire_kamin_time_sync_status`) und Zeitstempel (`sensor.wifire_kamin_time_sync_last`) der Zeitsynchronisation
 
 Ein Eintrag in `configuration.yaml` ist nicht erforderlich.
+
+### Zeitsynchronisation
+
+Die interne Uhr der WiFire-Steuerung wird wöchentlich automatisch abgeglichen:
+- **Regulärer Termin:** Dienstag 06:00 Uhr lokaler Zeit (`TIME_SYNC_WEEKDAY = 1`)
+- **Nachhol-Prinzip:** Wird der Termin verpasst (z. B. wegen brennendem Kamin,
+  ausgeschaltetem Raspberry Pi oder Netzwerkausfall), wird die Synchronisation
+  beim nächsten erkannten Ruhezustand in der Kalenderwoche nachgeholt.
+- **Drift-Guard:** Bei einer Zeitabweichung von mehr als 60 Sekunden nach mindestens
+  7 Tagen seit dem letzten Abgleich erfolgt die Korrektur automatisch beim nächsten Ruhezustand.
+- **Manueller Trigger:** Über die Home-Assistant-Schaltfläche `button.wifire_kamin_zeitsynchronisation`
+  kann der Abgleich jederzeit manuell ausgelöst werden.
+- **Sicherheitsprüfungen:** Jede Synchronisation erfordert zwingend eine geschlossene
+  Luftklappe (0 %), Stillstand der Klappe, keine laufende Brennkurve und eine per NTP
+  bestätigte Systemzeit des Raspberry Pi.
+
 
 Nur die Live-Entitäten verwenden die MQTT-Verfügbarkeit der Bridge. Wird die
 Bridge beendet oder der Raspberry ausgeschaltet, zeigt Home Assistant daher

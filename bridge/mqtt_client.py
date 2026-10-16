@@ -122,6 +122,8 @@ class MqttConnection:
         app_name: str,
         app_version: str,
         is_running: RunningCheck,
+        on_time_sync_command: Callable[[], None] | None = None,
+        initial_time_sync_publisher: Callable[[], None] | None = None,
         client_factory: ClientFactory = mqtt.Client,
         logger: Logger = print,
         sleep: SleepFunction = time.sleep,
@@ -131,6 +133,8 @@ class MqttConnection:
         self.app_name = app_name
         self.app_version = app_version
         self.is_running = is_running
+        self.on_time_sync_command = on_time_sync_command
+        self.initial_time_sync_publisher = initial_time_sync_publisher
         self.logger = logger
         self.sleep = sleep
         self.tls_settings = MqttTlsSettings.from_config(config)
@@ -247,9 +251,16 @@ class MqttConnection:
             self.topics.home_assistant_status,
             qos=1,
         )
+        client.subscribe(
+            self.topics.time_sync_command,
+            qos=1,
+        )
 
         self.publish_discovery()
         self.publisher.publish_availability(True)
+
+        if self.initial_time_sync_publisher is not None:
+            self.initial_time_sync_publisher()
 
         latest_state = self.latest_state_snapshot()
         if latest_state is not None:
@@ -261,7 +272,13 @@ class MqttConnection:
         userdata: Any,
         message: mqtt.MQTTMessage,
     ) -> None:
-        """Reagiert auf den Home-Assistant-Onlinestatus."""
+        """Verarbeitet eingehende MQTT-Nachrichten."""
+        if message.topic == self.topics.time_sync_command:
+            self.logger("MQTT-Befehl zur Zeitsynchronisation empfangen.")
+            if self.on_time_sync_command is not None:
+                self.on_time_sync_command()
+            return
+
         if message.topic != self.topics.home_assistant_status:
             return
 
@@ -283,6 +300,9 @@ class MqttConnection:
         )
         self.publish_discovery()
         self.publisher.publish_availability(True)
+
+        if self.initial_time_sync_publisher is not None:
+            self.initial_time_sync_publisher()
 
         latest_state = self.latest_state_snapshot()
         if latest_state is not None:

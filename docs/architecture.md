@@ -1,17 +1,19 @@
 # Architektur
 
-Dokumentversion: 1.15.0
+Dokumentversion: 1.16.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.14.3
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.15.0
 
 ## Ziele
 
 Die Architektur trennt Gerätekommunikation, Datenmodelle, lokale Historie
-und Home-Assistant-Anbindung. Das Projekt bleibt ausschließlich lesend.
+und Home-Assistant-Anbindung. Das Projekt bleibt bis auf die verifizierte
+Zeitsynchronisation ausschließlich lesend.
 
 Grundsätze:
 
-- keine Steuer- oder Konfigurationsbefehle an den Kamin,
+- keine verändernden Steuer- oder Konfigurationsbefehle an den Kamin,
+- verifizierte Zeitsynchronisation (POST /direct/23) nur bei nachweislichem Ruhezustand (Klappe 0 %, keine Kurve, NTP synchron),
 - keine benutzerspezifischen absoluten Pfade,
 - Laufzeitdaten ausschließlich unter `data/`,
 - stabile Identität historischer Abbrände,
@@ -28,6 +30,7 @@ wifire-kamin-ha/
 │   ├── publisher.py
 │   ├── mqtt_client.py
 │   ├── polling.py
+│   ├── time_sync.py
 │   ├── archive.py
 │   ├── archive_sync.py
 │   ├── scheduler.py
@@ -37,6 +40,7 @@ wifire-kamin-ha/
 │   ├── dashboard_reporter.py
 │   ├── logging_setup.py
 │   └── application.py
+
 ├── history/
 │   ├── backup.py
 │   ├── diagnostics.py

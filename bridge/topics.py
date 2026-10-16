@@ -58,6 +58,14 @@ class MqttTopics:
         return f"{self.base}/heating_failure_event"
 
     @property
+    def time_sync_command(self) -> str:
+        return f"{self.base}/time_sync/set"
+
+    @property
+    def time_sync_state(self) -> str:
+        return f"{self.base}/time_sync/state"
+
+    @property
     def home_assistant_status(self) -> str:
         return f"{self.discovery_prefix}/status"
 

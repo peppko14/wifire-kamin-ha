@@ -37,6 +37,10 @@ from bridge.statistics import (
     HistoryStatisticsReporter,
     parse_statistics_since,
 )
+from bridge.time_sync import (
+    TimeSyncManager,
+    create_default_time_sync_storage,
+)
 from bridge.topics import MqttTopics
 from decoder import read_live_data
 from history.manager import create_default_history_manager
@@ -97,6 +101,16 @@ class HeatingFailureMonitorLike(Protocol):
         ...
 
 
+class TimeSyncManagerLike(Protocol):
+    def check_if_due(
+        self,
+        live_status: LiveStatus | None,
+        *,
+        is_curve_active: bool,
+    ) -> bool:
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class LiveStateHandler:
     """Speichert den Live-Zustand für MQTT und lokale Brennkurve."""
@@ -105,12 +119,19 @@ class LiveStateHandler:
     curve_recorder: LiveCurveRecorderLike
     curve_publisher: LiveCurvePublisherLike
     heating_failure_monitor: HeatingFailureMonitorLike
+    time_sync_manager: TimeSyncManagerLike | None = None
 
     def __call__(self, state: LiveStatus) -> None:
         self.state_memory.remember_state(state)
         session = self.curve_recorder.observe(state)
         self.curve_publisher.publish_live_curve(session)
         self.heating_failure_monitor.refresh_if_due()
+        if self.time_sync_manager is not None:
+            self.time_sync_manager.check_if_due(
+                state,
+                is_curve_active=session is not None,
+            )
+
 
 
 @dataclass(slots=True)
@@ -274,6 +295,11 @@ def create_application(
         app_name=app_name,
         app_version=app_version,
         is_running=running_state,
+        on_time_sync_command=lambda: time_sync_manager.trigger_manual_sync(
+            connection.latest_state_snapshot(),
+            is_curve_active=live_curve_recorder.is_active,
+        ),
+        initial_time_sync_publisher=lambda: time_sync_manager.publish_current_state(),
         logger=logger,
     )
     history_manager = create_default_history_manager(
@@ -336,6 +362,17 @@ def create_application(
             2,
         ),
         sleeper=sleeper,
+        logger=logger,
+    )
+    time_sync_manager = TimeSyncManager(
+        storage=create_default_time_sync_storage(project_dir),
+        diagnostics_client=device_diagnostics_client,
+        publisher=connection.publisher,
+        enabled=getattr(config_module, "TIME_SYNC_ENABLED", True),
+        target_weekday=getattr(config_module, "TIME_SYNC_WEEKDAY", 1),
+        target_hour=getattr(config_module, "TIME_SYNC_HOUR", 6),
+        target_minute=getattr(config_module, "TIME_SYNC_MINUTE", 0),
+        is_running=running_state,
         logger=logger,
     )
     controller_diagnostics_reporter = ControllerDiagnosticsReporter(
@@ -401,6 +438,7 @@ def create_application(
             curve_recorder=live_curve_recorder,
             curve_publisher=connection.publisher,
             heating_failure_monitor=heating_failure_monitor,
+            time_sync_manager=time_sync_manager,
         ),
         logger=logger,
     )

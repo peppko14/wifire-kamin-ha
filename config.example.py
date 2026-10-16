@@ -85,3 +85,11 @@ STATISTICS_SINCE = None
 # Warnungen bleiben standardmäßig sichtbar, aber ungültige Datensätze nie.
 DASHBOARD_CURVES_SINCE = STATISTICS_SINCE
 DASHBOARD_INCLUDE_WARNINGS = True
+
+# Wöchentliche Zeitsynchronisation mit Nachhol-Prinzip bei Ruhezustand und
+# manuellem Trigger über den Home-Assistant-Button (Standard: Dienstag 06:00).
+TIME_SYNC_ENABLED = True
+TIME_SYNC_WEEKDAY = 1  # 0=Montag, 1=Dienstag, ..., 6=Sonntag
+TIME_SYNC_HOUR = 6
+TIME_SYNC_MINUTE = 0
+

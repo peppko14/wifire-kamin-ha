@@ -50,6 +50,14 @@ class MqttTopicsTests(unittest.TestCase):
             self.topics.heating_failure_event,
             "wifire_kamin/wifire_kamin/heating_failure_event",
         )
+        self.assertEqual(
+            self.topics.time_sync_command,
+            "wifire_kamin/wifire_kamin/time_sync/set",
+        )
+        self.assertEqual(
+            self.topics.time_sync_state,
+            "wifire_kamin/wifire_kamin/time_sync/state",
+        )
 
     def test_discovery_topics(self) -> None:
         self.assertEqual(

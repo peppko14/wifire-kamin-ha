@@ -192,3 +192,20 @@ class MqttPublisher:
             qos=1,
             retain=True,
         )
+
+    def publish_time_sync_state(
+        self,
+        payload: dict[str, object],
+    ) -> None:
+        """Veröffentlicht den Zustand der Zeitsynchronisation retained."""
+        self.client.publish(
+            self.topics.time_sync_state,
+            payload=json.dumps(
+                payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            qos=1,
+            retain=True,
+        )
+

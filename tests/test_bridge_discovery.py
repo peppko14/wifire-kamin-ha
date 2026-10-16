@@ -370,6 +370,44 @@ class DiscoveryTests(unittest.TestCase):
             ]["value_template"]
             self.assertIn(f"heating_seasons[{index}]", template)
 
+    def test_payload_contains_time_sync_button_and_sensors(self) -> None:
+        components = self.build_payload()["components"]
+
+        button = components["wifire_kamin_zeitsynchronisation"]
+        self.assertEqual(button["platform"], "button")
+        self.assertEqual(
+            button["command_topic"],
+            "wifire_kamin/wifire_kamin/time_sync/set",
+        )
+        self.assertEqual(
+            button["default_entity_id"],
+            "button.wifire_kamin_zeitsynchronisation",
+        )
+
+        status_sensor = components["wifire_kamin_time_sync_status"]
+        self.assertEqual(status_sensor["platform"], "sensor")
+        self.assertEqual(
+            status_sensor["state_topic"],
+            "wifire_kamin/wifire_kamin/time_sync/state",
+        )
+        self.assertEqual(
+            status_sensor["default_entity_id"],
+            "sensor.wifire_kamin_time_sync_status",
+        )
+
+        last_sensor = components["wifire_kamin_time_sync_last"]
+        self.assertEqual(last_sensor["platform"], "sensor")
+        self.assertEqual(last_sensor["device_class"], "timestamp")
+        self.assertEqual(
+            last_sensor["state_topic"],
+            "wifire_kamin/wifire_kamin/time_sync/state",
+        )
+        self.assertEqual(
+            last_sensor["default_entity_id"],
+            "sensor.wifire_kamin_time_sync_last",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
+

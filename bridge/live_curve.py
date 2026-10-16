@@ -466,6 +466,12 @@ class LiveCurveRecorder:
                 f"{len(self.current_session.points)} Messpunkte."
             )
 
+    @property
+    def is_active(self) -> bool:
+        """Gibt True zurück, wenn aktuell eine Brennkurve aktiv aufgezeichnet wird."""
+        self._restore()
+        return self.current_session is not None
+
     def observe(self, status: LiveStatus) -> LiveCurveSession | None:
         """Verarbeitet einen Live-Zustand ohne die Bridge zu gefährden."""
         if not self.enabled:

@@ -237,6 +237,36 @@ def build_discovery_payload(
             **component,
         }
 
+    components[f"{config.DEVICE_ID}_zeitsynchronisation"] = {
+        "platform": "button",
+        "name": "Zeitsynchronisation",
+        "unique_id": f"{config.DEVICE_ID}_zeitsynchronisation",
+        "command_topic": topics.time_sync_command,
+        "payload_press": "PRESS",
+        "icon": "mdi:clock-sync-outline",
+        "entity_category": "config",
+    }
+    components[f"{config.DEVICE_ID}_time_sync_status"] = {
+        "platform": "sensor",
+        "name": "Zeitsynchronisation Status",
+        "unique_id": f"{config.DEVICE_ID}_time_sync_status",
+        "state_topic": topics.time_sync_state,
+        "value_template": "{{ value_json.status }}",
+        "json_attributes_topic": topics.time_sync_state,
+        "icon": "mdi:clock-check-outline",
+        "entity_category": "diagnostic",
+    }
+    components[f"{config.DEVICE_ID}_time_sync_last"] = {
+        "platform": "sensor",
+        "name": "Letzte Zeitsynchronisation",
+        "unique_id": f"{config.DEVICE_ID}_time_sync_last",
+        "state_topic": topics.time_sync_state,
+        "value_template": "{{ value_json.last_synced_at }}",
+        "device_class": "timestamp",
+        "icon": "mdi:calendar-clock",
+        "entity_category": "diagnostic",
+    }
+
     for number in archive_numbers:
         components[f"{config.DEVICE_ID}_archive_{number}"] = {
             "platform": "sensor",

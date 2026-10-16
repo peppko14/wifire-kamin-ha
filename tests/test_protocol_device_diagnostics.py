@@ -14,8 +14,10 @@ from protocol.device_diagnostics import (
     DeviceDiagnosticsClient,
     build_direct_url,
     build_read_request,
+    build_write_request,
     decode_alarm_list,
     decode_controller_time,
+    encode_controller_time_packet,
 )
 
 
@@ -144,11 +146,15 @@ class DeviceDiagnosticsClientTests(unittest.TestCase):
             "http://192.168.0.1/direct/22",
         )
         self.assertEqual(
+            build_direct_url("http://192.168.0.1/direct/00", "23"),
+            "http://192.168.0.1/direct/23",
+        )
+        self.assertEqual(
             build_direct_url("http://192.168.0.1/direct/00", "04"),
             "http://192.168.0.1/direct/04",
         )
         with self.assertRaisesRegex(ValueError, "Nicht freigegebener"):
-            build_direct_url("http://192.168.0.1/direct/00", "23")
+            build_direct_url("http://192.168.0.1/direct/00", "99")
 
     def test_request_is_get_without_body(self) -> None:
         request = build_read_request(
@@ -200,6 +206,49 @@ class DeviceDiagnosticsClientTests(unittest.TestCase):
         self.assertEqual(request.full_url, "http://192.168.0.1/direct/04")
         self.assertEqual(timeout, 5)
 
+    def test_encode_controller_time_packet_matches_official_app(self) -> None:
+        target = datetime(2026, 10, 16, 12, 39)
+        packet = encode_controller_time_packet(target)
+        self.assertEqual(packet, "aacc335506231a0a100c278a00")
+
+    def test_encode_controller_time_packet_rejects_out_of_range_year(self) -> None:
+        with self.assertRaises(ValueError):
+            encode_controller_time_packet(datetime(1999, 1, 1, 0, 0))
+
+    def test_client_sets_controller_time(self) -> None:
+        target = datetime(2026, 10, 16, 12, 39)
+        write_echo = json.dumps(
+            {"raw": "aacc335506231a0a100c278a00"}
+        ).encode("utf-8")
+        read_response = json.dumps(
+            {"raw": "aacc335506221a1a100c279900"}
+        ).encode("utf-8")
+        opener = FakeOpener(write_echo, read_response)
+        client = DeviceDiagnosticsClient(
+            live_url="http://192.168.0.1/direct/00",
+            opener=opener,
+        )
+
+        result = client.set_controller_time(target)
+
+        self.assertEqual(result.value, datetime(2026, 10, 16, 12, 39))
+        self.assertEqual(len(opener.calls), 2)
+        write_req, _ = opener.calls[0]
+        self.assertEqual(write_req.get_method(), "POST")
+        self.assertEqual(
+            write_req.full_url, "http://192.168.0.1/direct/23"
+        )
+        self.assertEqual(
+            json.loads(write_req.data.decode("utf-8")),
+            {"raw": "aacc335506231a0a100c278a00"},
+        )
+        read_req, _ = opener.calls[1]
+        self.assertEqual(read_req.get_method(), "GET")
+        self.assertEqual(
+            read_req.full_url, "http://192.168.0.1/direct/22"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
+
