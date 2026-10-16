@@ -535,6 +535,15 @@ Mit v0.14.1 umgesetzt:
 - ein bereits laufender HTTP-Aufruf bleibt durch seinen Request-Timeout
   begrenzt
 
+Mit v0.14.2 umgesetzt:
+
+- ausschließlich lesende Gerätediagnose für interne Steuerungszeit und
+  Heizfehlerliste
+- retained Diagnoseentitäten für Steuerungszeit, signierte Zeitabweichung
+  und Heizfehler
+- Push-Ereignis für neue Heizfehler in Home Assistant
+- Dokumentation des verifizierten Referenzprofils `UNIVERSAL / UNI-80°C`
+
 Für spätere Versionen vorgesehen:
 
 - Backlog: Zuordnung zwischen Live-Zeitachse und historischem

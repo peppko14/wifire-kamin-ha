@@ -7,6 +7,8 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-07-17
+
 ### Home Assistant
 
 - neue retained Diagnoseentität `Heizfehler-Ereignis` für Automationen und

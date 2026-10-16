@@ -2,7 +2,7 @@
 
 Dokumentversion: 1.14.0
 
-Projektstand: WiFire-Kamin Home Assistant Bridge v0.14.1
+Projektstand: WiFire-Kamin Home Assistant Bridge v0.14.2
 
 ## Ziele
 
