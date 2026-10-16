@@ -11,7 +11,6 @@ import tempfile
 import unittest
 
 from tools.archive_completion_probe_v1_0_0 import (
-    CONFIRMATION_THRESHOLD,
     ProbeTracker,
     run_probe,
 )

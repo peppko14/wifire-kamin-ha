@@ -13,14 +13,14 @@ der Kamin den Abbrand ins Archiv überführt und als vollständig markiert.
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass
+from datetime import datetime
 import hashlib
 import json
 from pathlib import Path
 import sys
 import time
-from typing import Any, Callable
+from typing import Callable
 from urllib.request import Request, urlopen
 
 
@@ -31,17 +31,17 @@ if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
 try:
-    from config import REQUEST_TIMEOUT as CONFIG_TIMEOUT, WIFIRE_URL as CONFIG_URL
+    from config import REQUEST_TIMEOUT as CONFIG_TIMEOUT, WIFIRE_URL as CONFIG_URL  # noqa: E402
 except ImportError:
     CONFIG_TIMEOUT = 15
     CONFIG_URL = "http://192.168.0.1/direct/00"
 
-from history.identifiers import build_burn_id
-from protocol.adapters import archive_record_to_burn_record
-from protocol.archive import ArchiveClient, ArchiveReadError
-from protocol.live import decode_live_status
-from protocol.models import LiveStatus
-from wifire_protocol import decode_archive_record
+from history.identifiers import build_burn_id  # noqa: E402
+from protocol.adapters import archive_record_to_burn_record  # noqa: E402
+from protocol.archive import ArchiveClient, ArchiveReadError  # noqa: E402
+from protocol.live import decode_live_status  # noqa: E402
+from protocol.models import LiveStatus  # noqa: E402
+from wifire_protocol import decode_archive_record  # noqa: E402
 
 
 MIN_INTER_REQUEST_DELAY = 10.0

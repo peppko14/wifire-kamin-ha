@@ -14,7 +14,6 @@ from protocol.device_diagnostics import (
     DeviceDiagnosticsClient,
     build_direct_url,
     build_read_request,
-    build_write_request,
     decode_alarm_list,
     decode_controller_time,
     encode_controller_time_packet,
