@@ -7,6 +7,16 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-10-16
+
+### Behoben
+
+- **CI-Qualitätsprüfungen & Typisierung**:
+  - Mypy-Typisierungskonflikt in `bridge/application.py` bei `on_time_sync_command` (`Callable[[], None]`) gelöst
+  - Ruff Lint-Bereinigungen: unbenutzte Imports (`F401`) und Modul-Import-Markierungen (`E402`) in Tests und Werkzeugen korrigiert
+- **Git-Repository-Hygiene**:
+  - Vollständige Bereinigung persönlicher Pfade und Vereinheitlichung der Commit-Autoren-Identitäten
+
 ## [0.15.0] - 2026-10-16
 
 ### Hinzugefügt
