@@ -544,6 +544,13 @@ Mit v0.14.2 umgesetzt:
 - Push-Ereignis für neue Heizfehler in Home Assistant
 - Dokumentation des verifizierten Referenzprofils `UNIVERSAL / UNI-80°C`
 
+Mit v0.14.3 umgesetzt:
+
+- ausschließlich lesendes Werkzeug zur Erkennung des genauen
+  Archivabschluss-Zeitpunkts während eines echten Abbrands
+- strukturierte Protokollierung von Live-Status und Archivplatz 1 zur
+  Vorbereitung der kontrollierten Zeitsynchronisierung
+
 Für spätere Versionen vorgesehen:
 
 - Backlog: Zuordnung zwischen Live-Zeitachse und historischem

@@ -7,6 +7,27 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.14.3] - 2026-10-16
+
+### Werkzeuge
+
+- versioniertes Werkzeug `tools/archive_completion_probe_v1_0_0.py` zur
+  Untersuchung des Archivabschluss-Zeitpunkts während eines echten Abbrands
+  ergänzt
+- sequentielle Abfrage von Live-Status (`/direct/00`) und Archivplatz 1
+  (`/direct/35`) mit konfigurierbarer Schutzpause (mindestens 10 Sekunden)
+- automatische Erkennung von Klappe 0 %, neuem Archivplatz 1,
+  unvollständigen Datensätzen und stabiler Bestätigung des abgeschlossenen
+  Abbrands
+- atomische Protokollierung als JSONL unter `data/archive-completion-probe/`
+
+### Tests
+
+- Zustandswechsel des Trackers (Klappe 0 %, neuer Platz, Bestätigung)
+  vollständig abgedeckt
+- kontrollierter Probe-Lauf mit begrenzter Probenanzahl und JSONL-Generierung
+  getestet
+
 ## [0.14.2] - 2026-07-17
 
 ### Home Assistant
