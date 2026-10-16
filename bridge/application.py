@@ -289,16 +289,19 @@ def create_application(
         sleeper=sleeper,
         logger=logger,
     )
+    def handle_time_sync_command() -> None:
+        time_sync_manager.trigger_manual_sync(
+            connection.latest_state_snapshot(),
+            is_curve_active=live_curve_recorder.is_active,
+        )
+
     connection = MqttConnection(
         config_module,
         topics,
         app_name=app_name,
         app_version=app_version,
         is_running=running_state,
-        on_time_sync_command=lambda: time_sync_manager.trigger_manual_sync(
-            connection.latest_state_snapshot(),
-            is_curve_active=live_curve_recorder.is_active,
-        ),
+        on_time_sync_command=handle_time_sync_command,
         initial_time_sync_publisher=lambda: time_sync_manager.publish_current_state(),
         logger=logger,
     )
