@@ -66,6 +66,22 @@ class MqttTopics:
         return f"{self.base}/time_sync/state"
 
     @property
+    def closing_delay_command(self) -> str:
+        return f"{self.base}/closing_delay/set"
+
+    @property
+    def closing_delay_state(self) -> str:
+        return f"{self.base}/closing_delay/state"
+
+    @property
+    def settings_lock_command(self) -> str:
+        return f"{self.base}/settings_lock/set"
+
+    @property
+    def settings_lock_state(self) -> str:
+        return f"{self.base}/settings_lock/state"
+
+    @property
     def home_assistant_status(self) -> str:
         return f"{self.discovery_prefix}/status"
 

@@ -17,15 +17,24 @@ from urllib.request import Request, urlopen
 PACKET_HEADER = bytes.fromhex("aacc3355")
 CLOCK_ENDPOINT = "22"
 SET_CLOCK_ENDPOINT = "23"
+SETTINGS_ENDPOINT = "12"
+SET_SETTINGS_ENDPOINT = "13"
 ALARMS_ENDPOINT = "04"
 CLOCK_PACKET_LENGTH = 13
+SETTINGS_PACKET_LENGTH = 18
 ALARM_PACKET_LENGTH = 429
 ALARM_RECORD_COUNT = 10
 ALARM_RECORD_LENGTH = 6
 ALARM_RECORD_BYTES = ALARM_RECORD_COUNT * ALARM_RECORD_LENGTH
 KNOWN_ALARM_LABELS = {1: "Heizfehler"}
 ALLOWED_ENDPOINTS = frozenset(
-    {CLOCK_ENDPOINT, SET_CLOCK_ENDPOINT, ALARMS_ENDPOINT}
+    {
+        CLOCK_ENDPOINT,
+        SET_CLOCK_ENDPOINT,
+        SETTINGS_ENDPOINT,
+        SET_SETTINGS_ENDPOINT,
+        ALARMS_ENDPOINT,
+    }
 )
 
 
@@ -78,6 +87,22 @@ class ControllerTime:
         return {
             "value": self.value.isoformat(timespec="minutes"),
             "month_flags": self.month_flags,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ControllerSettings:
+    """Verifizierte Systemeinstellungen (u. a. Schließzeitverzögerung)."""
+
+    closing_delay_minutes: int
+    raw_payload: str
+    raw: str
+
+    def to_dict(self) -> dict[str, object]:
+        """Gibt eine JSON-kompatible Darstellung zurück."""
+        return {
+            "closing_delay_minutes": self.closing_delay_minutes,
+            "raw_payload": self.raw_payload,
         }
 
 
@@ -251,6 +276,54 @@ def decode_controller_time(raw: str) -> ControllerTime:
         raise ValueError("Ungültige Steuerungszeit im Telegramm.") from error
 
     return ControllerTime(value=value, month_flags=month_flags, raw=raw)
+
+
+def decode_controller_settings(raw: str) -> ControllerSettings:
+    """Dekodiert die Antwort von ``GET /direct/12``."""
+    data = _decode_hex(raw)
+    if len(data) != SETTINGS_PACKET_LENGTH:
+        raise ValueError(
+            "Systemeinstellungen-Telegramm hat "
+            f"{len(data)} statt {SETTINGS_PACKET_LENGTH} Bytes."
+        )
+    _validate_header(data)
+    if data[4] != 0x0B or data[5] != 0x12:
+        raise ValueError("Unerwartetes Systemeinstellungen-Telegramm.")
+
+    closing_delay_minutes = data[8]
+    raw_payload = data[6:-2].hex()
+    return ControllerSettings(
+        closing_delay_minutes=closing_delay_minutes,
+        raw_payload=raw_payload,
+        raw=raw,
+    )
+
+
+def encode_controller_settings_packet(
+    current_settings: ControllerSettings,
+    new_closing_delay_minutes: int,
+) -> str:
+    """Erzeugt das vollständige Telegramm für ``POST /direct/13``."""
+    if not (0 <= new_closing_delay_minutes <= 255):
+        raise ValueError(
+            f"Ungültige Schließzeitverzögerung: {new_closing_delay_minutes} min (Erlaubt: 0-255)."
+        )
+    payload_bytes = bytearray(bytes.fromhex(current_settings.raw_payload))
+    if len(payload_bytes) != 10:
+        raise ValueError("Ungültige Nutzlast-Länge in den Systemeinstellungen.")
+
+    payload_bytes[2] = new_closing_delay_minutes
+    cmd_and_payload = bytes([0x13]) + bytes(payload_bytes)
+    checksum = sum(cmd_and_payload) & 0xFFFF
+    checksum_bytes = checksum.to_bytes(2, byteorder="little")
+
+    full_packet = (
+        PACKET_HEADER
+        + bytes([len(cmd_and_payload)])
+        + cmd_and_payload
+        + checksum_bytes
+    )
+    return full_packet.hex()
 
 
 def _decode_alarm_entry(record: bytes) -> AlarmEntry:
@@ -427,4 +500,70 @@ class DeviceDiagnosticsClient:
     def read_alarms(self) -> AlarmList:
         """Liest den verifizierten Heizfehler-Block der Alarmliste."""
         return decode_alarm_list(self._read_raw(ALARMS_ENDPOINT))
+
+    def read_controller_settings(self) -> ControllerSettings:
+        """Liest und dekodiert die aktuellen Systemeinstellungen (u. a. Schließzeitverzögerung)."""
+        return decode_controller_settings(self._read_raw(SETTINGS_ENDPOINT))
+
+    def set_closing_delay(
+        self,
+        new_delay_minutes: int,
+        current_settings: ControllerSettings | None = None,
+    ) -> ControllerSettings:
+        """Schreibt die neue Schließzeitverzögerung auf Endpunkt 13 und verifiziert das Echo."""
+        settings = (
+            current_settings
+            if current_settings is not None
+            else self.read_controller_settings()
+        )
+        raw_packet = encode_controller_settings_packet(
+            settings,
+            new_delay_minutes,
+        )
+        request = build_write_request(
+            self.live_url,
+            SET_SETTINGS_ENDPOINT,
+            raw_packet,
+        )
+        last_error: OSError | ValueError | None = None
+
+        for attempt in range(1, self.retry_count + 1):
+            try:
+                with self.opener(
+                    request,
+                    timeout=self.request_timeout,
+                ) as response:
+                    result = json.loads(response.read().decode("utf-8"))
+
+                if not isinstance(result, dict):
+                    raise ValueError("Schreibantwort ist kein JSON-Objekt.")
+                echo_raw = result.get("raw")
+                if (
+                    not isinstance(echo_raw, str)
+                    or echo_raw.lower() != raw_packet.lower()
+                ):
+                    raise ValueError(
+                        f"Schreib-Echo stimmt nicht überein: {echo_raw!r} != {raw_packet!r}"
+                    )
+                # Nach erfolgreichem Schreiben die Einstellungen rücklesen und verifizieren
+                updated = self.read_controller_settings()
+                if updated.closing_delay_minutes != new_delay_minutes:
+                    raise ValueError(
+                        "Rückgelesene Schließzeitverzögerung stimmt nicht überein: "
+                        f"{updated.closing_delay_minutes} != {new_delay_minutes}"
+                    )
+                return updated
+            except (OSError, ValueError) as error:
+                last_error = error
+                self.logger(
+                    f"Schließzeitverzögerung POST /direct/{SET_SETTINGS_ENDPOINT}, "
+                    f"Versuch {attempt}/{self.retry_count} fehlgeschlagen: {error}"
+                )
+                if attempt < self.retry_count:
+                    self.sleeper(self.retry_delay_seconds)
+
+        raise DeviceDiagnosticsReadError(
+            f"Schließzeitverzögerung setzen fehlgeschlagen nach "
+            f"{self.retry_count} Versuchen: {last_error}"
+        )
 

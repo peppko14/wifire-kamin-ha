@@ -15,12 +15,17 @@ from protocol.device_diagnostics import (
     build_direct_url,
     build_read_request,
     decode_alarm_list,
+    decode_controller_settings,
     decode_controller_time,
+    encode_controller_settings_packet,
     encode_controller_time_packet,
 )
 
 
 CLOCK_RAW = "aacc335506221a17110c39a900"
+SETTINGS_RAW_50MIN = "aacc33550b120101320004b0005001e02b02"
+SETTINGS_WRITE_50MIN = "aacc33550b130101320004b0005001e02c02"
+SETTINGS_RAW_45MIN = "aacc33550b1201012d0004b0005001e02602"
 
 
 def build_alarm_raw(*records: bytes) -> str:
@@ -246,6 +251,80 @@ class DeviceDiagnosticsClientTests(unittest.TestCase):
         self.assertEqual(
             read_req.full_url, "http://192.168.0.1/direct/22"
         )
+
+
+class ControllerSettingsTests(unittest.TestCase):
+    def test_decode_controller_settings_valid(self) -> None:
+        result = decode_controller_settings(SETTINGS_RAW_50MIN)
+        self.assertEqual(result.closing_delay_minutes, 50)
+        self.assertEqual(result.raw_payload, "0101320004b0005001e0")
+        self.assertEqual(
+            result.to_dict(),
+            {
+                "closing_delay_minutes": 50,
+                "raw_payload": "0101320004b0005001e0",
+            },
+        )
+
+    def test_decode_controller_settings_rejects_invalid_length(self) -> None:
+        with self.assertRaisesRegex(ValueError, "statt 18 Bytes"):
+            decode_controller_settings("aacc33550b12010132")
+
+    def test_decode_controller_settings_rejects_wrong_endpoint(self) -> None:
+        raw = bytearray.fromhex(SETTINGS_RAW_50MIN)
+        raw[5] = 0x13
+        with self.assertRaisesRegex(ValueError, "Unerwartetes Systemeinstellungen-Telegramm"):
+            decode_controller_settings(raw.hex())
+
+    def test_encode_controller_settings_packet_matches_live_capture(self) -> None:
+        current = decode_controller_settings(SETTINGS_RAW_45MIN)
+        packet = encode_controller_settings_packet(current, 50)
+        self.assertEqual(packet, SETTINGS_WRITE_50MIN)
+
+    def test_encode_controller_settings_packet_rejects_out_of_range(self) -> None:
+        current = decode_controller_settings(SETTINGS_RAW_50MIN)
+        with self.assertRaises(ValueError):
+            encode_controller_settings_packet(current, 300)
+
+    def test_client_reads_controller_settings(self) -> None:
+        response = json.dumps({"raw": SETTINGS_RAW_50MIN}).encode("utf-8")
+        opener = FakeOpener(response)
+        client = DeviceDiagnosticsClient(
+            live_url="http://192.168.0.1/direct/00",
+            opener=opener,
+        )
+
+        result = client.read_controller_settings()
+
+        self.assertEqual(result.closing_delay_minutes, 50)
+        request, timeout = opener.calls[0]
+        self.assertEqual(request.full_url, "http://192.168.0.1/direct/12")
+        self.assertEqual(timeout, 5)
+
+    def test_client_sets_closing_delay_verifies_echo_and_read(self) -> None:
+        current = decode_controller_settings(SETTINGS_RAW_45MIN)
+        write_echo = json.dumps({"raw": SETTINGS_WRITE_50MIN}).encode("utf-8")
+        read_response = json.dumps({"raw": SETTINGS_RAW_50MIN}).encode("utf-8")
+        opener = FakeOpener(write_echo, read_response)
+        client = DeviceDiagnosticsClient(
+            live_url="http://192.168.0.1/direct/00",
+            opener=opener,
+        )
+
+        updated = client.set_closing_delay(50, current_settings=current)
+
+        self.assertEqual(updated.closing_delay_minutes, 50)
+        self.assertEqual(len(opener.calls), 2)
+        write_req, _ = opener.calls[0]
+        self.assertEqual(write_req.get_method(), "POST")
+        self.assertEqual(write_req.full_url, "http://192.168.0.1/direct/13")
+        self.assertEqual(
+            json.loads(write_req.data.decode("utf-8")),
+            {"raw": SETTINGS_WRITE_50MIN},
+        )
+        read_req, _ = opener.calls[1]
+        self.assertEqual(read_req.get_method(), "GET")
+        self.assertEqual(read_req.full_url, "http://192.168.0.1/direct/12")
 
 
 if __name__ == "__main__":

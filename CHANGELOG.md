@@ -7,6 +7,24 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-19
+
+### Hinzugefügt
+
+- **Schließzeitverzögerung über Home Assistant steuerbar (`number.wifire_kamin_schliesszeitverzogerung`)**:
+  - Einstellbarer Schieberegler von 0 bis 120 Minuten in 5-Minuten-Schritten (`entity_category: config`)
+  - Bidirektionale Synchronisation mit der Kaminsteuerung via `GET /direct/12` und `POST /direct/13`
+- **Schreibschutz mit automatischem Re-Lock (`switch.wifire_kamin_settings_lock`)**:
+  - Schutz vor versehentlicher Verstellung beim Scrollen auf Mobilgeräten
+  - Änderungen der Schließzeitverzögerung werden strikt verweigert, solange der Freigabeschalter auf `OFF` steht
+  - Automatisches Wiedereinschalten des Schreibschutzes (Auto-Lock) nach 5 Minuten (300 Sekunden)
+  - Sofortige Rückstellung des UI-Schiebereglers in Home Assistant bei gesperrtem Schreibschutz
+  - Sicherheitsprüfung: Keine Einstellungsänderung während die Luftklappe in Bewegung ist (`flap_moving`)
+- **Protokollerweiterung Endpunkte 12 und 13**:
+  - Vollständige Dekodierung (`decode_controller_settings`) und Enkodierung (`encode_controller_settings_packet`)
+  - Bytegenaue Beibehaltung der Ofenprofil-Bytes (`UNI-80°C`) bei isolierter Modifikation von Byte 2
+  - Verifizierende Rückleseprüfung (Read-after-Write Verification)
+
 ## [0.16.0] - 2026-10-19
 
 ### Geändert

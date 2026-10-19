@@ -266,6 +266,30 @@ def build_discovery_payload(
         "icon": "mdi:calendar-clock",
         "entity_category": "diagnostic",
     }
+    components[f"{config.DEVICE_ID}_settings_lock"] = {
+        "platform": "switch",
+        "name": "Kamin-Einstellungen Schreibschutz aufheben",
+        "unique_id": f"{config.DEVICE_ID}_settings_lock",
+        "command_topic": topics.settings_lock_command,
+        "state_topic": topics.settings_lock_state,
+        "payload_on": "ON",
+        "payload_off": "OFF",
+        "icon": "mdi:lock-open-outline",
+        "entity_category": "config",
+    }
+    components[f"{config.DEVICE_ID}_closing_delay"] = {
+        "platform": "number",
+        "name": "Schließzeitverzögerung",
+        "unique_id": f"{config.DEVICE_ID}_closing_delay",
+        "command_topic": topics.closing_delay_command,
+        "state_topic": topics.closing_delay_state,
+        "min": 0,
+        "max": 120,
+        "step": 5,
+        "unit_of_measurement": "min",
+        "icon": "mdi:timer-cog-outline",
+        "entity_category": "config",
+    }
 
     for number in archive_numbers:
         components[f"{config.DEVICE_ID}_archive_{number}"] = {

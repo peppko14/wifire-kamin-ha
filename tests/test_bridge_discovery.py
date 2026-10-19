@@ -407,6 +407,39 @@ class DiscoveryTests(unittest.TestCase):
             "sensor.wifire_kamin_time_sync_last",
         )
 
+    def test_payload_contains_settings_entities(self) -> None:
+        components = self.build_payload()["components"]
+
+        switch = components["wifire_kamin_settings_lock"]
+        self.assertEqual(switch["platform"], "switch")
+        self.assertEqual(
+            switch["command_topic"],
+            "wifire_kamin/wifire_kamin/settings_lock/set",
+        )
+        self.assertEqual(
+            switch["state_topic"],
+            "wifire_kamin/wifire_kamin/settings_lock/state",
+        )
+        self.assertEqual(switch["payload_on"], "ON")
+        self.assertEqual(switch["payload_off"], "OFF")
+        self.assertEqual(switch["entity_category"], "config")
+
+        number = components["wifire_kamin_closing_delay"]
+        self.assertEqual(number["platform"], "number")
+        self.assertEqual(
+            number["command_topic"],
+            "wifire_kamin/wifire_kamin/closing_delay/set",
+        )
+        self.assertEqual(
+            number["state_topic"],
+            "wifire_kamin/wifire_kamin/closing_delay/state",
+        )
+        self.assertEqual(number["min"], 0)
+        self.assertEqual(number["max"], 120)
+        self.assertEqual(number["step"], 5)
+        self.assertEqual(number["unit_of_measurement"], "min")
+        self.assertEqual(number["entity_category"], "config")
+
 
 if __name__ == "__main__":
     unittest.main()

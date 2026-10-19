@@ -36,10 +36,13 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
 - Durchschnitt, historischer Median, letzter Abbrand sowie reale Referenzen
 - eigene Mediankurven für aktuelle und zwei vorherige Heizsaisons
 - portabler JSON-Export als Grundlage für spätere Diagramme
+- automatische oder manuelle wöchentliche Zeitsynchronisation des Kamin-Controllers (`POST /direct/23`)
+- sichere Einstellung der Schließzeitverzögerung über Home Assistant (`number.wifire_kamin_schliesszeitverzogerung`, `POST /direct/13`)
+- Schutz vor versehentlicher Verstellung durch Sicherheits-Freigabeschalter (`switch.wifire_kamin_settings_lock`) mit automatischem Re-Lock nach 5 Minuten
 - begrenzte Wiederholungsversuche für die instabile Geräteschnittstelle
 - portabler systemd-Installer
 
-Das Projekt schreibt keine Daten oder Einstellungen zur Steuerung zurück.
+Alle schreibenden Funktionen sind streng verriegelt (keine Änderungen bei Klappenbewegung oder aktivem Abbrand) und werden über Rückleseprüfungen verifiziert.
 
 ## Getestete Umgebung
 

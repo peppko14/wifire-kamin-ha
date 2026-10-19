@@ -172,6 +172,10 @@ class MqttConnectionTests(unittest.TestCase):
         running: bool = True,
         config: SimpleNamespace | None = None,
         on_time_sync_command: Any = None,
+        initial_time_sync_publisher: Any = None,
+        on_closing_delay_command: Any = None,
+        on_settings_lock_command: Any = None,
+        initial_settings_publisher: Any = None,
     ) -> tuple[MqttConnection, FakeClient, list[str], list[float]]:
         client = FakeClient()
         messages: list[str] = []
@@ -189,6 +193,10 @@ class MqttConnectionTests(unittest.TestCase):
             app_version="0.6.1",
             is_running=lambda: running,
             on_time_sync_command=on_time_sync_command,
+            initial_time_sync_publisher=initial_time_sync_publisher,
+            on_closing_delay_command=on_closing_delay_command,
+            on_settings_lock_command=on_settings_lock_command,
+            initial_settings_publisher=initial_settings_publisher,
             client_factory=client_factory,
             logger=messages.append,
             sleep=sleeps.append,
@@ -354,6 +362,8 @@ class MqttConnectionTests(unittest.TestCase):
             [
                 ("homeassistant/status", 1),
                 ("wifire_kamin/wifire_kamin/time_sync/set", 1),
+                ("wifire_kamin/wifire_kamin/closing_delay/set", 1),
+                ("wifire_kamin/wifire_kamin/settings_lock/set", 1),
             ],
         )
         published_topics = [item[0] for item in client.published]
@@ -385,6 +395,66 @@ class MqttConnectionTests(unittest.TestCase):
         self.assertTrue(
             any("Zeitsynchronisation" in message for message in messages)
         )
+
+    def test_closing_delay_command_triggers_callback(self) -> None:
+        received: list[str] = []
+        connection, client, messages, _ = self.create_connection(
+            on_closing_delay_command=received.append,
+        )
+        message = SimpleNamespace(
+            topic="wifire_kamin/wifire_kamin/closing_delay/set",
+            payload=b"45",
+        )
+
+        connection.on_message(client, None, message)
+
+        self.assertEqual(received, ["45"])
+        self.assertTrue(
+            any("Schlie\u00dfzeitverz\u00f6gerung" in msg for msg in messages)
+        )
+
+    def test_settings_lock_command_triggers_callback(self) -> None:
+        received: list[str] = []
+        connection, client, messages, _ = self.create_connection(
+            on_settings_lock_command=received.append,
+        )
+        message = SimpleNamespace(
+            topic="wifire_kamin/wifire_kamin/settings_lock/set",
+            payload=b"on",
+        )
+
+        connection.on_message(client, None, message)
+
+        self.assertEqual(received, ["ON"])
+        self.assertTrue(
+            any("Schreibschutz" in msg for msg in messages)
+        )
+
+    def test_initial_publishers_called_on_connect_and_ha_online(self) -> None:
+        time_sync_published: list[bool] = []
+        settings_published: list[bool] = []
+        connection, client, _, _ = self.create_connection(
+            initial_time_sync_publisher=lambda: time_sync_published.append(True),
+            initial_settings_publisher=lambda: settings_published.append(True),
+        )
+
+        connection.on_connect(
+            client,
+            None,
+            None,
+            FakeReasonCode(False),
+            None,
+        )
+        self.assertEqual(time_sync_published, [True])
+        self.assertEqual(settings_published, [True])
+
+        message = SimpleNamespace(
+            topic="homeassistant/status",
+            payload=b"online",
+        )
+        connection.on_message(client, None, message)
+        self.assertEqual(time_sync_published, [True, True])
+        self.assertEqual(settings_published, [True, True])
 
     def test_remember_state_uses_stable_snapshot(self) -> None:
         connection, _, _, _ = self.create_connection()

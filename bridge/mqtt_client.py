@@ -124,6 +124,9 @@ class MqttConnection:
         is_running: RunningCheck,
         on_time_sync_command: Callable[[], None] | None = None,
         initial_time_sync_publisher: Callable[[], None] | None = None,
+        on_closing_delay_command: Callable[[str], None] | None = None,
+        on_settings_lock_command: Callable[[str], None] | None = None,
+        initial_settings_publisher: Callable[[], None] | None = None,
         client_factory: ClientFactory = mqtt.Client,
         logger: Logger = print,
         sleep: SleepFunction = time.sleep,
@@ -135,6 +138,9 @@ class MqttConnection:
         self.is_running = is_running
         self.on_time_sync_command = on_time_sync_command
         self.initial_time_sync_publisher = initial_time_sync_publisher
+        self.on_closing_delay_command = on_closing_delay_command
+        self.on_settings_lock_command = on_settings_lock_command
+        self.initial_settings_publisher = initial_settings_publisher
         self.logger = logger
         self.sleep = sleep
         self.tls_settings = MqttTlsSettings.from_config(config)
@@ -255,12 +261,23 @@ class MqttConnection:
             self.topics.time_sync_command,
             qos=1,
         )
+        client.subscribe(
+            self.topics.closing_delay_command,
+            qos=1,
+        )
+        client.subscribe(
+            self.topics.settings_lock_command,
+            qos=1,
+        )
 
         self.publish_discovery()
         self.publisher.publish_availability(True)
 
         if self.initial_time_sync_publisher is not None:
             self.initial_time_sync_publisher()
+
+        if self.initial_settings_publisher is not None:
+            self.initial_settings_publisher()
 
         latest_state = self.latest_state_snapshot()
         if latest_state is not None:
@@ -277,6 +294,20 @@ class MqttConnection:
             self.logger("MQTT-Befehl zur Zeitsynchronisation empfangen.")
             if self.on_time_sync_command is not None:
                 self.on_time_sync_command()
+            return
+
+        if message.topic == self.topics.closing_delay_command:
+            payload = message.payload.decode("utf-8", errors="replace").strip()
+            self.logger(f"MQTT-Befehl Schließzeitverzögerung empfangen: {payload}")
+            if self.on_closing_delay_command is not None:
+                self.on_closing_delay_command(payload)
+            return
+
+        if message.topic == self.topics.settings_lock_command:
+            payload = message.payload.decode("utf-8", errors="replace").strip().upper()
+            self.logger(f"MQTT-Befehl Schreibschutz empfangen: {payload}")
+            if self.on_settings_lock_command is not None:
+                self.on_settings_lock_command(payload)
             return
 
         if message.topic != self.topics.home_assistant_status:
@@ -303,6 +334,9 @@ class MqttConnection:
 
         if self.initial_time_sync_publisher is not None:
             self.initial_time_sync_publisher()
+
+        if self.initial_settings_publisher is not None:
+            self.initial_settings_publisher()
 
         latest_state = self.latest_state_snapshot()
         if latest_state is not None:

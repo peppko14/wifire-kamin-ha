@@ -209,3 +209,21 @@ class MqttPublisher:
             retain=True,
         )
 
+    def publish_closing_delay(self, minutes: int) -> None:
+        """Veröffentlicht die aktuelle Schließzeitverzögerung retained."""
+        self.client.publish(
+            self.topics.closing_delay_state,
+            payload=str(minutes),
+            qos=1,
+            retain=True,
+        )
+
+    def publish_settings_lock(self, unlocked: bool) -> None:
+        """Veröffentlicht den Zustand der Schreibschutz-Freigabe retained."""
+        self.client.publish(
+            self.topics.settings_lock_state,
+            payload="ON" if unlocked else "OFF",
+            qos=1,
+            retain=True,
+        )
+

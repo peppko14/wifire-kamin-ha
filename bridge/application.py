@@ -37,6 +37,10 @@ from bridge.statistics import (
     HistoryStatisticsReporter,
     parse_statistics_since,
 )
+from bridge.settings import (
+    SettingsManager,
+    create_default_settings_storage,
+)
 from bridge.time_sync import (
     TimeSyncManager,
     create_default_time_sync_storage,
@@ -111,6 +115,14 @@ class TimeSyncManagerLike(Protocol):
         ...
 
 
+class SettingsManagerLike(Protocol):
+    def check_auto_lock(self) -> None:
+        ...
+
+    def refresh_from_controller(self) -> None:
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class LiveStateHandler:
     """Speichert den Live-Zustand für MQTT und lokale Brennkurve."""
@@ -120,6 +132,7 @@ class LiveStateHandler:
     curve_publisher: LiveCurvePublisherLike
     heating_failure_monitor: HeatingFailureMonitorLike
     time_sync_manager: TimeSyncManagerLike | None = None
+    settings_manager: SettingsManagerLike | None = None
 
     def __call__(self, state: LiveStatus) -> None:
         self.state_memory.remember_state(state)
@@ -131,6 +144,8 @@ class LiveStateHandler:
                 state,
                 is_curve_active=session is not None,
             )
+        if self.settings_manager is not None:
+            self.settings_manager.check_auto_lock()
 
 
 
@@ -240,6 +255,7 @@ def refresh_archive_outputs(
     statistics_reporter: HistoryReporterLike,
     dashboard_reporter: HistoryReporterLike,
     controller_diagnostics_reporter: HistoryReporterLike,
+    settings_manager: SettingsManagerLike | None = None,
     *,
     logger: Logger = print,
 ) -> None:
@@ -257,6 +273,15 @@ def refresh_archive_outputs(
             "Gerätediagnose konnte nicht aktualisiert werden: "
             f"{error}",
         )
+    if settings_manager is not None:
+        try:
+            settings_manager.refresh_from_controller()
+        except (OSError, RuntimeError, ValueError) as error:
+            log_warning(
+                logger,
+                "Kamin-Einstellungen konnten nicht aktualisiert werden: "
+                f"{error}",
+            )
 
 
 def create_application(
@@ -289,11 +314,41 @@ def create_application(
         sleeper=sleeper,
         logger=logger,
     )
+    device_diagnostics_client = DeviceDiagnosticsClient(
+        live_url=config_module.WIFIRE_URL,
+        request_timeout=getattr(
+            config_module,
+            "DEVICE_DIAGNOSTICS_REQUEST_TIMEOUT",
+            getattr(config_module, "REQUEST_TIMEOUT", 5),
+        ),
+        retry_count=getattr(
+            config_module,
+            "DEVICE_DIAGNOSTICS_RETRY_COUNT",
+            2,
+        ),
+        retry_delay_seconds=getattr(
+            config_module,
+            "DEVICE_DIAGNOSTICS_RETRY_DELAY",
+            2,
+        ),
+        sleeper=sleeper,
+        logger=logger,
+    )
+
     def handle_time_sync_command() -> None:
         time_sync_manager.trigger_manual_sync(
             connection.latest_state_snapshot(),
             is_curve_active=live_curve_recorder.is_active,
         )
+
+    def handle_closing_delay_command(payload: str) -> None:
+        settings_manager.handle_closing_delay_command(
+            payload,
+            live_status=connection.latest_state_snapshot(),
+        )
+
+    def handle_settings_lock_command(payload: str) -> None:
+        settings_manager.handle_lock_command(payload)
 
     connection = MqttConnection(
         config_module,
@@ -303,8 +358,19 @@ def create_application(
         is_running=running_state,
         on_time_sync_command=handle_time_sync_command,
         initial_time_sync_publisher=lambda: time_sync_manager.publish_current_state(),
+        on_closing_delay_command=handle_closing_delay_command,
+        on_settings_lock_command=handle_settings_lock_command,
+        initial_settings_publisher=lambda: settings_manager.publish_current_state(),
         logger=logger,
     )
+    settings_manager = SettingsManager(
+        storage=create_default_settings_storage(project_dir),
+        diagnostics_client=device_diagnostics_client,
+        publisher=connection.publisher,
+        logger=logger,
+    )
+    settings_manager.refresh_from_controller()
+
     history_manager = create_default_history_manager(
         project_dir,
         logger=logger,
@@ -345,26 +411,6 @@ def create_application(
             "LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES",
             LIVE_CURVE_END_AFTER_INACTIVE_SAMPLES,
         ),
-        logger=logger,
-    )
-    device_diagnostics_client = DeviceDiagnosticsClient(
-        live_url=config_module.WIFIRE_URL,
-        request_timeout=getattr(
-            config_module,
-            "DEVICE_DIAGNOSTICS_REQUEST_TIMEOUT",
-            getattr(config_module, "REQUEST_TIMEOUT", 5),
-        ),
-        retry_count=getattr(
-            config_module,
-            "DEVICE_DIAGNOSTICS_RETRY_COUNT",
-            2,
-        ),
-        retry_delay_seconds=getattr(
-            config_module,
-            "DEVICE_DIAGNOSTICS_RETRY_DELAY",
-            2,
-        ),
-        sleeper=sleeper,
         logger=logger,
     )
     time_sync_manager = TimeSyncManager(
@@ -414,6 +460,7 @@ def create_application(
             statistics_reporter,
             dashboard_reporter,
             controller_diagnostics_reporter,
+            settings_manager=settings_manager,
             logger=logger,
         ),
     )
@@ -442,6 +489,7 @@ def create_application(
             curve_publisher=connection.publisher,
             heating_failure_monitor=heating_failure_monitor,
             time_sync_manager=time_sync_manager,
+            settings_manager=settings_manager,
         ),
         logger=logger,
     )
