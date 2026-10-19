@@ -298,3 +298,80 @@ Die Ereignis-ID ist ein stabiler Fingerabdruck und nicht der angezeigte
 Kalendertag. Dadurch löst auch ein zweiter Heizfehler am selben Tag eine neue
 Zustandsänderung aus. Datum, Anzahl und erkannte neue Einträge stehen als
 Attribute der Entität zur Verfügung.
+
+## Schließzeitverzögerung mit Schreibschutz-Freigabe
+
+Zur sicheren Einstellung der Schließzeitverzögerung über das Dashboard
+(`path: kamin` unter **System & Diagnose**) schützt ein integrierter
+Freigabeschalter vor versehentlichem Verstellen beim Scrollen auf Touchscreens.
+
+```yaml
+type: custom:stack-in-card
+cards:
+  - type: custom:button-card
+    entity: switch.wifire_kamin_settings_lock
+    show_name: false
+    show_icon: false
+    show_state: false
+    tap_action:
+      action: toggle
+    custom_fields:
+      content: |
+        [[[
+          const unlocked = entity && entity.state === 'on';
+          const delay = states['number.wifire_kamin_closing_delay']?.state || '50';
+          const badge = unlocked
+            ? '<span style="color:#34C759;font-weight:700;">🔓 Freigegeben (5 Min.)</span>'
+            : '<span style="color:#FF9F0A;font-weight:700;">🔒 Schreibschutz aktiv</span>';
+          const lockBg = unlocked ? 'rgba(52,199,89,0.18)' : 'rgba(255,149,0,0.18)';
+          const lockColor = unlocked ? '#34C759' : '#FF9F0A';
+          const lockIcon = unlocked ? 'mdi:lock-open-variant' : 'mdi:lock';
+
+          return `
+            <div style="display:flex;align-items:center;justify-content:space-between;width:100%;box-sizing:border-box;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="flex-shrink:0;width:42px;height:42px;border-radius:13px;background:${lockBg};display:flex;align-items:center;justify-content:center;">
+                  <ha-icon icon="${lockIcon}" style="--mdc-icon-size:22px;color:${lockColor};"></ha-icon>
+                </div>
+                <div>
+                  <div style="font-size:10px;font-weight:750;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.45);">
+                    STEUERUNGSEINSTELLUNG
+                  </div>
+                  <div style="font-size:16px;font-weight:700;color:#FFF;margin-top:1px;">
+                    Schließzeitverzögerung: <strong style="color:#0A84FF;">${delay} min</strong>
+                  </div>
+                  <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">
+                    ${unlocked ? 'Regler aktiv • Tippen zum manuellen Sperren' : 'Tippen zum Entsperren des Schiebereglers'}
+                  </div>
+                </div>
+              </div>
+              <div style="padding:4px 10px;border-radius:10px;background:${lockBg};font-size:11px;">
+                ${badge}
+              </div>
+            </div>
+          `;
+        ]]]
+    styles:
+      card:
+        - padding: 14px 16px
+        - border-radius: 18px 18px 0px 0px
+        - border: 1px solid rgba(255, 255, 255, 0.08)
+        - border-bottom: none
+        - background: rgba(28, 28, 32, 0.85)
+        - backdrop-filter: blur(20px)
+        - cursor: pointer
+  - type: custom:mushroom-number-card
+    entity: number.wifire_kamin_closing_delay
+    name: Klappen-Schließzeit nach Abbrand
+    icon: mdi:timer-cog-outline
+    display_mode: slider
+    card_mod:
+      style: |
+        ha-card {
+          background: rgba(28, 28, 32, 0.85) !important;
+          border-radius: 0px 0px 18px 18px !important;
+          border: 1px solid rgba(255, 255, 255, 0.08) !important;
+          border-top: 1px solid rgba(255, 255, 255, 0.04) !important;
+          padding: 6px 16px 12px 16px !important;
+        }
+```
