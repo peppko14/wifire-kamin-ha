@@ -108,7 +108,7 @@ class MqttPublisherTests(unittest.TestCase):
         self.assertEqual(payload["burn_total_minutes"], 61)
         self.assertEqual(payload["door_state"], "geschlossen")
 
-    def test_publish_inactive_live_curve_is_not_retained(self) -> None:
+    def test_publish_inactive_live_curve_is_retained(self) -> None:
         self.publisher.publish_live_curve(None)
 
         message = self.client.messages[0]
@@ -117,7 +117,7 @@ class MqttPublisherTests(unittest.TestCase):
             "wifire_kamin/wifire_kamin/live_curve",
         )
         self.assertEqual(message["qos"], 1)
-        self.assertFalse(message["retain"])
+        self.assertTrue(message["retain"])
         payload = json.loads(message["payload"])
         self.assertEqual(payload["status"], "inactive")
         self.assertEqual(payload["point_count"], 0)
@@ -154,7 +154,33 @@ class MqttPublisherTests(unittest.TestCase):
         self.assertEqual(payload["point_count"], 2)
         self.assertEqual(payload["temperatures_c"], [80, 90])
         self.assertEqual(len(payload["observed_at"]), 2)
-        self.assertFalse(message["retain"])
+        self.assertTrue(message["retain"])
+
+    def test_publish_completed_live_curve_is_retained(self) -> None:
+        started_at = datetime(2026, 11, 4, 18, 30, tzinfo=UTC)
+        point = LiveCurvePoint(
+            observed_at=started_at,
+            temperature_c=80,
+            burn_total_minutes=1,
+            status_raw=32,
+            flap_percent=100,
+            door_open=False,
+        )
+        session = LiveCurveSession(
+            session_id="live-session-1",
+            started_at=started_at,
+            points=(point,),
+            completed=True,
+        )
+
+        self.publisher.publish_live_curve(session, is_active=False)
+
+        message = self.client.messages[0]
+        payload = json.loads(message["payload"])
+        self.assertEqual(payload["status"], "completed")
+        self.assertEqual(payload["point_count"], 1)
+        self.assertEqual(payload["temperatures_c"], [80])
+        self.assertTrue(message["retain"])
 
     def test_publish_archive_sends_state_and_attributes(self) -> None:
         self.publisher.publish_archive(

@@ -112,10 +112,11 @@ class LiveStateHandlerTests(unittest.TestCase):
             remember_state=lambda value: calls.append(("memory", value))
         )
         recorder = types.SimpleNamespace(
-            observe=lambda value: calls.append(("curve", value))
+            is_active=True,
+            observe=lambda value: calls.append(("curve", value)),
         )
         publisher = types.SimpleNamespace(
-            publish_live_curve=lambda value: calls.append(
+            publish_live_curve=lambda value, **kwargs: calls.append(
                 ("publish", state)
             )
         )

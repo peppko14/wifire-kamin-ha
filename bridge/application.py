@@ -88,6 +88,10 @@ class StateMemoryLike(Protocol):
 
 
 class LiveCurveRecorderLike(Protocol):
+    @property
+    def is_active(self) -> bool:
+        ...
+
     def observe(self, state: LiveStatus) -> LiveCurveSession | None:
         ...
 
@@ -96,6 +100,8 @@ class LiveCurvePublisherLike(Protocol):
     def publish_live_curve(
         self,
         session: LiveCurveSession | None,
+        *,
+        is_active: bool | None = None,
     ) -> None:
         ...
 
@@ -137,12 +143,15 @@ class LiveStateHandler:
     def __call__(self, state: LiveStatus) -> None:
         self.state_memory.remember_state(state)
         session = self.curve_recorder.observe(state)
-        self.curve_publisher.publish_live_curve(session)
+        self.curve_publisher.publish_live_curve(
+            session,
+            is_active=self.curve_recorder.is_active,
+        )
         self.heating_failure_monitor.refresh_if_due()
         if self.time_sync_manager is not None:
             self.time_sync_manager.check_if_due(
                 state,
-                is_curve_active=session is not None,
+                is_curve_active=self.curve_recorder.is_active,
             )
         if self.settings_manager is not None:
             self.settings_manager.check_auto_lock()

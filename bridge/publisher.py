@@ -69,17 +69,19 @@ class MqttPublisher:
     def publish_live_curve(
         self,
         session: LiveCurveSession | None,
+        *,
+        is_active: bool | None = None,
     ) -> None:
-        """Veröffentlicht die begrenzte laufende Brennkurve nicht retained."""
+        """Veröffentlicht die begrenzte laufende oder letzte Brennkurve retained."""
         self.client.publish(
             self.topics.live_curve,
             payload=json.dumps(
-                build_live_curve_mqtt_payload(session),
+                build_live_curve_mqtt_payload(session, is_active=is_active),
                 ensure_ascii=False,
                 separators=(",", ":"),
             ),
             qos=1,
-            retain=False,
+            retain=True,
         )
 
     def publish_archive(

@@ -137,6 +137,9 @@ def build_discovery_payload(
             "state_topic": topics.live_curve,
             "value_template": "{{ value_json.status }}",
             "json_attributes_topic": topics.live_curve,
+            "availability_topic": topics.availability,
+            "payload_available": "online",
+            "payload_not_available": "offline",
             "entity_category": "diagnostic",
             "icon": "mdi:chart-line",
         },
@@ -149,7 +152,6 @@ def build_discovery_payload(
         f"{config.DEVICE_ID}_burn_minutes",
         f"{config.DEVICE_ID}_door",
         f"{config.DEVICE_ID}_flap_moving",
-        f"{config.DEVICE_ID}_live_curve",
     ]
 
     if config.ENABLE_FAN_ENTITY:

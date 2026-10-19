@@ -7,6 +7,18 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-10-19
+
+### Geändert
+
+- **Dauerhafte Beibehaltung der letzten Brennkurve (`sensor.wifire_kamin_live_curve`) bis zum nächsten Abbrand**:
+  - Die Daten des aktuellen bzw. zuletzt abgeschlossenen Abbrands bleiben nach Erlöschen des Feuers in Home Assistant und im Plotly-Dashboard erhalten
+  - Status wechselt bei Abkühlung unter 40 °C sauber auf `"completed"`, alle Temperatur- und Zeitmesspunkte (`temperatures_c`, `observed_at`, `burn_total_minutes`) bleiben vollständig erhalten
+  - Bei Entzünden eines neuen Feuers (Messpunkt $\ge$ 40 °C) wird die Kurve automatisch zurückgesetzt und der neue Abbrand beginnt wieder bei Messpunkt 1
+  - MQTT-Publish für die Brennkurve erfolgt nun mit `retain=True`, sodass Home Assistant die Kurve auch nach einem Neustart des Brokers oder der Bridge sofort wieder anzeigt
+  - Home-Assistant-Entity `sensor.wifire_kamin_live_curve` läuft nicht mehr nach 12 Minuten ab (`expire_after` entfernt, feste Bindung an Bridge-Verfügbarkeit)
+  - Wöchentliche Zeitsynchronisation prüft weiterhin korrekt auf `curve_recorder.is_active` und wird nach Abbrandende nicht blockiert
+
 ## [0.17.0] - 2026-10-19
 
 ### Hinzugefügt

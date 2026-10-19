@@ -174,6 +174,7 @@ class LiveCurveSession:
     session_id: str
     started_at: datetime
     points: tuple[LiveCurvePoint, ...]
+    completed: bool = False
 
     def __post_init__(self) -> None:
         if not self.session_id or not self.session_id.strip():
@@ -195,6 +196,8 @@ class LiveCurveSession:
                 raise ValueError(
                     "Live-Messpunkte müssen zeitlich sortiert sein."
                 )
+        if not isinstance(self.completed, bool):
+            raise ValueError("completed muss ein Wahrheitswert sein.")
 
     @classmethod
     def start(
@@ -208,6 +211,7 @@ class LiveCurveSession:
             session_id=session_id,
             started_at=point.observed_at,
             points=(point,),
+            completed=False,
         )
 
     @property
@@ -219,6 +223,10 @@ class LiveCurveSession:
         """Gibt eine neue Sitzung mit einem weiteren Messpunkt zurück."""
         return replace(self, points=(*self.points, point))
 
+    def complete(self) -> "LiveCurveSession":
+        """Gibt eine neue Sitzung zurück, die als abgeschlossen markiert ist."""
+        return replace(self, completed=True)
+
     def to_dict(self) -> dict[str, object]:
         """Erzeugt die persistente JSON-Darstellung."""
         return {
@@ -227,6 +235,7 @@ class LiveCurveSession:
             "started_at": self.started_at.isoformat(timespec="seconds"),
             "updated_at": self.updated_at.isoformat(timespec="seconds"),
             "point_count": len(self.points),
+            "completed": self.completed,
             "points": [point.to_dict() for point in self.points],
         }
 
@@ -251,6 +260,9 @@ class LiveCurveSession:
             raise LiveCurveStorageError(
                 "point_count stimmt nicht mit den Messpunkten überein."
             )
+        completed_raw = data.get("completed", False)
+        if not isinstance(completed_raw, bool):
+            raise LiveCurveStorageError("completed muss ein Wahrheitswert sein.")
         started_at = _parse_datetime(data.get("started_at"), "started_at")
         updated_at = _parse_datetime(data.get("updated_at"), "updated_at")
         try:
@@ -258,6 +270,7 @@ class LiveCurveSession:
                 session_id=session_id,
                 started_at=started_at,
                 points=points,
+                completed=completed_raw,
             )
         except ValueError as error:
             raise LiveCurveStorageError(str(error)) from error
@@ -287,6 +300,7 @@ def _select_live_curve_points(
 def build_live_curve_mqtt_payload(
     session: LiveCurveSession | None,
     *,
+    is_active: bool | None = None,
     maximum_points: int = MAX_LIVE_CURVE_MQTT_POINTS,
     maximum_payload_bytes: int = MAX_LIVE_CURVE_MQTT_PAYLOAD_BYTES,
 ) -> dict[str, object]:
@@ -311,9 +325,13 @@ def build_live_curve_mqtt_payload(
         }
     else:
         selected = _select_live_curve_points(session.points, maximum_points)
+        if is_active is None:
+            status = "completed" if session.completed else "active"
+        else:
+            status = "active" if is_active else "completed"
         payload = {
             "schema_version": LIVE_CURVE_SCHEMA_VERSION,
-            "status": "active",
+            "status": status,
             "session_id": session.session_id,
             "started_at": session.started_at.isoformat(timespec="seconds"),
             "updated_at": session.updated_at.isoformat(timespec="seconds"),
@@ -391,10 +409,10 @@ class LiveCurveStorage:
         )
 
     def finalize(self, session: LiveCurveSession) -> Path:
-        """Archiviert die Sitzung und entfernt danach den Zwischenstand."""
+        """Archiviert die Sitzung und aktualisiert den Zwischenstand als abgeschlossen."""
         target = self.completed_path(session)
         self._write(target, session)
-        self.clear()
+        self.save(session)
         return target
 
     def load(self) -> LiveCurveSession | None:
@@ -436,6 +454,10 @@ class LiveCurveRecorder:
         default=None,
         init=False,
     )
+    last_session: LiveCurveSession | None = field(
+        default=None,
+        init=False,
+    )
     inactive_samples: int = field(default=0, init=False)
     initialized: bool = field(default=False, init=False)
     enabled: bool = field(default=True, init=False)
@@ -458,13 +480,22 @@ class LiveCurveRecorder:
     def _restore(self) -> None:
         if self.initialized:
             return
-        self.current_session = self.storage.load()
+        restored = self.storage.load()
         self.initialized = True
-        if self.current_session is not None:
-            self.logger(
-                "Laufende Brennkurve wiederaufgenommen: "
-                f"{len(self.current_session.points)} Messpunkte."
-            )
+        if restored is not None:
+            self.last_session = restored
+            if restored.completed:
+                self.current_session = None
+                self.logger(
+                    "Letzte abgeschlossene Brennkurve geladen: "
+                    f"{len(restored.points)} Messpunkte."
+                )
+            else:
+                self.current_session = restored
+                self.logger(
+                    "Laufende Brennkurve wiederaufgenommen: "
+                    f"{len(restored.points)} Messpunkte."
+                )
 
     @property
     def is_active(self) -> bool:
@@ -475,7 +506,7 @@ class LiveCurveRecorder:
     def observe(self, status: LiveStatus) -> LiveCurveSession | None:
         """Verarbeitet einen Live-Zustand ohne die Bridge zu gefährden."""
         if not self.enabled:
-            return self.current_session
+            return self.current_session or self.last_session
         try:
             return self._observe(status)
         except LiveCurveStorageError as error:
@@ -485,7 +516,7 @@ class LiveCurveRecorder:
                 "Live-Brennkurve wurde nach einem Speicherfehler "
                 f"deaktiviert: {error}",
             )
-            return self.current_session
+            return self.current_session or self.last_session
 
     def _observe(self, status: LiveStatus) -> LiveCurveSession | None:
         self._restore()
@@ -496,11 +527,12 @@ class LiveCurveRecorder:
 
         if self.current_session is None:
             if status.temperature_c < self.active_temperature_c:
-                return None
+                return self.last_session
             self.current_session = LiveCurveSession.start(
                 session_id=self.session_id_factory(),
                 point=point,
             )
+            self.last_session = self.current_session
             self.storage.save(self.current_session)
             self.inactive_samples = 0
             self.logger(
@@ -510,6 +542,7 @@ class LiveCurveRecorder:
             return self.current_session
 
         self.current_session = self.current_session.append(point)
+        self.last_session = self.current_session
         self.storage.save(self.current_session)
 
         if status.temperature_c >= self.active_temperature_c:
@@ -520,15 +553,16 @@ class LiveCurveRecorder:
         if self.inactive_samples < self.end_after_inactive_samples:
             return self.current_session
 
-        completed = self.current_session
+        completed = self.current_session.complete()
         target = self.storage.finalize(completed)
+        self.last_session = completed
         self.current_session = None
         self.inactive_samples = 0
         self.logger(
             "Live-Brennkurve abgeschlossen: "
             f"{len(completed.points)} Messpunkte unter {target}."
         )
-        return None
+        return self.last_session
 
 
 def create_default_live_curve_storage(project_dir: Path) -> LiveCurveStorage:

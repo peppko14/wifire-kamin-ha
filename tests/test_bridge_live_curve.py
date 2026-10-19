@@ -334,13 +334,77 @@ class LiveCurveRecorderTests(unittest.TestCase):
         recorder.observe(live_status(temperature_c=35))
         result = recorder.observe(live_status(temperature_c=34))
 
-        self.assertIsNone(result)
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertTrue(result.completed)
         self.assertIsNone(recorder.current_session)
-        self.assertFalse(self.storage.path.exists())
+        self.assertFalse(recorder.is_active)
+        self.assertEqual(recorder.last_session, result)
+        self.assertTrue(self.storage.path.exists())
+        loaded = self.storage.load()
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        self.assertTrue(loaded.completed)
+        self.assertEqual(len(loaded.points), 3)
         completed = tuple(self.storage.completed_directory.glob("*.json"))
         self.assertEqual(len(completed), 1)
         payload = json.loads(completed[0].read_text(encoding="utf-8"))
         self.assertEqual(payload["point_count"], 3)
+        self.assertTrue(payload["completed"])
+
+    def test_completed_session_persists_until_new_burn_starts(self) -> None:
+        recorder = self.create_recorder(
+            self.started_at,
+            self.started_at + timedelta(seconds=10),
+            self.started_at + timedelta(seconds=20),
+            self.started_at + timedelta(seconds=30),
+            self.started_at + timedelta(seconds=40),
+            end_after_inactive_samples=2,
+        )
+
+        recorder.observe(live_status(temperature_c=80))
+        recorder.observe(live_status(temperature_c=35))
+        finished = recorder.observe(live_status(temperature_c=34))
+        self.assertIsNotNone(finished)
+        self.assertFalse(recorder.is_active)
+
+        # Still cold: observation returns the completed session
+        idle_sample = recorder.observe(live_status(temperature_c=25))
+        self.assertEqual(idle_sample, finished)
+        self.assertFalse(recorder.is_active)
+
+        # New burn starts: session resets
+        new_burn = recorder.observe(live_status(temperature_c=65))
+        self.assertIsNotNone(new_burn)
+        assert new_burn is not None
+        self.assertTrue(recorder.is_active)
+        self.assertEqual(len(new_burn.points), 1)
+        self.assertEqual(new_burn.points[0].temperature_c, 65)
+        self.assertFalse(new_burn.completed)
+
+    def test_new_recorder_loads_completed_session_as_last_session(self) -> None:
+        first = self.create_recorder(
+            self.started_at,
+            self.started_at + timedelta(seconds=10),
+            self.started_at + timedelta(seconds=20),
+            end_after_inactive_samples=2,
+        )
+        first.observe(live_status(temperature_c=80))
+        first.observe(live_status(temperature_c=35))
+        first.observe(live_status(temperature_c=34))
+
+        second = self.create_recorder(
+            self.started_at + timedelta(seconds=30),
+        )
+        self.assertFalse(second.is_active)
+        self.assertIsNotNone(second.last_session)
+        assert second.last_session is not None
+        self.assertTrue(second.last_session.completed)
+
+        # When cold, returns the loaded completed session
+        result = second.observe(live_status(temperature_c=20))
+        self.assertEqual(result, second.last_session)
+        self.assertFalse(second.is_active)
 
     def test_new_recorder_resumes_persisted_session(self) -> None:
         first = self.create_recorder(self.started_at)

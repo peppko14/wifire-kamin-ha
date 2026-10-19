@@ -107,7 +107,6 @@ class DiscoveryTests(unittest.TestCase):
             "wifire_kamin_burn_minutes",
             "wifire_kamin_door",
             "wifire_kamin_flap_moving",
-            "wifire_kamin_live_curve",
         }
 
         for component_id in live_component_ids:
@@ -272,7 +271,9 @@ class DiscoveryTests(unittest.TestCase):
         )
         self.assertEqual(component["value_template"], "{{ value_json.status }}")
         self.assertEqual(component["availability_topic"], self.topics.availability)
-        self.assertEqual(component["expire_after"], 720)
+        self.assertEqual(component["payload_available"], "online")
+        self.assertEqual(component["payload_not_available"], "offline")
+        self.assertNotIn("expire_after", component)
 
     def test_payload_contains_six_statistics_components(self) -> None:
         components = self.build_payload()["components"]
