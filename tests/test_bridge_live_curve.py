@@ -27,11 +27,16 @@ from bridge.live_curve import (
 from protocol.models import LiveStatus
 
 
-def live_status(temperature_c: int = 120) -> LiveStatus:
+def live_status(
+    temperature_c: int = 120,
+    *,
+    flap_percent: int = 75,
+    flap_moving: bool = False,
+) -> LiveStatus:
     return LiveStatus(
         temperature_c=temperature_c,
-        flap_percent=75,
-        flap_moving=False,
+        flap_percent=flap_percent,
+        flap_moving=flap_moving,
         burn_hours=0,
         burn_minutes=12,
         burn_total_minutes=12,
@@ -435,6 +440,38 @@ class LiveCurveRecorderTests(unittest.TestCase):
         self.assertTrue(
             any("deaktiviert" in message for message in self.messages)
         )
+
+    def test_closed_flap_finalizes_session_even_if_hot(self) -> None:
+        recorder = self.create_recorder(
+            self.started_at,
+            self.started_at + timedelta(seconds=10),
+            self.started_at + timedelta(seconds=20),
+            end_after_inactive_samples=2,
+        )
+
+        recorder.observe(live_status(temperature_c=250, flap_percent=50))
+        recorder.observe(
+            live_status(temperature_c=200, flap_percent=0, flap_moving=False)
+        )
+        result = recorder.observe(
+            live_status(temperature_c=180, flap_percent=0, flap_moving=False)
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertTrue(result.completed)
+        self.assertFalse(recorder.is_active)
+        self.assertEqual(recorder.last_session, result)
+
+    def test_hot_stove_with_closed_flap_does_not_start_session(self) -> None:
+        recorder = self.create_recorder(self.started_at)
+
+        result = recorder.observe(
+            live_status(temperature_c=120, flap_percent=0, flap_moving=False)
+        )
+
+        self.assertIsNone(result)
+        self.assertFalse(recorder.is_active)
 
 
 if __name__ == "__main__":

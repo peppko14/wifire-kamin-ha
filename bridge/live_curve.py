@@ -525,8 +525,13 @@ class LiveCurveRecorder:
             observed_at=self.clock(),
         )
 
+        is_active_sample = (
+            status.temperature_c >= self.active_temperature_c
+            and (status.flap_percent > 0 or status.flap_moving)
+        )
+
         if self.current_session is None:
-            if status.temperature_c < self.active_temperature_c:
+            if not is_active_sample:
                 return self.last_session
             self.current_session = LiveCurveSession.start(
                 session_id=self.session_id_factory(),
@@ -545,7 +550,7 @@ class LiveCurveRecorder:
         self.last_session = self.current_session
         self.storage.save(self.current_session)
 
-        if status.temperature_c >= self.active_temperature_c:
+        if is_active_sample:
             self.inactive_samples = 0
             return self.current_session
 
