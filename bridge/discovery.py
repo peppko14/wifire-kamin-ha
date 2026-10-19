@@ -10,7 +10,7 @@ from typing import Protocol
 from bridge.topics import MqttTopics
 
 
-DEFAULT_NORMAL_UPDATE_INTERVAL = 60
+DEFAULT_NORMAL_UPDATE_INTERVAL = 240
 LIVE_EXPIRE_MULTIPLIER = 3
 _MISSING = object()
 

@@ -16,7 +16,7 @@ from protocol.models import LiveStatus
 
 
 
-NORMAL_UPDATE_INTERVAL = 60
+NORMAL_UPDATE_INTERVAL = 240
 ACTIVE_FIRE_UPDATE_INTERVAL = 10
 ERROR_RETRY_INTERVAL = 300
 ACTIVE_FIRE_TEMPERATURE_C = 40
@@ -150,6 +150,11 @@ def get_next_poll_interval(
     """Bestimmt das nächste Live-Abfrageintervall."""
     if read_failed or current_state is None:
         return settings.error_retry_interval, "Lesefehler"
+
+    # Ist die Luftklappe vollständig geschlossen (0 %) und steht still,
+    # ist der Abbrand beendet (insb. bei Kachelöfen mit langer Restwärme).
+    if current_state.flap_percent == 0 and not current_state.flap_moving:
+        return settings.normal_update_interval, "Normalbetrieb"
 
     if (
         current_state.temperature_c

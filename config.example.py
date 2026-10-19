@@ -40,7 +40,8 @@ MODEL = "WiFire"
 ENABLE_FAN_ENTITY = False
 
 # Adaptive Live-Abfrage in Sekunden
-NORMAL_UPDATE_INTERVAL = 60
+# Normalbetrieb: Außerhalb eines Abbrands (oder wenn die Luftklappe bei 0 % steht)
+NORMAL_UPDATE_INTERVAL = 240
 ACTIVE_FIRE_UPDATE_INTERVAL = 10
 ERROR_RETRY_INTERVAL = 300
 ACTIVE_FIRE_TEMPERATURE_C = 40

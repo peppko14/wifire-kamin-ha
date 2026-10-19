@@ -128,8 +128,8 @@ class BridgeRuntimeTests(unittest.TestCase):
 
         self.assertEqual(publisher.states, [state])
         self.assertEqual(states, [state])
-        self.assertEqual(sleeps, [60])
-        self.assertEqual(result, (60, "Normalbetrieb"))
+        self.assertEqual(sleeps, [240])
+        self.assertEqual(result, (240, "Normalbetrieb"))
         self.assertIn("24 °C | 100 % | 0:12", messages[0])
 
     def test_active_fire_uses_short_interval(self) -> None:

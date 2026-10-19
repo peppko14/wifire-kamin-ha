@@ -111,14 +111,14 @@ class DiscoveryTests(unittest.TestCase):
         }
 
         for component_id in live_component_ids:
-            self.assertEqual(components[component_id]["expire_after"], 180)
+            self.assertEqual(components[component_id]["expire_after"], 720)
 
     def test_optional_fan_uses_same_expire_after(self) -> None:
         components = self.build_payload(FakeFanConfig)["components"]
 
         self.assertEqual(
             components["wifire_kamin_fan_raw"]["expire_after"],
-            180,
+            720,
         )
 
     def test_default_expiry_follows_normal_polling_interval(self) -> None:
@@ -272,7 +272,7 @@ class DiscoveryTests(unittest.TestCase):
         )
         self.assertEqual(component["value_template"], "{{ value_json.status }}")
         self.assertEqual(component["availability_topic"], self.topics.availability)
-        self.assertEqual(component["expire_after"], 180)
+        self.assertEqual(component["expire_after"], 720)
 
     def test_payload_contains_six_statistics_components(self) -> None:
         components = self.build_payload()["components"]

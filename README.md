@@ -11,7 +11,7 @@ sichert abgeschlossene Abbrände dauerhaft auf einem Raspberry Pi.
 - optionale Diagnoseentität für einen gekoppelten Lüfter
 - adaptive Live-Abfrage:
   - 10 Sekunden während eines aktiven Abbrands
-  - 60 Sekunden im Normalbetrieb
+  - 4 Minuten im Normalbetrieb (bzw. sobald die Klappe auf 0 % geschlossen ist)
   - 5 Minuten nach Kommunikationsfehlern
 - lesender Zugriff auf archivierte Abbrände
 - automatische lokale Historisierung unter `data/history/`

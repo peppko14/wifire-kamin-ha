@@ -7,6 +7,16 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-19
+
+### Geändert
+
+- **Abfrageintervall im Normalbetrieb auf 4 Minuten (240 s) verlängert**:
+  - `NORMAL_UPDATE_INTERVAL` von 60 s auf 240 s angehoben zur Entlastung des Kamin-Controllers und WLANs
+  - Automatische Anpassung der Home-Assistant-Ablaufzeit (`expire_after`) auf 720 s (3 × 240 s)
+- **Kachelofen-Optimierung für Restwärme**:
+  - Sobald die Luftklappe auf 0 % geschlossen ist und stillsteht (`flap_percent == 0` und `not flap_moving`), wechselt die Bridge sofort in das strom- und ressourcenschonende Normalbetrieb-Intervall (240 s), anstatt bei hoher Kachelofen-Restwärme noch stundenlang im 10-Sekunden-Takt abzufragen
+
 ## [0.15.1] - 2026-10-16
 
 ### Behoben

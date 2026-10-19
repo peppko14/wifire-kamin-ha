@@ -17,11 +17,15 @@ from bridge.polling import (
 from protocol.models import LiveStatus
 
 
-def live_status(temperature_c: int = 24) -> LiveStatus:
+def live_status(
+    temperature_c: int = 24,
+    flap_percent: int = 100,
+    flap_moving: bool = False,
+) -> LiveStatus:
     return LiveStatus(
         temperature_c=temperature_c,
-        flap_percent=100,
-        flap_moving=False,
+        flap_percent=flap_percent,
+        flap_moving=flap_moving,
         burn_hours=0,
         burn_minutes=12,
         burn_total_minutes=12,
@@ -222,7 +226,7 @@ class PollingSettingsTests(unittest.TestCase):
             SimpleNamespace()
         )
 
-        self.assertEqual(settings.normal_update_interval, 60)
+        self.assertEqual(settings.normal_update_interval, 240)
         self.assertEqual(
             settings.active_fire_update_interval,
             10,
@@ -320,6 +324,24 @@ class GetNextPollIntervalTests(unittest.TestCase):
         )
 
         self.assertEqual(result, (60, "Normalbetrieb"))
+
+    def test_high_temperature_with_closed_stationary_flap_is_normal(self) -> None:
+        result = get_next_poll_interval(
+            live_status(temperature_c=160, flap_percent=0, flap_moving=False),
+            False,
+            self.settings,
+        )
+
+        self.assertEqual(result, (60, "Normalbetrieb"))
+
+    def test_high_temperature_with_moving_flap_is_active(self) -> None:
+        result = get_next_poll_interval(
+            live_status(temperature_c=160, flap_percent=0, flap_moving=True),
+            False,
+            self.settings,
+        )
+
+        self.assertEqual(result, (10, "aktiver Abbrand"))
 
 
 if __name__ == "__main__":
