@@ -53,7 +53,7 @@ class CalendarMonth:
 
 @dataclass(frozen=True, order=True, slots=True)
 class HeatingSeason:
-    """Heizsaison vom 1. Juli bis zum 30. Juni des Folgejahres."""
+    """Heizsaison vom 1. September bis zum 31. August des Folgejahres (Herbstanfang)."""
 
     start_year: int
 
@@ -64,7 +64,7 @@ class HeatingSeason:
     @classmethod
     def from_datetime(cls, value: datetime) -> HeatingSeason:
         """Ordnet einen Zeitpunkt seiner Heizsaison zu."""
-        start_year = value.year if value.month >= 7 else value.year - 1
+        start_year = value.year if value.month >= 9 else value.year - 1
         return cls(start_year)
 
     @property
@@ -79,13 +79,13 @@ class HeatingSeason:
 
     @property
     def start(self) -> datetime:
-        """Inklusiver Saisonanfang am 1. Juli."""
-        return datetime(self.start_year, 7, 1)
+        """Inklusiver Saisonanfang am 1. September (Herbstanfang)."""
+        return datetime(self.start_year, 9, 1)
 
     @property
     def end_exclusive(self) -> datetime:
-        """Exklusive Grenze am 1. Juli des Folgejahres."""
-        return datetime(self.start_year + 1, 7, 1)
+        """Exklusive Grenze am 1. September des Folgejahres."""
+        return datetime(self.start_year + 1, 9, 1)
 
     def contains(self, value: datetime) -> bool:
         """Prüft, ob ein Zeitpunkt in dieser Heizsaison liegt."""

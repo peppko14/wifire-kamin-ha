@@ -158,11 +158,11 @@ class HistoryStatisticsToolTests(unittest.TestCase):
                 ["2026-01", "2026-02"],
             )
 
-    def test_season_json_uses_july_to_june_boundary(self) -> None:
+    def test_season_json_uses_september_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
-            self.save_record(path, start=datetime(2026, 6, 30, 20, 0))
-            self.save_record(path, start=datetime(2026, 7, 1, 20, 0))
+            self.save_record(path, start=datetime(2026, 8, 31, 20, 0))
+            self.save_record(path, start=datetime(2026, 9, 1, 20, 0))
             output = StringIO()
 
             with redirect_stdout(output):

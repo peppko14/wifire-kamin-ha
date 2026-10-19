@@ -96,10 +96,10 @@ class HeatingSeasonStatisticsTests(unittest.TestCase):
         self.assertEqual(result[0].statistics.burn_count, 2)
         self.assertEqual(result[0].statistics.highest_temperature_c, 600)
 
-    def test_june_and_july_are_split_into_different_seasons(self) -> None:
+    def test_august_and_september_are_split_into_different_seasons(self) -> None:
         result = calculate_heating_season_statistics([
-            record("2026-06-30T23:59:59", 400),
-            record("2026-07-01T00:00:00", 500),
+            record("2026-08-31T23:59:59", 400),
+            record("2026-09-01T00:00:00", 500),
         ])
 
         self.assertEqual(
@@ -109,7 +109,7 @@ class HeatingSeasonStatisticsTests(unittest.TestCase):
 
     def test_seasons_are_returned_chronologically(self) -> None:
         result = calculate_heating_season_statistics([
-            record("2026-08-01T20:00:00", 500),
+            record("2026-09-10T20:00:00", 500),
             record("2024-12-01T20:00:00", 400),
             record("2025-10-01T20:00:00", 450),
         ])
@@ -139,8 +139,8 @@ class HeatingSeasonStatisticsTests(unittest.TestCase):
 
         self.assertEqual(result["period"], "2025-2026")
         self.assertEqual(result["label"], "2025/2026")
-        self.assertEqual(result["period_start"], "2025-07-01T00:00:00")
-        self.assertEqual(result["period_end_exclusive"], "2026-07-01T00:00:00")
+        self.assertEqual(result["period_start"], "2025-09-01T00:00:00")
+        self.assertEqual(result["period_end_exclusive"], "2026-09-01T00:00:00")
         self.assertEqual(result["burn_count"], 1)
 
     def test_season_duration_uses_existing_duration_logic(self) -> None:
@@ -175,10 +175,10 @@ class CurrentPeriodStatisticsTests(unittest.TestCase):
     def test_empty_current_periods_have_neutral_statistics(self) -> None:
         result = calculate_current_period_statistics(
             [record("2026-04-01T20:00:00", 500)],
-            at=datetime(2026, 7, 13),
+            at=datetime(2026, 9, 13),
         )
 
-        self.assertEqual(result.month.month.key, "2026-07")
+        self.assertEqual(result.month.month.key, "2026-09")
         self.assertEqual(result.month.statistics.burn_count, 0)
         self.assertEqual(result.month.statistics.total_duration_minutes, 0)
         self.assertIsNone(
@@ -191,10 +191,10 @@ class CurrentPeriodStatisticsTests(unittest.TestCase):
     def test_current_period_payload_is_nested_and_serializable(self) -> None:
         payload = calculate_current_period_statistics(
             [],
-            at=datetime(2026, 7, 13),
+            at=datetime(2026, 9, 13),
         ).to_dict()
 
-        self.assertEqual(payload["current_month"]["period"], "2026-07")
+        self.assertEqual(payload["current_month"]["period"], "2026-09")
         self.assertEqual(
             [item["label"] for item in payload["heating_seasons"]],
             ["2026/2027", "2025/2026", "2024/2025"],

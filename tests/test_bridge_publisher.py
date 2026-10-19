@@ -252,7 +252,7 @@ class MqttPublisherTests(unittest.TestCase):
     def test_publish_period_statistics_uses_retained_json_payload(self) -> None:
         periods = calculate_current_period_statistics(
             [],
-            at=datetime(2026, 7, 13),
+            at=datetime(2026, 9, 13),
         )
 
         self.publisher.publish_period_statistics(periods)
@@ -265,7 +265,7 @@ class MqttPublisherTests(unittest.TestCase):
         self.assertEqual(message["qos"], 1)
         self.assertTrue(message["retain"])
         payload = json.loads(message["payload"])
-        self.assertEqual(payload["current_month"]["period"], "2026-07")
+        self.assertEqual(payload["current_month"]["period"], "2026-09")
         self.assertEqual(
             [item["label"] for item in payload["heating_seasons"]],
             ["2026/2027", "2025/2026", "2024/2025"],

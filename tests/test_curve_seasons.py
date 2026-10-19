@@ -46,7 +46,7 @@ class HeatingSeasonCurveAnalysisTests(unittest.TestCase):
     def test_always_returns_three_rolling_seasons(self) -> None:
         result = analyze_current_heating_season_curves(
             (),
-            at=datetime(2026, 8, 1),
+            at=datetime(2026, 10, 1),
         )
 
         self.assertEqual(
@@ -63,9 +63,9 @@ class HeatingSeasonCurveAnalysisTests(unittest.TestCase):
 
     def test_each_season_receives_its_own_median_curve(self) -> None:
         current = (
-            make_curve((10, 20), start=datetime(2026, 7, 2)),
-            make_curve((20, 30), start=datetime(2026, 7, 3)),
-            make_curve((30, 40), start=datetime(2026, 7, 4)),
+            make_curve((10, 20), start=datetime(2026, 9, 2)),
+            make_curve((20, 30), start=datetime(2026, 9, 3)),
+            make_curve((30, 40), start=datetime(2026, 9, 4)),
         )
         previous = (
             make_curve((100, 200), start=datetime(2026, 2, 1)),
@@ -75,7 +75,7 @@ class HeatingSeasonCurveAnalysisTests(unittest.TestCase):
 
         result = analyze_current_heating_season_curves(
             current + previous,
-            at=datetime(2026, 8, 1),
+            at=datetime(2026, 10, 1),
         )
 
         self.assertEqual(
@@ -95,16 +95,16 @@ class HeatingSeasonCurveAnalysisTests(unittest.TestCase):
         self.assertEqual(result.seasons[2].median_points, ())
         self.assertEqual(result.sample_count, 2)
 
-    def test_july_boundary_assigns_curves_to_correct_season(self) -> None:
+    def test_september_boundary_assigns_curves_to_correct_season(self) -> None:
         before = make_curve(
             (10, 20),
-            start=datetime(2026, 6, 30, 23, 59),
+            start=datetime(2026, 8, 31, 23, 59),
         )
-        after = make_curve((20, 30), start=datetime(2026, 7, 1))
+        after = make_curve((20, 30), start=datetime(2026, 9, 1))
 
         result = analyze_current_heating_season_curves(
             (before, after),
-            at=datetime(2026, 8, 1),
+            at=datetime(2026, 10, 1),
             minimum_curve_count=1,
         )
 
@@ -112,16 +112,16 @@ class HeatingSeasonCurveAnalysisTests(unittest.TestCase):
         self.assertEqual(result.seasons[1].selection.curves, (before,))
 
     def test_warning_curves_are_excluded_and_reported_in_count(self) -> None:
-        valid = make_curve((10, 20), start=datetime(2026, 7, 2))
+        valid = make_curve((10, 20), start=datetime(2026, 9, 2))
         warning = make_curve(
             (20, 30),
-            start=datetime(2026, 7, 3),
+            start=datetime(2026, 9, 3),
             quality_status="warning",
         )
 
         result = analyze_current_heating_season_curves(
             (valid, warning),
-            at=datetime(2026, 8, 1),
+            at=datetime(2026, 10, 1),
             minimum_curve_count=2,
         )
         season = result.seasons[0]
@@ -134,25 +134,25 @@ class HeatingSeasonCurveAnalysisTests(unittest.TestCase):
         )
 
     def test_mixed_sample_counts_require_explicit_filter(self) -> None:
-        short = make_curve((10, 20), start=datetime(2026, 7, 2))
-        long = make_curve((10, 20, 30), start=datetime(2026, 7, 3))
+        short = make_curve((10, 20), start=datetime(2026, 9, 2))
+        long = make_curve((10, 20, 30), start=datetime(2026, 9, 3))
 
         with self.assertRaisesRegex(HeatingSeasonCurveError, "sample_count"):
             analyze_current_heating_season_curves(
                 (short, long),
-                at=datetime(2026, 8, 1),
+                at=datetime(2026, 10, 1),
             )
 
     def test_explicit_sample_count_filters_incompatible_curves(self) -> None:
-        matching = make_curve((10, 20), start=datetime(2026, 7, 2))
+        matching = make_curve((10, 20), start=datetime(2026, 9, 2))
         incompatible = make_curve(
             (10, 20, 30),
-            start=datetime(2026, 7, 3),
+            start=datetime(2026, 9, 3),
         )
 
         result = analyze_current_heating_season_curves(
             (matching, incompatible),
-            at=datetime(2026, 8, 1),
+            at=datetime(2026, 10, 1),
             minimum_curve_count=1,
             sample_count=2,
         )
@@ -166,7 +166,7 @@ class HeatingSeasonCurveAnalysisTests(unittest.TestCase):
     def test_stable_season_lookup(self) -> None:
         result = analyze_current_heating_season_curves(
             (),
-            at=datetime(2026, 8, 1),
+            at=datetime(2026, 10, 1),
         )
 
         self.assertEqual(
@@ -176,12 +176,12 @@ class HeatingSeasonCurveAnalysisTests(unittest.TestCase):
         self.assertIsNone(result.season_by_key("2023-2024"))
 
     def test_duplicate_ids_and_invalid_timestamp_are_rejected(self) -> None:
-        curve = make_curve((10, 20), start=datetime(2026, 7, 2))
+        curve = make_curve((10, 20), start=datetime(2026, 9, 2))
 
         with self.assertRaisesRegex(HeatingSeasonCurveError, "doppelte"):
             analyze_current_heating_season_curves(
                 (curve, curve),
-                at=datetime(2026, 8, 1),
+                at=datetime(2026, 10, 1),
             )
         with self.assertRaisesRegex(HeatingSeasonCurveError, "Zeitstempel"):
             analyze_current_heating_season_curves((), at="2026-08-01")

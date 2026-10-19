@@ -31,26 +31,26 @@ class CalendarMonthTests(unittest.TestCase):
 
 
 class HeatingSeasonTests(unittest.TestCase):
-    def test_june_belongs_to_season_started_in_previous_year(self) -> None:
-        season = HeatingSeason.from_datetime(datetime(2026, 6, 30, 23, 59))
+    def test_august_belongs_to_season_started_in_previous_year(self) -> None:
+        season = HeatingSeason.from_datetime(datetime(2026, 8, 31, 23, 59))
 
         self.assertEqual(season.start_year, 2025)
         self.assertEqual(season.key, "2025-2026")
         self.assertEqual(season.label, "2025/2026")
 
-    def test_july_starts_new_heating_season(self) -> None:
-        season = HeatingSeason.from_datetime(datetime(2026, 7, 1))
+    def test_september_starts_new_heating_season(self) -> None:
+        season = HeatingSeason.from_datetime(datetime(2026, 9, 1))
 
         self.assertEqual(season.start_year, 2026)
-        self.assertEqual(season.start, datetime(2026, 7, 1))
-        self.assertEqual(season.end_exclusive, datetime(2027, 7, 1))
+        self.assertEqual(season.start, datetime(2026, 9, 1))
+        self.assertEqual(season.end_exclusive, datetime(2027, 9, 1))
 
     def test_boundaries_are_inclusive_and_exclusive(self) -> None:
         season = HeatingSeason(2025)
 
-        self.assertTrue(season.contains(datetime(2025, 7, 1)))
-        self.assertTrue(season.contains(datetime(2026, 6, 30, 23, 59, 59)))
-        self.assertFalse(season.contains(datetime(2026, 7, 1)))
+        self.assertTrue(season.contains(datetime(2025, 9, 1)))
+        self.assertTrue(season.contains(datetime(2026, 8, 31, 23, 59, 59)))
+        self.assertFalse(season.contains(datetime(2026, 9, 1)))
 
     def test_seasons_sort_chronologically(self) -> None:
         seasons = [HeatingSeason(2026), HeatingSeason(2024), HeatingSeason(2025)]

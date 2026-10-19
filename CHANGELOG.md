@@ -7,6 +7,19 @@ Die Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.17.2] - 2026-10-19
+
+### Geändert
+
+- **Heizsaison-Start zum Herbstanfang (1. September)**:
+  - Anpassung der Periodendefinition `HeatingSeason` in `history/periods.py`: Die neue Kaminsaison startet nun standardmäßig zum 1. September (Herbstanfang, Monate $\ge$ 9) statt zum 1. Juli
+  - Abbrände ab September (z. B. Herbst 2026) zählen damit zur neuen Saison `2026/2027` (vorher noch `2025/2026`)
+  - Alle Periodenstatistiken, Archivtools und Brennkurven-Referenzen berücksichtigen den Stichtag 1. September
+- **Home Assistant Dashboard Optimierungen**:
+  - **Plotly Brennkurven-Vergleich**: Die Kurve des aktuellen Abbrands (`sensor.wifire_kamin_live_curve`) wird nun in leuchtendem Gelb (`#FFD60A`) dargestellt. Die Vergleichskurven sind einheitlich abgestimmt: Letzter Abbrand in Orange (`#FF9F0A`), historischer Median in Lila gestrichelt (`#BF5AF2`) und heißester Abbrand in Rot (`#FF453A`)
+  - **Temperaturverlauf entfernt**: Die redundante `mini-graph-card` im Abschnitt "Brennkurven-Vergleich" wurde entfernt
+  - **Dynamische Saisonanzeige**: Die Saisonkachel im Bereich "Historie & Saison-Highlights" ist nicht mehr statisch auf 25/26 fixiert, sondern bindet dynamisch `sensor.wifire_kamin_aktuelle_heizsaison` ein und zeigt passend `SAISON 26/27` mit den aktuellen Zählern und Gesamtdauern an
+
 ## [0.17.1] - 2026-10-19
 
 ### Geändert

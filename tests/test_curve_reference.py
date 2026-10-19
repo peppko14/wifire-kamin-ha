@@ -63,14 +63,14 @@ class ReferenceCurveSelectionTests(unittest.TestCase):
         self.assertTrue(selection.is_evaluable)
         self.assertEqual(selection.status, ReferenceSelectionStatus.READY)
 
-    def test_heating_season_filter_uses_july_boundary(self) -> None:
+    def test_heating_season_filter_uses_september_boundary(self) -> None:
         included = make_curve(
             (20, 100),
-            start=datetime(2026, 6, 30, 23, 59),
+            start=datetime(2026, 8, 31, 23, 59),
         )
         excluded = make_curve(
             (21, 101),
-            start=datetime(2026, 7, 1),
+            start=datetime(2026, 9, 1),
         )
         criteria = ReferenceCurveCriteria(
             minimum_curve_count=1,

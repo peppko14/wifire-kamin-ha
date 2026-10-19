@@ -123,7 +123,7 @@ class HistoryStatisticsReporterTests(unittest.TestCase):
             history_provider=FakeHistoryProvider([]),
             publisher=publisher,
             logger=lambda message: None,
-            now=lambda: datetime(2026, 7, 13),
+            now=lambda: datetime(2026, 9, 13),
         )
 
         statistics = reporter.refresh()
@@ -131,7 +131,7 @@ class HistoryStatisticsReporterTests(unittest.TestCase):
         self.assertEqual(statistics.burn_count, 0)
         self.assertEqual(publisher.statistics, [statistics])
         periods = publisher.period_statistics[0]
-        self.assertEqual(periods.month.month.key, "2026-07")
+        self.assertEqual(periods.month.month.key, "2026-09")
         self.assertEqual(periods.month.statistics.burn_count, 0)
         self.assertEqual(periods.season.season.label, "2026/2027")
         self.assertEqual(periods.season.statistics.burn_count, 0)

@@ -146,7 +146,7 @@ class DashboardSnapshotTests(unittest.TestCase):
     def test_snapshot_contains_three_rolling_heating_seasons(self) -> None:
         snapshot = build_dashboard_snapshot(
             make_analysis(),
-            generated_at=datetime(2026, 7, 14, tzinfo=timezone.utc),
+            generated_at=datetime(2026, 9, 14, tzinfo=timezone.utc),
         )
 
         self.assertEqual(
